@@ -10,3 +10,7 @@ examples/csharp/bin/
 examples/csharp/obj/
 examples/cpp/build/
 tools/site-ui/node_modules/
+tools/site-ui/src-en/
+tools/site-ui/src-ru/
+tools/site-ui/.vitepress/cache/
+tools/site-ui/.vitepress/.temp/

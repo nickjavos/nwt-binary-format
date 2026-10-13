@@ -1,37 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 410" role="img" aria-labelledby="nwtd-order-book-state-w-title nwtd-order-book-state-w-desc" class="nwt-diagram" font-family="inherit" fill="none">
-<title id="nwtd-order-book-state-w-title">States of an order-level book</title>
-<desc id="nwtd-order-book-state-w-desc">An order-level book is Unknown, Snapshot open or Valid; MBO actions CLEAR, SNAPSHOT_BEGIN, ADD, MODIFY, DELETE and SNAPSHOT_END move it, and a GAP returns it to Unknown.</desc>
-<defs>
-<marker id="nwtd-order-book-state-w-a-c3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1L7 4L1 7z" fill="var(--c3, #b7791f)"/></marker>
-<marker id="nwtd-order-book-state-w-a-fg3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1L7 4L1 7z" fill="var(--fg-3, #6b6a65)"/></marker>
-</defs>
-<path d="M60.5 136.5 L60.5 166.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-order-book-state-w-a-fg3)"/>
-<path d="M216.5 196.5 L274.5 196.5 Q280.5 196.5 280.5 190.5 L280.5 104.5 Q280.5 98.5 286.5 98.5 L440.5 98.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-order-book-state-w-a-fg3)"/>
-<path d="M216.5 220.5 L274.5 220.5 Q280.5 220.5 280.5 226.5 L280.5 312.5 Q280.5 318.5 286.5 318.5 L440.5 318.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-order-book-state-w-a-fg3)"/>
-<path d="M512.5 140.5 L512.5 276.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-order-book-state-w-a-fg3)"/>
-<path d="M584.5 276.5 L584.5 140.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-order-book-state-w-a-fg3)"/>
-<path d="M536.5 56.5 L536.5 38.5 Q536.5 32.5 542.5 32.5 L578.5 32.5 Q584.5 32.5 584.5 38.5 L584.5 56.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-order-book-state-w-a-fg3)"/>
-<path d="M536.5 360.5 L536.5 378.5 Q536.5 384.5 542.5 384.5 L578.5 384.5 Q584.5 384.5 584.5 378.5 L584.5 360.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-order-book-state-w-a-fg3)"/>
-<path d="M60.5 294.5 L60.5 250.5" fill="none" stroke="var(--c3, #b7791f)" stroke-dasharray="4 3" marker-end="url(#nwtd-order-book-state-w-a-c3)"/>
-<rect x="0.5" y="166.5" width="215" height="83" rx="3" fill="none" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.7" stroke-dasharray="4 3"/>
-<text x="12" y="192" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Unknown</text>
-<text x="12" y="212" font-size="13" fill="var(--fg-2, #63625d)">The live orders are not known</text>
-<rect x="440.5" y="56.5" width="215" height="83" rx="3" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)" stroke-dasharray="4 3"/>
-<text x="452" y="82" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Snapshot open</text>
-<text x="452" y="102" font-size="13" fill="var(--fg-2, #63625d)">A private working book is</text>
-<text x="452" y="122" font-size="13" fill="var(--fg-2, #63625d)">being filled</text>
-<rect x="440.5" y="276.5" width="215" height="83" rx="3" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
-<text x="452" y="302" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Valid</text>
-<text x="452" y="322" font-size="13" fill="var(--fg-2, #63625d)">The committed book equals</text>
-<text x="452" y="342" font-size="13" fill="var(--fg-2, #63625d)">the book of the source</text>
-<circle cx="60.5" cy="130.5" r="5" fill="var(--fg-3, #6b6a65)"/>
-<text x="360" y="90" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">SNAPSHOT_BEGIN</tspan></text>
-<text x="360" y="310" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">CLEAR</tspan></text>
-<text x="504" y="213" font-size="13" fill="var(--fg, #37352f)" text-anchor="end"><tspan font-family="var(--font-mono, ui-monospace, monospace)">SNAPSHOT_END</tspan></text>
-<text x="592" y="213" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">SNAPSHOT_BEGIN</tspan></text>
-<text x="560" y="24" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">ADD</tspan></text>
-<text x="560" y="404" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">ADD</tspan>, <tspan font-family="var(--font-mono, ui-monospace, monospace)">MODIFY</tspan>, <tspan font-family="var(--font-mono, ui-monospace, monospace)">DELETE</tspan>, <tspan font-family="var(--font-mono, ui-monospace, monospace)">CLEAR</tspan></text>
-<text x="0" y="314" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">GAP</tspan> on the channel: from any state back</text>
-<text x="0" y="334" font-size="13" fill="var(--fg-2, #63625d)">to Unknown. The committed book and</text>
-<text x="0" y="354" font-size="13" fill="var(--fg-2, #63625d)">the working book are discarded.</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 196" class="nwt-dg" font-family="inherit" role="img">
+<title>States of an order-level book</title>
+<desc>An order-level book is Unknown, Snapshot open or Valid; MBO actions CLEAR, SNAPSHOT_BEGIN, ADD, MODIFY, DELETE and SNAPSHOT_END move it, and a GAP returns it to Unknown.</desc>
+<style>.nwt-dg text{font-size:12px;fill:var(--fg-2,#63625d)}.nwt-dg .t{font-size:13px;font-weight:500;fill:var(--fg,#37352f)}.nwt-dg .p{fill:var(--fg,#37352f)}.nwt-dg .q{fill:var(--fg-3,#6b6a65)}.nwt-dg .m{font-family:var(--font-mono,ui-monospace,monospace)}.nwt-dg .e{text-anchor:end}.nwt-dg .c{text-anchor:middle}.nwt-dg rect,.nwt-dg polygon,.nwt-dg circle{fill:var(--panel,#ffffff);stroke:var(--line-2,#d8d7d2)}.nwt-dg .s{fill:var(--bg-2,#f4f3f0)}.nwt-dg .n{fill:none}.nwt-dg .d{stroke-dasharray:4 3}.nwt-dg .f{stroke:var(--fg,#37352f)}.nwt-dg path{fill:none;stroke:var(--fg-3,#6b6a65)}.nwt-dg .h{stroke:var(--line-2,#d8d7d2)}.nwt-dg .k{fill:var(--fg-3,#6b6a65);stroke:none}.nwt-dg .a{marker-end:url(#a-order-book-state-w)}</style>
+<defs><marker id="a-order-book-state-w" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path class="k" d="M.5 .5L6.5 3.5L.5 6.5z"/></marker></defs>
+<path class="a" d="M24.5 19.5V39.5"/>
+<path class="a d" d="M100.5 10.5V39.5"/>
+<path class="a" d="M160.5 84.5H279.5"/>
+<path class="a" d="M440.5 72.5H559.5"/>
+<path class="a" d="M560.5 96.5H441.5"/>
+<path class="a" d="M80.5 128.5L80.5 145.5Q80.5 150.5 85.5 150.5L635.5 150.5Q640.5 150.5 640.5 145.5V129.5"/>
+<path class="a" d="M340.5 40.5L340.5 29.5Q340.5 24.5 345.5 24.5L375.5 24.5Q380.5 24.5 380.5 29.5V39.5"/>
+<path class="a" d="M620.5 40.5L620.5 29.5Q620.5 24.5 625.5 24.5L655.5 24.5Q660.5 24.5 660.5 29.5V39.5"/>
+<rect class="n d" x="0.5" y="40.5" width="159" height="87" rx="3"/>
+<text x="10" y="62" class="t">Unknown</text>
+<text x="10" y="79">the live orders are not</text>
+<text x="10" y="96">known</text>
+<rect class="d" x="280.5" y="40.5" width="159" height="87" rx="3"/>
+<text x="290" y="62" class="t">Snapshot open</text>
+<text x="290" y="79">a private working book</text>
+<text x="290" y="96">is being filled</text>
+<rect class="f" x="560.5" y="40.5" width="159" height="87" rx="3"/>
+<text x="570" y="62" class="t">Valid</text>
+<text x="570" y="79">the committed book</text>
+<text x="570" y="96">equals the book of the</text>
+<text x="570" y="113">source</text>
+<circle class="k" cx="24.5" cy="14.5" r="4"/>
+<text x="108" y="16"><tspan class="m">GAP</tspan>, from any state</text>
+<text x="220" y="77" class="p c m">SNAPSHOT_BEGIN</text>
+<text x="500" y="65" class="p c m">SNAPSHOT_END</text>
+<text x="500" y="112" class="p c m">SNAPSHOT_BEGIN</text>
+<text x="360" y="144" class="p c m">CLEAR</text>
+<text x="360" y="18" class="p c m">ADD</text>
+<text x="720" y="18" class="p e"><tspan class="m">ADD</tspan>, <tspan class="m">MODIFY</tspan>, <tspan class="m">DELETE</tspan>, <tspan class="m">CLEAR</tspan></text>
+<text x="0" y="174" class="q">A <tspan class="m">GAP</tspan> on the channel returns the book to Unknown from any state. The committed book and the working book are</text>
+<text x="0" y="191" class="q">discarded.</text>
 </svg>

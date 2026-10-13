@@ -1,45 +1,47 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 582" role="img" aria-labelledby="nwtd-file-structure-w-title nwtd-file-structure-w-desc" class="nwt-diagram" font-family="inherit" fill="none">
-<title id="nwtd-file-structure-w-title">Structure of an NWT file</title>
-<desc id="nwtd-file-structure-w-desc">An NWT file from the first byte to the last: a 64-byte container header, the metadata, DATA frames, optional INDEX frames and a 96-byte END frame.</desc>
-<text x="152" y="14" font-size="13" fill="var(--fg-3, #6b6a65)" text-anchor="end">Offset</text>
-<text x="168" y="14" font-size="13" fill="var(--fg-3, #6b6a65)">Part</text>
-<text x="536" y="14" font-size="13" fill="var(--fg-3, #6b6a65)">Size</text>
-<rect x="168.5" y="28.5" width="351" height="103" rx="3" fill="var(--c4-bg, #ece9f7)" stroke="var(--c4, #6b5bb5)"/>
-<text x="180" y="54" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Container header</text>
-<text x="180" y="74" font-size="13" fill="var(--fg-2, #63625d)">Magic <tspan font-family="var(--font-mono, ui-monospace, monospace)">NWTBIN\r\n</tspan>, version, <tspan font-family="var(--font-mono, ui-monospace, monospace)">stream_id</tspan>, size and</text>
-<text x="180" y="94" font-size="13" fill="var(--fg-2, #63625d)">CRC-32C of the metadata, CRC-32C of the header</text>
-<text x="180" y="114" font-size="13" fill="var(--fg-2, #63625d)">itself</text>
-<text x="152" y="54" font-size="13" fill="var(--fg-2, #63625d)" text-anchor="end"><tspan font-family="var(--font-mono, ui-monospace, monospace)">0</tspan></text>
-<text x="536" y="54" font-size="13" fill="var(--fg-2, #63625d)">64 bytes</text>
-<rect x="168.5" y="136.5" width="351" height="103" rx="3" fill="var(--c4-bg, #ece9f7)" stroke="var(--c4, #6b5bb5)"/>
-<text x="180" y="162" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Metadata</text>
-<text x="180" y="182" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">MANIFEST</tspan>: the publishers and record types of this</text>
-<text x="180" y="202" font-size="13" fill="var(--fg-2, #63625d)">file. <tspan font-family="var(--font-mono, ui-monospace, monospace)">PROVENANCE</tspan>: optional notes on the origin of the</text>
-<text x="180" y="222" font-size="13" fill="var(--fg-2, #63625d)">data</text>
-<text x="152" y="162" font-size="13" fill="var(--fg-2, #63625d)" text-anchor="end"><tspan font-family="var(--font-mono, ui-monospace, monospace)">64</tspan></text>
-<text x="536" y="162" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">metadata_bytes</tspan>: 8 to</text>
-<text x="536" y="182" font-size="13" fill="var(--fg-2, #63625d)">1,048,576, a multiple of 8</text>
-<rect x="168.5" y="244.5" width="351" height="83" rx="3" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
-<text x="180" y="270" font-size="14" fill="var(--fg, #37352f)" font-weight="600"><tspan font-family="var(--font-mono, ui-monospace, monospace)">DATA</tspan> frame 0</text>
-<text x="180" y="290" font-size="13" fill="var(--fg-2, #63625d)">A 64-byte frame header, then whole records: raw,</text>
-<text x="180" y="310" font-size="13" fill="var(--fg-2, #63625d)">or compressed with Zstandard</text>
-<text x="152" y="270" font-size="13" fill="var(--fg-2, #63625d)" text-anchor="end"><tspan font-family="var(--font-mono, ui-monospace, monospace)">64 + metadata_bytes</tspan></text>
-<text x="536" y="270" font-size="13" fill="var(--fg-2, #63625d)">64 + <tspan font-family="var(--font-mono, ui-monospace, monospace)">stored_bytes</tspan>,</text>
-<text x="536" y="290" font-size="13" fill="var(--fg-2, #63625d)">rounded up to a multiple of 8</text>
-<rect x="168.5" y="332.5" width="351" height="43" rx="3" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
-<text x="180" y="358" font-size="14" fill="var(--fg, #37352f)" font-weight="600"><tspan font-family="var(--font-mono, ui-monospace, monospace)">DATA</tspan> frame 1</text>
-<circle cx="344.0" cy="384" r="1.6" fill="var(--fg-3, #6b6a65)"/>
-<circle cx="344.0" cy="391" r="1.6" fill="var(--fg-3, #6b6a65)"/>
-<circle cx="344.0" cy="398" r="1.6" fill="var(--fg-3, #6b6a65)"/>
-<rect x="168.5" y="408.5" width="351" height="83" rx="3" fill="var(--c3-bg, #f8efdc)" stroke="var(--c3, #b7791f)" stroke-dasharray="4 3"/>
-<text x="180" y="434" font-size="14" fill="var(--fg, #37352f)" font-weight="600"><tspan font-family="var(--font-mono, ui-monospace, monospace)">INDEX</tspan> frames</text>
-<text x="180" y="454" font-size="13" fill="var(--fg-2, #63625d)">Optional. One 40-byte entry per <tspan font-family="var(--font-mono, ui-monospace, monospace)">DATA</tspan> frame: offset,</text>
-<text x="180" y="474" font-size="13" fill="var(--fg-2, #63625d)">time range, size, record count</text>
-<text x="536" y="434" font-size="13" fill="var(--fg-2, #63625d)">64 + 40 per entry</text>
-<rect x="168.5" y="496.5" width="351" height="83" rx="3" fill="var(--c3-bg, #f8efdc)" stroke="var(--c3, #b7791f)"/>
-<text x="180" y="522" font-size="14" fill="var(--fg, #37352f)" font-weight="600"><tspan font-family="var(--font-mono, ui-monospace, monospace)">END</tspan> frame</text>
-<text x="180" y="542" font-size="13" fill="var(--fg-2, #63625d)">Totals, completion status and the offset of the first</text>
-<text x="180" y="562" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">INDEX</tspan> frame. No byte follows it</text>
-<text x="152" y="522" font-size="13" fill="var(--fg-2, #63625d)" text-anchor="end">file size − 96</text>
-<text x="536" y="522" font-size="13" fill="var(--fg-2, #63625d)">96 bytes</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 222" class="nwt-dg" font-family="inherit" role="img">
+<title>Structure of an NWT file</title>
+<desc>An NWT file from the first byte to the last: a 64-byte container header, the metadata, DATA frames, optional INDEX frames and a 96-byte END frame.</desc>
+<style>.nwt-dg text{font-size:12px;fill:var(--fg-2,#63625d)}.nwt-dg .t{font-size:13px;font-weight:500;fill:var(--fg,#37352f)}.nwt-dg .p{fill:var(--fg,#37352f)}.nwt-dg .q{fill:var(--fg-3,#6b6a65)}.nwt-dg .m{font-family:var(--font-mono,ui-monospace,monospace)}.nwt-dg .e{text-anchor:end}.nwt-dg .c{text-anchor:middle}.nwt-dg rect,.nwt-dg polygon,.nwt-dg circle{fill:var(--panel,#ffffff);stroke:var(--line-2,#d8d7d2)}.nwt-dg .s{fill:var(--bg-2,#f4f3f0)}.nwt-dg .n{fill:none}.nwt-dg .d{stroke-dasharray:4 3}.nwt-dg .f{stroke:var(--fg,#37352f)}.nwt-dg path{fill:none;stroke:var(--fg-3,#6b6a65)}.nwt-dg .h{stroke:var(--line-2,#d8d7d2)}.nwt-dg .k{fill:var(--fg-3,#6b6a65);stroke:none}</style>
+<path d="M0.5 37V42"/>
+<path d="M113.2 37V42"/>
+<path d="M225.8 37V42"/>
+<rect x="0.5" y="0.5" width="107.7" height="36" rx="3"/>
+<text x="54.3" y="23" class="t c">Header</text>
+<text x="0" y="55" class="q m">0</text>
+<rect x="113.2" y="0.5" width="107.7" height="36" rx="3"/>
+<text x="167" y="23" class="t c">Metadata</text>
+<text x="112.7" y="55" class="q m">64</text>
+<rect x="225.8" y="0.5" width="107.7" height="36" rx="3"/>
+<text x="279.7" y="23" class="t c"><tspan class="m">DATA</tspan> 0</text>
+<text x="225.3" y="55" class="q m">64 + metadata_bytes</text>
+<rect x="338.5" y="0.5" width="107.7" height="36" rx="3"/>
+<text x="392.3" y="23" class="t c"><tspan class="m">DATA</tspan> 1</text>
+<circle class="k" cx="466.7" cy="18.5" r="1.6"/>
+<circle class="k" cx="472.7" cy="18.5" r="1.6"/>
+<circle class="k" cx="478.7" cy="18.5" r="1.6"/>
+<rect class="d" x="499.2" y="0.5" width="107.7" height="36" rx="3"/>
+<text x="553" y="23" class="t c m">INDEX</text>
+<rect x="611.8" y="0.5" width="107.7" height="36" rx="3"/>
+<text x="665.7" y="23" class="t c m">END</text>
+<text x="720" y="55" class="q e">last 96 bytes</text>
+<text x="0" y="85" class="t">Container header</text>
+<text x="0" y="102" class="q">64 bytes</text>
+<text x="0" y="119">magic, version, <tspan class="m">stream_id</tspan>, CRC-32C</text>
+<text x="0" y="136">of the header and of the metadata</text>
+<text x="245.3" y="85" class="t">Metadata</text>
+<text x="245.3" y="102" class="q">8 to 1,048,576 bytes</text>
+<text x="245.3" y="119"><tspan class="m">MANIFEST</tspan>: publishers and record</text>
+<text x="245.3" y="136">types; optional <tspan class="m">PROVENANCE</tspan></text>
+<text x="490.7" y="85" class="t"><tspan class="m">DATA</tspan> frames</text>
+<text x="490.7" y="102" class="q">64 + payload, padded to 8</text>
+<text x="490.7" y="119">a 64-byte frame header, then whole</text>
+<text x="490.7" y="136">records, raw or Zstandard</text>
+<text x="0" y="165" class="t"><tspan class="m">INDEX</tspan> frames</text>
+<text x="0" y="182" class="q">optional</text>
+<text x="0" y="199">one 40-byte entry per <tspan class="m">DATA</tspan> frame:</text>
+<text x="0" y="216">offset, time range, size, count</text>
+<text x="245.3" y="165" class="t"><tspan class="m">END</tspan> frame</text>
+<text x="245.3" y="182" class="q">96 bytes</text>
+<text x="245.3" y="199">totals, completion status, offset of the</text>
+<text x="245.3" y="216">first <tspan class="m">INDEX</tspan> frame</text>
 </svg>

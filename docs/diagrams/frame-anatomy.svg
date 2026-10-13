@@ -1,74 +1,64 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 532" role="img" aria-labelledby="nwtd-frame-anatomy-w-title nwtd-frame-anatomy-w-desc" class="nwt-diagram" font-family="inherit" fill="none">
-<title id="nwtd-frame-anatomy-w-title">Anatomy of a frame</title>
-<desc id="nwtd-frame-anatomy-w-desc">A frame is a 64-byte header, a payload stored raw or as one Zstandard frame, and zero padding; one CRC-32C covers the header and another covers the raw payload.</desc>
-<defs>
-<marker id="nwtd-frame-anatomy-w-a-c1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1L7 4L1 7z" fill="var(--c1, #1b6ac9)"/></marker>
-</defs>
-<path d="M0.5 84V108" fill="none" stroke="var(--c4, #6b5bb5)" stroke-dasharray="2 3"/>
-<path d="M279.5 84V108" fill="none" stroke="var(--c4, #6b5bb5)" stroke-dasharray="2 3"/>
-<path d="M318.5 84.5 L318.5 172.5" fill="none" stroke="var(--c1, #1b6ac9)" marker-end="url(#nwtd-frame-anatomy-w-a-c1)"/>
-<rect x="0.5" y="0.5" width="279" height="83" rx="3" fill="var(--c4-bg, #ece9f7)" stroke="var(--c4, #6b5bb5)"/>
-<text x="12" y="26" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Frame header</text>
-<text x="12" y="46" font-size="13" fill="var(--fg-2, #63625d)">64 bytes</text>
-<rect x="280.5" y="0.5" width="327" height="83" rx="3" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
-<text x="292" y="26" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Payload</text>
-<text x="292" y="46" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">stored_bytes</tspan> bytes, as stored</text>
-<rect x="608.5" y="0.5" width="111" height="83" rx="3" fill="var(--c5-bg, #eceef1)" stroke="var(--c5, #5f6b7a)"/>
-<text x="620" y="26" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Padding</text>
-<text x="620" y="46" font-size="13" fill="var(--fg-2, #63625d)">0 to 7 zero</text>
-<text x="620" y="66" font-size="13" fill="var(--fg-2, #63625d)">bytes</text>
-<rect x="0.5" y="108.5" width="279" height="343" rx="3" fill="var(--c4-bg, #ece9f7)" stroke="var(--c4, #6b5bb5)"/>
-<text x="12" y="134" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Frame header</text>
-<text x="268" y="134" font-size="13" fill="var(--fg-2, #63625d)" text-anchor="end">bytes</text>
-<path d="M12 146.5H268" fill="none" stroke="var(--fg-3, #6b6a65)"/>
-<text x="12" y="168" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">magic</tspan></text>
-<text x="62.3" y="168" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">NWF1</tspan></text>
-<text x="268" y="168" font-size="13" fill="var(--fg-3, #6b6a65)" text-anchor="end"><tspan font-family="var(--font-mono, ui-monospace, monospace)">4</tspan></text>
-<text x="12" y="188" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">kind</tspan></text>
-<text x="54.24" y="188" font-size="13" fill="var(--fg-2, #63625d)">1 <tspan font-family="var(--font-mono, ui-monospace, monospace)">DATA</tspan>, 2 <tspan font-family="var(--font-mono, ui-monospace, monospace)">INDEX</tspan>, 3 <tspan font-family="var(--font-mono, ui-monospace, monospace)">END</tspan></text>
-<text x="268" y="188" font-size="13" fill="var(--fg-3, #6b6a65)" text-anchor="end"><tspan font-family="var(--font-mono, ui-monospace, monospace)">1</tspan></text>
-<text x="12" y="208" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">codec</tspan></text>
-<text x="62.3" y="208" font-size="13" fill="var(--fg-2, #63625d)">0 raw, 1 Zstandard</text>
-<text x="268" y="208" font-size="13" fill="var(--fg-3, #6b6a65)" text-anchor="end"><tspan font-family="var(--font-mono, ui-monospace, monospace)">1</tspan></text>
-<text x="12" y="228" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">stored_bytes</tspan></text>
-<text x="268" y="228" font-size="13" fill="var(--fg-3, #6b6a65)" text-anchor="end"><tspan font-family="var(--font-mono, ui-monospace, monospace)">4</tspan></text>
-<text x="12" y="248" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">raw_bytes</tspan></text>
-<text x="268" y="248" font-size="13" fill="var(--fg-3, #6b6a65)" text-anchor="end"><tspan font-family="var(--font-mono, ui-monospace, monospace)">4</tspan></text>
-<text x="12" y="268" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">record_count</tspan></text>
-<text x="268" y="268" font-size="13" fill="var(--fg-3, #6b6a65)" text-anchor="end"><tspan font-family="var(--font-mono, ui-monospace, monospace)">4</tspan></text>
-<text x="12" y="288" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">frame_seq</tspan></text>
-<text x="268" y="288" font-size="13" fill="var(--fg-3, #6b6a65)" text-anchor="end"><tspan font-family="var(--font-mono, ui-monospace, monospace)">8</tspan></text>
-<text x="12" y="308" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">min_event_ns</tspan></text>
-<text x="268" y="308" font-size="13" fill="var(--fg-3, #6b6a65)" text-anchor="end"><tspan font-family="var(--font-mono, ui-monospace, monospace)">8</tspan></text>
-<text x="12" y="328" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">max_event_ns</tspan></text>
-<text x="268" y="328" font-size="13" fill="var(--fg-3, #6b6a65)" text-anchor="end"><tspan font-family="var(--font-mono, ui-monospace, monospace)">8</tspan></text>
-<text x="12" y="348" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">payload_crc32c</tspan></text>
-<text x="268" y="348" font-size="13" fill="var(--fg-3, #6b6a65)" text-anchor="end"><tspan font-family="var(--font-mono, ui-monospace, monospace)">4</tspan></text>
-<text x="12" y="368" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">header_crc32c</tspan></text>
-<text x="268" y="368" font-size="13" fill="var(--fg-3, #6b6a65)" text-anchor="end"><tspan font-family="var(--font-mono, ui-monospace, monospace)">4</tspan></text>
-<text x="12" y="394" font-size="13" fill="var(--fg-2, #63625d)">And 14 more bytes:</text>
-<text x="12" y="414" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">envelope_version</tspan>, <tspan font-family="var(--font-mono, ui-monospace, monospace)">flags</tspan>,</text>
-<text x="12" y="434" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">header_bytes</tspan>, reserved.</text>
-<path d="M0.5 458.5V464.5H279.5V458.5" fill="none" stroke="var(--c4, #6b5bb5)" stroke-width="1.5"/>
-<text x="0" y="486" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">header_crc32c</tspan> is the CRC-32C of these</text>
-<text x="0" y="506" font-size="13" fill="var(--fg-2, #63625d)">64 bytes, computed with the field itself as</text>
-<text x="0" y="526" font-size="13" fill="var(--fg-2, #63625d)">zero.</text>
-<text x="332" y="108" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">codec</tspan> 0: the payload is stored as it is.</text>
-<text x="332" y="132" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">codec</tspan> 1: one Zstandard frame; it decompresses to exactly</text>
-<text x="332" y="152" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">raw_bytes</tspan> bytes.</text>
-<rect x="304.5" y="172.5" width="119" height="39" rx="3" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
-<text x="364" y="196.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle">record</text>
-<rect x="424.5" y="172.5" width="119" height="39" rx="3" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
-<text x="484" y="196.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle">record</text>
-<rect x="544.5" y="172.5" width="119" height="39" rx="3" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
-<text x="604" y="196.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle">record</text>
-<rect x="664.5" y="172.5" width="55" height="39" rx="3" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
-<circle cx="685.0" cy="192.0" r="1.6" fill="var(--fg-3, #6b6a65)"/>
-<circle cx="692.0" cy="192.0" r="1.6" fill="var(--fg-3, #6b6a65)"/>
-<circle cx="699.0" cy="192.0" r="1.6" fill="var(--fg-3, #6b6a65)"/>
-<path d="M304.5 218.5V224.5H719.5V218.5" fill="none" stroke="var(--c1, #1b6ac9)" stroke-width="1.5"/>
-<text x="304" y="246" font-size="13" fill="var(--fg-2, #63625d)">Raw payload: <tspan font-family="var(--font-mono, ui-monospace, monospace)">raw_bytes</tspan> bytes, <tspan font-family="var(--font-mono, ui-monospace, monospace)">record_count</tspan> whole records.</text>
-<text x="304" y="270" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">payload_crc32c</tspan> is the CRC-32C of exactly these bytes.</text>
-<text x="304" y="294" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">min_event_ns</tspan> and <tspan font-family="var(--font-mono, ui-monospace, monospace)">max_event_ns</tspan> are the lowest and the</text>
-<text x="304" y="314" font-size="13" fill="var(--fg-2, #63625d)">highest non-null <tspan font-family="var(--font-mono, ui-monospace, monospace)">ts_event</tspan> of these records.</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 290" class="nwt-dg" font-family="inherit" role="img">
+<title>Anatomy of a frame</title>
+<desc>A frame is a 64-byte header, a payload stored raw or as one Zstandard frame, and zero padding; one CRC-32C covers the header and another covers the raw payload.</desc>
+<style>.nwt-dg text{font-size:12px;fill:var(--fg-2,#63625d)}.nwt-dg .t{font-size:13px;font-weight:500;fill:var(--fg,#37352f)}.nwt-dg .p{fill:var(--fg,#37352f)}.nwt-dg .q{fill:var(--fg-3,#6b6a65)}.nwt-dg .m{font-family:var(--font-mono,ui-monospace,monospace)}.nwt-dg .e{text-anchor:end}.nwt-dg .c{text-anchor:middle}.nwt-dg rect,.nwt-dg polygon,.nwt-dg circle{fill:var(--panel,#ffffff);stroke:var(--line-2,#d8d7d2)}.nwt-dg .s{fill:var(--bg-2,#f4f3f0)}.nwt-dg .n{fill:none}.nwt-dg .d{stroke-dasharray:4 3}.nwt-dg .f{stroke:var(--fg,#37352f)}.nwt-dg path{fill:none;stroke:var(--fg-3,#6b6a65)}.nwt-dg .h{stroke:var(--line-2,#d8d7d2)}.nwt-dg .k{fill:var(--fg-3,#6b6a65);stroke:none}.nwt-dg .a{marker-end:url(#a-frame-anatomy-w)}</style>
+<defs><marker id="a-frame-anatomy-w" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path class="k" d="M.5 .5L6.5 3.5L.5 6.5z"/></marker></defs>
+<path class="a" d="M386.5 54.5V125.5"/>
+<rect class="s" x="0.5" y="0.5" width="236.3" height="53" rx="3"/>
+<text x="10" y="22" class="t">Frame header</text>
+<text x="10" y="39">64 bytes</text>
+<rect x="241.8" y="0.5" width="236.3" height="53" rx="3"/>
+<text x="251.3" y="22" class="t">Payload</text>
+<text x="251.3" y="39"><tspan class="m">stored_bytes</tspan> bytes, as stored</text>
+<rect class="d" x="483.2" y="0.5" width="236.3" height="53" rx="3"/>
+<text x="492.7" y="22" class="t">Padding</text>
+<text x="492.7" y="39">0 to 7 zero bytes</text>
+<rect x="0.5" y="70.5" width="347" height="186" rx="3"/>
+<text x="10" y="92" class="t">Frame header</text>
+<text x="338" y="92" class="q e">bytes</text>
+<text x="10" y="117" class="p m">magic</text>
+<text x="162" y="117" class="q e m">4</text>
+<text x="10" y="134" class="p m">kind</text>
+<text x="162" y="134" class="q e m">1</text>
+<text x="10" y="151" class="p m">codec</text>
+<text x="162" y="151" class="q e m">1</text>
+<text x="10" y="168" class="p m">stored_bytes</text>
+<text x="162" y="168" class="q e m">4</text>
+<text x="10" y="185" class="p m">raw_bytes</text>
+<text x="162" y="185" class="q e m">4</text>
+<text x="10" y="202" class="p m">record_count</text>
+<text x="162" y="202" class="q e m">4</text>
+<text x="186" y="117" class="p m">frame_seq</text>
+<text x="338" y="117" class="q e m">8</text>
+<text x="186" y="134" class="p m">min_event_ns</text>
+<text x="338" y="134" class="q e m">8</text>
+<text x="186" y="151" class="p m">max_event_ns</text>
+<text x="338" y="151" class="q e m">8</text>
+<text x="186" y="168" class="p m">payload_crc32c</text>
+<text x="338" y="168" class="q e m">4</text>
+<text x="186" y="185" class="p m">header_crc32c</text>
+<text x="338" y="185" class="q e m">4</text>
+<text x="186" y="202" class="p">other fields</text>
+<text x="338" y="202" class="q e m">14</text>
+<text x="10" y="225"><tspan class="m">kind</tspan>: 1 <tspan class="m">DATA</tspan>, 2 <tspan class="m">INDEX</tspan>, 3 <tspan class="m">END</tspan>. <tspan class="m">codec</tspan>: 0 raw, 1</text>
+<text x="10" y="242">Zstandard.</text>
+<path d="M0.5 262.5V267.5H347.5V262.5"/>
+<text x="0" y="285"><tspan class="m">header_crc32c</tspan> covers these 64 bytes.</text>
+<text x="398" y="76"><tspan class="m">codec</tspan> 0: stored as it is.</text>
+<text x="398" y="93"><tspan class="m">codec</tspan> 1: one Zstandard frame, <tspan class="m">raw_bytes</tspan> bytes after</text>
+<text x="398" y="110">decompression.</text>
+<rect x="372.5" y="125.5" width="83" height="25" rx="3"/>
+<text x="414" y="142" class="p c">record</text>
+<rect x="460.5" y="125.5" width="83" height="25" rx="3"/>
+<text x="502" y="142" class="p c">record</text>
+<rect x="548.5" y="125.5" width="83" height="25" rx="3"/>
+<text x="590" y="142" class="p c">record</text>
+<rect x="636.5" y="125.5" width="83" height="25" rx="3"/>
+<circle class="k" cx="672" cy="138" r="1.6"/>
+<circle class="k" cx="678" cy="138" r="1.6"/>
+<circle class="k" cx="684" cy="138" r="1.6"/>
+<path d="M372.5 156.5V161.5H719.5V156.5"/>
+<text x="372" y="179">Raw payload: <tspan class="m">raw_bytes</tspan> bytes, <tspan class="m">record_count</tspan> whole</text>
+<text x="372" y="196">records.</text>
+<text x="372" y="213"><tspan class="m">payload_crc32c</tspan> covers exactly these bytes.</text>
 </svg>

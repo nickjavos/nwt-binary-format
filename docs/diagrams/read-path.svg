@@ -1,72 +1,53 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 738" role="img" aria-labelledby="nwtd-read-path-w-title nwtd-read-path-w-desc" class="nwt-diagram" font-family="inherit" fill="none">
-<title id="nwtd-read-path-w-title">How a reader reads a whole file</title>
-<desc id="nwtd-read-path-w-desc">A reader checks the container header and the metadata, then for every frame checks the header and the payload and handles it by kind: DATA delivers records, INDEX is compared with the frames read, END closes the file.</desc>
-<defs>
-<marker id="nwtd-read-path-w-a-fg3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1L7 4L1 7z" fill="var(--fg-3, #6b6a65)"/></marker>
-</defs>
-<path d="M360.5 13.5 L360.5 28.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-read-path-w-a-fg3)"/>
-<path d="M360.5 112.5 L360.5 140.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-read-path-w-a-fg3)"/>
-<path d="M360.5 224.5 L360.5 252.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-read-path-w-a-fg3)"/>
-<path d="M360.5 336.5 L360.5 364.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-read-path-w-a-fg3)"/>
-<path d="M360.5 468.5 L360.5 496.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-read-path-w-a-fg3)"/>
-<path d="M300.5 522.5 L134.5 522.5 Q128.5 522.5 128.5 528.5 L128.5 592.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-read-path-w-a-fg3)"/>
-<path d="M16.5 664.5 L11.5 664.5 Q6.5 664.5 6.5 659.5 L6.5 300.5 Q6.5 294.5 12.5 294.5 L200.5 294.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-read-path-w-a-fg3)"/>
-<path d="M420.5 522.5 L586.5 522.5 Q592.5 522.5 592.5 528.5 L592.5 592.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-read-path-w-a-fg3)"/>
-<path d="M704.5 634.5 L709 634.5 Q713.5 634.5 713.5 630 L713.5 300.5 Q713.5 294.5 707.5 294.5 L520.5 294.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-read-path-w-a-fg3)"/>
-<path d="M360.5 548.5 L360.5 592.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-read-path-w-a-fg3)"/>
-<path d="M360.5 676.5 L360.5 696.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-read-path-w-a-fg3)"/>
-<circle cx="360.5" cy="8" r="5" fill="var(--fg-3, #6b6a65)"/>
-<rect x="200.5" y="28.5" width="319" height="83" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
-<text x="244" y="54" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Container header</text>
-<text x="244" y="74" font-size="13" fill="var(--fg-2, #63625d)">Check the magic <tspan font-family="var(--font-mono, ui-monospace, monospace)">NWTBIN\r\n</tspan>, the</text>
-<text x="244" y="94" font-size="13" fill="var(--fg-2, #63625d)">version and the header CRC-32C.</text>
-<circle cx="223" cy="50" r="11" fill="var(--c4-bg, #ece9f7)" stroke="var(--c4, #6b5bb5)"/>
-<text x="223" y="54.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">1</text>
-<rect x="200.5" y="140.5" width="319" height="83" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
-<text x="244" y="166" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Metadata</text>
-<text x="244" y="186" font-size="13" fill="var(--fg-2, #63625d)">Check its CRC-32C. Read the <tspan font-family="var(--font-mono, ui-monospace, monospace)">MANIFEST</tspan>:</text>
-<text x="244" y="206" font-size="13" fill="var(--fg-2, #63625d)">the publishers and the record types.</text>
-<circle cx="223" cy="162" r="11" fill="var(--c4-bg, #ece9f7)" stroke="var(--c4, #6b5bb5)"/>
-<text x="223" y="166.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">2</text>
-<rect x="200.5" y="252.5" width="319" height="83" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
-<text x="244" y="278" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Frame header</text>
-<text x="244" y="298" font-size="13" fill="var(--fg-2, #63625d)">Check its CRC-32C. <tspan font-family="var(--font-mono, ui-monospace, monospace)">frame_seq</tspan> counts</text>
-<text x="244" y="318" font-size="13" fill="var(--fg-2, #63625d)">up from 0 without a hole.</text>
-<circle cx="223" cy="274" r="11" fill="var(--c4-bg, #ece9f7)" stroke="var(--c4, #6b5bb5)"/>
-<text x="223" y="278.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">3</text>
-<rect x="200.5" y="364.5" width="319" height="103" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
-<text x="244" y="390" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Payload</text>
-<text x="244" y="410" font-size="13" fill="var(--fg-2, #63625d)">Read <tspan font-family="var(--font-mono, ui-monospace, monospace)">stored_bytes</tspan> bytes. If <tspan font-family="var(--font-mono, ui-monospace, monospace)">codec</tspan> is 1,</text>
-<text x="244" y="430" font-size="13" fill="var(--fg-2, #63625d)">decompress. Check the CRC-32C of the</text>
-<text x="244" y="450" font-size="13" fill="var(--fg-2, #63625d)">raw payload.</text>
-<circle cx="223" cy="386" r="11" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
-<text x="223" y="390.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">4</text>
-<polygon points="360,496 420,522 360,548 300,522" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
-<text x="360" y="526.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">kind</tspan></text>
-<text x="214" y="514" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">DATA</tspan></text>
-<rect x="16.5" y="592.5" width="223" height="143" rx="3" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
-<text x="28" y="618" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Records</text>
-<text x="28" y="638" font-size="13" fill="var(--fg-2, #63625d)">Split the payload by</text>
-<text x="28" y="658" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">record_bytes</tspan> into</text>
-<text x="28" y="678" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">record_count</tspan> whole records.</text>
-<text x="28" y="698" font-size="13" fill="var(--fg-2, #63625d)">Check each <tspan font-family="var(--font-mono, ui-monospace, monospace)">sequence</tspan>. Deliver</text>
-<text x="28" y="718" font-size="13" fill="var(--fg-2, #63625d)">the records in order.</text>
-<text x="506" y="514" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">INDEX</tspan></text>
-<rect x="480.5" y="592.5" width="223" height="83" rx="3" fill="var(--c3-bg, #f8efdc)" stroke="var(--c3, #b7791f)"/>
-<text x="492" y="618" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Index</text>
-<text x="492" y="638" font-size="13" fill="var(--fg-2, #63625d)">Its entries equal the <tspan font-family="var(--font-mono, ui-monospace, monospace)">DATA</tspan></text>
-<text x="492" y="658" font-size="13" fill="var(--fg-2, #63625d)">frames already read.</text>
-<text x="188" y="286" font-size="13" fill="var(--fg-2, #63625d)" text-anchor="end">next frame</text>
-<text x="532" y="286" font-size="13" fill="var(--fg-2, #63625d)">next frame</text>
-<text x="370" y="572" font-size="13" fill="var(--fg, #37352f)" font-weight="600"><tspan font-family="var(--font-mono, ui-monospace, monospace)">END</tspan></text>
-<rect x="264.5" y="592.5" width="191" height="83" rx="3" fill="var(--c3-bg, #f8efdc)" stroke="var(--c3, #b7791f)"/>
-<text x="276" y="618" font-size="14" fill="var(--fg, #37352f)" font-weight="600">End</text>
-<text x="276" y="638" font-size="13" fill="var(--fg-2, #63625d)">The totals match. No byte</text>
-<text x="276" y="658" font-size="13" fill="var(--fg-2, #63625d)">follows.</text>
-<text x="552" y="42" font-size="13" fill="var(--fg-2, #63625d)">A failed check stops the</text>
-<text x="552" y="62" font-size="13" fill="var(--fg-2, #63625d)">read. No record of a frame</text>
-<text x="552" y="82" font-size="13" fill="var(--fg-2, #63625d)">is delivered before the</text>
-<text x="552" y="102" font-size="13" fill="var(--fg-2, #63625d)">whole frame passes.</text>
-<circle cx="360.5" cy="704.5" r="7" fill="none" stroke="var(--fg-3, #6b6a65)"/>
-<circle cx="360.5" cy="704.5" r="4" fill="var(--fg-3, #6b6a65)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 375" class="nwt-dg" font-family="inherit" role="img">
+<title>How a reader reads a whole file</title>
+<desc>A reader checks the container header and the metadata, then for every frame checks the header and the payload and handles it by kind: DATA delivers records, INDEX is compared with the frames read, END closes the file.</desc>
+<style>.nwt-dg text{font-size:12px;fill:var(--fg-2,#63625d)}.nwt-dg .t{font-size:13px;font-weight:500;fill:var(--fg,#37352f)}.nwt-dg .p{fill:var(--fg,#37352f)}.nwt-dg .q{fill:var(--fg-3,#6b6a65)}.nwt-dg .m{font-family:var(--font-mono,ui-monospace,monospace)}.nwt-dg .e{text-anchor:end}.nwt-dg .c{text-anchor:middle}.nwt-dg rect,.nwt-dg polygon,.nwt-dg circle{fill:var(--panel,#ffffff);stroke:var(--line-2,#d8d7d2)}.nwt-dg .s{fill:var(--bg-2,#f4f3f0)}.nwt-dg .n{fill:none}.nwt-dg .d{stroke-dasharray:4 3}.nwt-dg .f{stroke:var(--fg,#37352f)}.nwt-dg path{fill:none;stroke:var(--fg-3,#6b6a65)}.nwt-dg .h{stroke:var(--line-2,#d8d7d2)}.nwt-dg .k{fill:var(--fg-3,#6b6a65);stroke:none}.nwt-dg .a{marker-end:url(#a-read-path-w)}</style>
+<defs><marker id="a-read-path-w" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path class="k" d="M.5 .5L6.5 3.5L.5 6.5z"/></marker></defs>
+<path class="a" d="M122.5 192H130.5"/>
+<path class="a" d="M254.5 192H262.5"/>
+<path class="a" d="M386.5 192H394.5"/>
+<path class="a" d="M518.5 192H534.5"/>
+<path class="a" d="M558.5 170L558.5 80Q558.5 75 563.5 75H598.5"/>
+<path class="a" d="M580.5 192H598.5"/>
+<path class="a" d="M558.5 214L558.5 304Q558.5 309 563.5 309H598.5"/>
+<path class="a" d="M660.5 22.5L660.5 15.5Q660.5 10.5 655.5 10.5L329.5 10.5Q324.5 10.5 324.5 15.5V137.5"/>
+<path class="a" d="M660.5 361.5L660.5 368.5Q660.5 373.5 655.5 373.5L329.5 373.5Q324.5 373.5 324.5 368.5V246.5"/>
+<rect x="0.5" y="139.5" width="119" height="104" rx="3"/>
+<text x="10" y="161" class="t">Container</text>
+<text x="10" y="178" class="t">header</text>
+<text x="10" y="195">magic, version,</text>
+<text x="10" y="212">header</text>
+<text x="10" y="229">CRC-32C</text>
+<rect x="132.5" y="139.5" width="119" height="104" rx="3"/>
+<text x="142" y="161" class="t">Metadata</text>
+<text x="142" y="178">CRC-32C, then</text>
+<text x="142" y="195">the <tspan class="m">MANIFEST</tspan></text>
+<rect x="264.5" y="139.5" width="119" height="104" rx="3"/>
+<text x="274" y="161" class="t">Frame header</text>
+<text x="274" y="178">CRC-32C;</text>
+<text x="274" y="195" class="m">frame_seq</text>
+<text x="274" y="212">counts up by 1</text>
+<rect x="396.5" y="139.5" width="119" height="104" rx="3"/>
+<text x="406" y="161" class="t">Payload</text>
+<text x="406" y="178">Zstandard if</text>
+<text x="406" y="195"><tspan class="m">codec</tspan> is 1;</text>
+<text x="406" y="212">CRC-32C of the</text>
+<text x="406" y="229">raw bytes</text>
+<polygon points="558,170 580,192 558,214 536,192"/>
+<text x="558" y="196" class="p c m">kind</text>
+<rect x="600.5" y="22.5" width="119" height="104" rx="3"/>
+<text x="610" y="44" class="t"><tspan class="m">DATA</tspan>: records</text>
+<text x="610" y="61">split, check each</text>
+<text x="610" y="78"><tspan class="m">sequence</tspan>,</text>
+<text x="610" y="95">deliver in order</text>
+<rect x="600.5" y="139.5" width="119" height="104" rx="3"/>
+<text x="610" y="161" class="t"><tspan class="m">END</tspan>: end</text>
+<text x="610" y="178">totals match; no</text>
+<text x="610" y="195">byte follows</text>
+<rect x="600.5" y="256.5" width="119" height="104" rx="3"/>
+<text x="610" y="278" class="t"><tspan class="m">INDEX</tspan>: index</text>
+<text x="610" y="295">entries equal the</text>
+<text x="610" y="312">frames read</text>
+<text x="462" y="26" class="c">next frame</text>
+<text x="462" y="367" class="c">next frame</text>
 </svg>

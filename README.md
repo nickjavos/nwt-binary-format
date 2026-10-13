@@ -1,101 +1,142 @@
 # NWT Binary Format
 
-NWT Binary Format is a binary file and stream format for market data and reference data. It stores trades, quotes, order books, bars, instrument definitions and corporate actions as fixed-layout records inside checksummed frames. The kit contains what you need to build a reader, a writer or a data pipeline: the specification, a field reference, reference codecs in Python, Rust, C# and C++, the `nwt` command, conformance files and samples.
+[Русская версия](README.ru.md)
 
-## What NWT is for
+NWT Binary Format is a binary file and stream format for market data and reference data. It stores trades, quotes, order books, bars, instrument definitions and corporate actions as fixed-layout records inside checksummed frames. This repository contains what you need to build a reader, a writer or a data pipeline: the specification, a field reference, reference codecs in Python, Rust, C# and C++, the `nwt` command, conformance files and samples.
 
-Every source of market data has its own message types, units, time formats and ways to mark a missing value. A system that stores this data or passes it on needs one representation that every producer writes the same way and every consumer can verify. NWT is that representation: one file or stream holds records of different types in delivery order, with exact decimal values, nanosecond timestamps and a checksum on every frame.
+Documentation: <https://dev.nwt.one/fmt/>
 
-With the kit you can read and write NWT files in Python, Rust, C# and C++, convert source files to NWT, and inspect, validate and query a file with the `nwt` command. A query by time, record type or instrument reads only the frames that can hold a match. The conformance files let you check your own implementation byte for byte.
+## What is in this repository
 
-## How it works
+| Folder | Content |
+|---|---|
+| `docs/` | Documentation sources, in English and in `docs/ru/` in Russian |
+| `schemas/records.json` | Machine-readable schema of the 22 record types |
+| `examples/` | Reference codecs in Python, Rust, C# and C++ |
+| `tools/` | The `nwt` command, the converters and the documentation site build |
+| `fixtures/` | Conformance files and samples |
+| `tests/` | Checks of the codecs and of the format |
+| `deploy/` | The Worker that serves the site |
 
-A converter or a writer turns source data into an NWT container. The container starts with a header and a manifest, which declares the publishers and the record types in use. Frames follow. Each frame holds whole records, carries its own checksum and can be compressed on its own. A reader checks a frame, decodes its records, and uses the index to read only the frames it needs.
+## Quick start
 
-![Source data passes through a converter and a writer into an NWT file made of a container header, frames and records, and the nwt command, the reference codecs and selective reads consume the file](docs/diagrams/overview.svg "From source data to an NWT file and its readers")
+Run the commands from the repository root. The `nwt` command and the Python codec need Python 3.10 or later and use the standard library only.
 
-[How it works](docs/HOW-IT-WORKS.md) · [Specification](docs/SPECIFICATION.md) · [Use NWT in practice](docs/USE-CASES.md)
+Inspect and validate a sample, then read the frames that hold `TRADE_QUOTE` records:
 
-## What the format provides
+```bash
+python3 tools/nwt.py inspect fixtures/real-market/equity-quotes.nwt
+python3 tools/nwt.py validate fixtures/real-market/equity-quotes.nwt
+python3 tools/nwt.py query fixtures/real-market/equity-quotes.nwt --type TRADE_QUOTE --pretty | head -n 3
+```
 
-- **22 record types.** Trades, quotes, bars, order books, statistics, option analytics and reference data share one container.
-- **Fixed layouts.** Every record starts with the same 48-byte header, and its size is fixed or computed from length fields.
-- **Exact numbers.** Prices and quantities are 64-bit integers scaled by 10⁹, and no floating-point value is stored.
-- **Nanosecond timestamps.** Every record carries its event time and its receive time in nanoseconds since the Unix epoch, UTC.
-- **Integrity checks.** A CRC-32C protects the container header, the metadata, every frame header and every frame payload.
-- **Optional compression.** Each frame is stored raw or as one Zstandard frame, and both kinds can appear in one file.
-- **Selective reads.** An optional `INDEX` frame and `FRAME_SUMMARY` records let a reader choose frames by time range, record type and instrument.
-- **Reference codecs.** The Python, Rust, C# and C++ codecs read and write every record type and produce byte-identical output for the conformance files.
+Write the conformance file with the Python codec, read it back and compare both results with the file in `fixtures/golden/`:
 
-## Documentation
+```bash
+mkdir -p work
+python3 examples/python/nwt_example.py write-golden work/golden.nwt
+cmp work/golden.nwt fixtures/golden/all-records.nwt
+python3 examples/python/nwt_example.py read work/golden.nwt work/golden-again.nwt > work/golden-fields.txt
+cmp work/golden-again.nwt fixtures/golden/all-records.nwt
+```
 
-<!-- nwt-doc-cards -->
+`cmp` prints nothing when the files are byte-identical. `work/golden-fields.txt` lists every field of every record. The `work/` folder is excluded by `.gitignore`.
 
-<!-- nwt-doc-list -->
-- [How it works](docs/HOW-IT-WORKS.md): the container, the frames and the records explained with diagrams.
-- [Use NWT in practice](docs/USE-CASES.md): common tasks done with the format and the kit.
-- [Specification](docs/SPECIFICATION.md): the byte layouts and rules of the container, the frames and all 22 record types.
-- [Field reference](docs/FIELD-REFERENCE.md): every field with its offset, type, width, unit and null value.
-- [Examples by record type](docs/FEED-COOKBOOK.md): a worked record for each type, with the commands that write and read it.
-- [Implementation guide](docs/IMPLEMENTATION-GUIDE.md): how to build and run the four reference codecs and how their code is organized.
-- [State and recovery](docs/STATE-AND-RECOVERY.md): record order, snapshots, the trade lifecycle and recovery after a gap.
-- [Store profile](docs/STORE.md): how to write a file that answers queries by time, record type and instrument.
-- [Size and speed](docs/PERFORMANCE.md): measurements of file size and of read and write speed.
-- [The nwt command](docs/TOOLS.md): inspect, check, convert, repack and query files from the command line.
-- [Reference data samples](docs/REAL-DATA.md): venues, listings, options, securities and corporate actions converted from source files.
-- [Market data samples](docs/REAL-DATA-MARKET.md): trades, quotes, order books, bars and statistics converted from exchange exports.
-- [Downloads](docs/DOWNLOADS.md): the kit archive, the schema, the conformance files and every sample, with checksums.
-- [Glossary](docs/GLOSSARY.md): the terms used in the documentation.
-- [Licenses](THIRD-PARTY-NOTICES.md): third-party software and the notices of the sample data.
-<!-- /nwt-doc-list -->
+The [documentation](https://dev.nwt.one/fmt/tools/) describes every subcommand of `nwt`.
+
+## Reference codecs
+
+Each block builds one codec, writes the conformance file, reads it back and compares both results with `fixtures/golden/all-records.nwt`. Zstandard frames need the system library `libzstd`; the [implementation guide](docs/IMPLEMENTATION-GUIDE.md) lists the toolchains and the library options.
+
+Rust:
+
+```bash
+mkdir -p work
+cargo build --locked --manifest-path examples/rust/Cargo.toml
+examples/rust/target/debug/nwt-example write-golden work/rust.nwt
+examples/rust/target/debug/nwt-example read work/rust.nwt work/rust-again.nwt > work/rust-fields.txt
+cmp work/rust.nwt fixtures/golden/all-records.nwt
+cmp work/rust-again.nwt fixtures/golden/all-records.nwt
+```
+
+C#:
+
+```bash
+mkdir -p work
+dotnet build examples/csharp/NwtExample.csproj -o work/csharp
+dotnet work/csharp/NwtExample.dll write-golden work/csharp.nwt
+dotnet work/csharp/NwtExample.dll read work/csharp.nwt work/csharp-again.nwt > work/csharp-fields.txt
+cmp work/csharp.nwt fixtures/golden/all-records.nwt
+cmp work/csharp-again.nwt fixtures/golden/all-records.nwt
+```
+
+C++:
+
+```bash
+mkdir -p work
+c++ -std=c++20 -O2 -DNWT_ZSTD examples/cpp/main.cpp -o work/nwt-cpp -lzstd
+work/nwt-cpp write-golden work/cpp.nwt
+work/nwt-cpp read work/cpp.nwt work/cpp-again.nwt > work/cpp-fields.txt
+cmp work/cpp.nwt fixtures/golden/all-records.nwt
+cmp work/cpp-again.nwt fixtures/golden/all-records.nwt
+```
+
+## Check a codec against the conformance files
+
+`tests/golden_check.py` runs 16 checks of one codec against the files in `fixtures/golden/` and prints `NAME: 16/16 checks pass` when all succeed. The first argument is a label; the rest is the command that starts the codec.
+
+```bash
+python3 tests/golden_check.py python python3 examples/python/nwt_example.py
+python3 tests/golden_check.py rust examples/rust/target/debug/nwt-example
+python3 tests/golden_check.py csharp dotnet work/csharp/NwtExample.dll
+python3 tests/golden_check.py cpp work/nwt-cpp
+```
+
+To check your own implementation, pass the command that starts it. The [implementation guide](docs/IMPLEMENTATION-GUIDE.md) lists the same steps one by one.
+
+## Build the documentation site
+
+```bash
+python3 tools/build_site.py
+```
+
+The build needs Python 3.13, Node.js and npm. It runs `npm ci` in `tools/site-ui/` when `node_modules` is missing, renders the English and Russian pages with VitePress and writes them to `site/`.
+
+To preview the result:
+
+```bash
+python3 tools/serve.py
+```
+
+The server listens on port 48765 and serves the site at <http://127.0.0.1:48765/fmt/>. Pass `--port` to change the port.
 
 ## Record types
 
-Each name links to the field table of that record type.
-
 | Type | Name | Purpose |
 |---:|---|---|
-| 1 | [`TRADE`](docs/FIELD-REFERENCE.md#trade) | Trade, with its correction and cancellation |
-| 2 | [`QUOTE`](docs/FIELD-REFERENCE.md#quote) | Best bid and ask |
-| 3 | [`BAR`](docs/FIELD-REFERENCE.md#bar) | Completed OHLCV bar |
-| 4 | [`MBO`](docs/FIELD-REFERENCE.md#mbo) | Change to the order book, one order at a time |
-| 5 | [`BOOK_SNAPSHOT`](docs/FIELD-REFERENCE.md#book_snapshot) | Aggregate order book, ranked by price |
-| 6 | [`INSTRUMENT_DEF`](docs/FIELD-REFERENCE.md#instrument_def) | Instrument definition |
-| 7 | [`STATUS`](docs/FIELD-REFERENCE.md#status) | Trading status |
-| 8 | [`GAP`](docs/FIELD-REFERENCE.md#gap) | Discontinuity in the source |
-| 9 | [`SYSTEM`](docs/FIELD-REFERENCE.md#system) | Heartbeat and diagnostics |
-| 10 | [`VENUE_DEF`](docs/FIELD-REFERENCE.md#venue_def) | Trading venue or segment, by market identifier code |
-| 11 | [`OPTION_DEF`](docs/FIELD-REFERENCE.md#option_def) | Option contract terms |
-| 12 | [`LISTING`](docs/FIELD-REFERENCE.md#listing) | Symbol directory entry |
-| 13 | [`STATISTICS`](docs/FIELD-REFERENCE.md#statistics) | Open, high, low, close, settlement, VWAP, volume, open interest |
-| 14 | [`OPTION_ANALYTICS`](docs/FIELD-REFERENCE.md#option_analytics) | Implied volatility and Greeks |
-| 15 | [`BOOK_DELTA`](docs/FIELD-REFERENCE.md#book_delta) | Change to one price level of the aggregate order book |
-| 16 | [`IMBALANCE`](docs/FIELD-REFERENCE.md#imbalance) | Auction imbalance |
-| 17 | [`SYMBOL_MAP`](docs/FIELD-REFERENCE.md#symbol_map) | Symbol of an instrument over a time interval |
-| 18 | [`TRADE_QUOTE`](docs/FIELD-REFERENCE.md#trade_quote) | Trade with the top of book immediately before it |
-| 19 | [`BEST_QUOTE`](docs/FIELD-REFERENCE.md#best_quote) | Best bid and ask with the venue of each side |
-| 20 | [`FRAME_SUMMARY`](docs/FIELD-REFERENCE.md#frame_summary) | Summary of one frame, for selective reads |
-| 21 | [`SECURITY_DEF`](docs/FIELD-REFERENCE.md#security_def) | Security master entry with identifiers and key dates |
-| 22 | [`CORPORATE_ACTION`](docs/FIELD-REFERENCE.md#corporate_action) | Corporate action event |
+| 1 | [`TRADE`](docs/records/TRADE.md) | Trade, with its correction and cancellation |
+| 2 | [`QUOTE`](docs/records/QUOTE.md) | Best bid and ask |
+| 3 | [`BAR`](docs/records/BAR.md) | Completed OHLCV bar |
+| 4 | [`MBO`](docs/records/MBO.md) | Change to the order book, one order at a time |
+| 5 | [`BOOK_SNAPSHOT`](docs/records/BOOK_SNAPSHOT.md) | Aggregate order book, ranked by price |
+| 6 | [`INSTRUMENT_DEF`](docs/records/INSTRUMENT_DEF.md) | Instrument definition |
+| 7 | [`STATUS`](docs/records/STATUS.md) | Trading status |
+| 8 | [`GAP`](docs/records/GAP.md) | Discontinuity in the source |
+| 9 | [`SYSTEM`](docs/records/SYSTEM.md) | Heartbeat and diagnostics |
+| 10 | [`VENUE_DEF`](docs/records/VENUE_DEF.md) | Trading venue or segment, by market identifier code |
+| 11 | [`OPTION_DEF`](docs/records/OPTION_DEF.md) | Option contract terms |
+| 12 | [`LISTING`](docs/records/LISTING.md) | Symbol directory entry |
+| 13 | [`STATISTICS`](docs/records/STATISTICS.md) | Open, high, low, close, settlement, VWAP, volume, open interest |
+| 14 | [`OPTION_ANALYTICS`](docs/records/OPTION_ANALYTICS.md) | Implied volatility and Greeks |
+| 15 | [`BOOK_DELTA`](docs/records/BOOK_DELTA.md) | Change to one price level of the aggregate order book |
+| 16 | [`IMBALANCE`](docs/records/IMBALANCE.md) | Auction imbalance |
+| 17 | [`SYMBOL_MAP`](docs/records/SYMBOL_MAP.md) | Symbol of an instrument over a time interval |
+| 18 | [`TRADE_QUOTE`](docs/records/TRADE_QUOTE.md) | Trade with the top of book immediately before it |
+| 19 | [`BEST_QUOTE`](docs/records/BEST_QUOTE.md) | Best bid and ask with the venue of each side |
+| 20 | [`FRAME_SUMMARY`](docs/records/FRAME_SUMMARY.md) | Summary of one frame, for selective reads |
+| 21 | [`SECURITY_DEF`](docs/records/SECURITY_DEF.md) | Security master entry with identifiers and key dates |
+| 22 | [`CORPORATE_ACTION`](docs/records/CORPORATE_ACTION.md) | Corporate action event |
 
-## Files
+## Licenses
 
-- [nwt-binary-format-kit.zip](files/nwt-binary-format-kit.zip): the whole kit, with the documents, the schema, the reference codecs, the tools and the fixtures.
-- [records.json](files/records.json): the machine-readable schema of all 22 record types.
-- [all-records.nwt](files/samples/all-records.nwt) and [all-records.zst.nwt](files/samples/all-records.zst.nwt): the conformance files. Each holds 47 records of 21 record types (every type except `FRAME_SUMMARY`), the first in raw frames and the second in Zstandard frames.
-- [equity-quotes.nwt](files/samples/equity-quotes.nwt): a sample of equity quotes, with `QUOTE` and `TRADE_QUOTE` records.
-- [equity-orders.nwt](files/samples/equity-orders.nwt): a sample of an equity order book, with `MBO` and `TRADE` records.
-- [venues.nwt](files/samples/venues.nwt): a sample of trading venues, with `VENUE_DEF` records.
-- [SHA256SUMS.txt](files/SHA256SUMS.txt): the checksums of every hosted file.
-
-[Downloads](docs/DOWNLOADS.md) lists every file with its size, record types and checksum. The source of the kit is on [GitHub](https://github.com/nickjavos/nwt-binary-format).
-
-<!-- nwt-repo-card -->
-
-## Requirements
-
-- **Python 3.10 or later** runs the `nwt` command, the converters, the store profile writer, the state rules and the Python reference codec. They use the standard library only.
-- **Rust and Cargo** build the Rust reference codec.
-- **The .NET 10 SDK** builds the C# reference codec.
-- **A C++20 compiler** builds the C++ reference codec.
-- **Zstandard frames** need the system library [libzstd](https://github.com/facebook/zstd) in Python, C# and C++, or the [zstd](https://github.com/gyscos/zstd-rs) crate in Rust. Raw frames need no library.
+Third-party software and the notices of the sample data are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

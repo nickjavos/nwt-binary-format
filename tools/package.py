@@ -24,7 +24,7 @@ import nwt_example as nwt
 
 OUT = KIT / "dist/files"
 ARCHIVE = "nwt-binary-format-kit.zip"
-ARCHIVE_ROOTS = ("README.md", "THIRD-PARTY-NOTICES.md", "SHA256SUMS.txt", "docs", "schemas", "examples", "tools", "tests", "fixtures")
+ARCHIVE_ROOTS = ("README.md", "README.ru.md", "THIRD-PARTY-NOTICES.md", "SHA256SUMS.txt", "docs", "schemas", "examples", "tools", "tests", "fixtures")
 ARCHIVE_LEFT_OUT = ("tools/build_site.py", "tools/build_html.py", "tools/site-assets/", "tools/site-ui/")
 SAMPLE_FOLDERS = {
     "fixtures/real": ("venues", "listings-nasdaq", "listings-other", "options"),

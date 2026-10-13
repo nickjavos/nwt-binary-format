@@ -18,7 +18,7 @@
     "en": "Time-range query",
     "ru": "Запрос по интервалу времени"
    },
-   "value": 61.3,
+   "value": 58.7,
    "highlight": true
   },
   {
@@ -26,7 +26,7 @@
     "en": "Whole file",
     "ru": "Файл целиком"
    },
-   "value": 7880,
+   "value": 6410,
    "highlight": false
   }
  ]

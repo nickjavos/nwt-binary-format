@@ -6,6 +6,8 @@ A store file is an NWT container written for fast selective reads: large frames,
 
 The store profile is a set of choices a writer makes. It is not a second format: a store file has the same container header, the same frames and the same records as any other NWT file, and every NWT reader reads it from the first byte to `END`. A reader that knows the profile answers a query by reading only the frames that can hold a match.
 
+![Records are grouped into DATA frames with a checksum and optional compression; the summary frame and the INDEX frame describe every frame; a query for one minute reads END, INDEX, the summaries and two of four DATA frames](diagrams/storage.svg "A store file: the frames, the summaries and the index that describe them, and one query")
+
 | Setting | Value in a store file | Purpose |
 |---|---|---|
 | Frame size | 1,048,576 bytes of raw payload by default; at most 16,777,216 | Fewer frame headers, better compression, fewer reads |
@@ -16,7 +18,7 @@ The store profile is a set of choices a writer makes. It is not a second format:
 
 Records are never reordered. Byte order is the delivery order, and definitions, snapshots and trade corrections depend on it. Writing a store file changes the framing and the compression, and nothing else about the records.
 
-Zstandard frames need the system [libzstd](https://github.com/facebook/zstd) (Python, C#, C++) or the [zstd](https://github.com/gyscos/zstd-rs) crate (Rust). Raw frames need no library. The Specification defines the profile in [Store profile](SPECIFICATION.md#store-profile).
+Zstandard frames need the system [libzstd](https://github.com/facebook/zstd) (Python, C#, C++) or the [zstd](https://github.com/gyscos/zstd-rs) crate (Rust). Raw frames need no library. The Specification defines the profile in [Store profile](specification/store-profile.md).
 
 ## When to use it
 
@@ -30,7 +32,7 @@ A consumer that replays a whole file reads a store file like any other container
 
 ### With the nwt command
 
-[repack](TOOLS.md#repack) rewrites any container as a store file.
+[repack](tools/repack.md) rewrites any container as a store file.
 
 ```bash
 mkdir -p work
@@ -128,7 +130,7 @@ valid records=5008 data_frames=8 summaries=7 ordering=ts_event
 | `INDEX` frames | One 40-byte entry per `DATA` frame, summary frames included |
 | `END` frame | 96 bytes at the end of the file: the offset of the first `INDEX` frame and the totals |
 
-The frame table of [inspect](TOOLS.md#inspect) shows the layout of the file written above:
+The frame table of [inspect](tools/inspect.md) shows the layout of the file written above:
 
 ```bash
 python3 tools/nwt.py inspect work/equity-quotes.store.nwt | tail -n 13
@@ -174,7 +176,7 @@ python3 tools/nwt.py query work/equity-quotes.store.nwt --type FRAME_SUMMARY 2> 
 {"type_name":"FRAME_SUMMARY","record_bytes":"104","record_type":"20","schema_version":"1","flags":"0","publisher_id":"0","channel_id":"0","instrument_id":"0","ts_event":"18446744073709551615","ts_recv":"18446744073709551615","sequence":"1","data_frame_seq":"0","data_frame_offset":"2120","stored_bytes":"9605","codec":"1","summary_flags":"2","type_mask":"262212","min_instrument_id":"11667","max_instrument_id":"11667"}
 ```
 
-`type_mask` 262212 is 2¹⁸ + 2⁶ + 2²: the frame holds `TRADE_QUOTE`, `INSTRUMENT_DEF` and `QUOTE` records. The masks of frames 1–3 are 262148, without the bit of `INSTRUMENT_DEF`. The Specification defines the record in [FRAME_SUMMARY](SPECIFICATION.md#frame_summary).
+`type_mask` 262212 is 2¹⁸ + 2⁶ + 2²: the frame holds `TRADE_QUOTE`, `INSTRUMENT_DEF` and `QUOTE` records. The masks of frames 1–3 are 262148, without the bit of `INSTRUMENT_DEF`. The Specification defines the record in [FRAME_SUMMARY](records/FRAME_SUMMARY.md).
 
 ## How a reader seeks by time and instrument
 
@@ -195,13 +197,13 @@ The result equals a full scan with the same filter: the same records in the same
 
 <!-- nwt-file: tools/nwt.py lines=204-220 -->
 
-A file without `FRAME_SUMMARY` records is read the same way with the time test alone. A container with `DATA` frames and no `INDEX` is read from the first byte with [cat](TOOLS.md#cat) or [extract](TOOLS.md#extract).
+A file without `FRAME_SUMMARY` records is read the same way with the time test alone. A container with `DATA` frames and no `INDEX` is read from the first byte with [cat](tools/cat.md) or [extract](tools/extract.md).
 
 ### Time order and binary search
 
 The time ranges of frames can overlap and go backward, so a reader looks at every `INDEX` entry. A manifest that declares `"ordering": "ts_event"` states that the non-null `ts_event` values do not decrease in byte order across the whole container. The ranges of the entries are then monotonic, and a binary search by time is valid. `"ordering": "instrument,ts_event"` states that the records are ordered by instrument ID and then by `ts_event`. Records with a null `ts_event` are exempt from both.
 
-`repack` declares an `ordering` only when the records have it, and [validate](TOOLS.md#validate) checks every declaration it finds. The `nwt` command reads all entries in order: after step 2 they are in memory.
+`repack` declares an `ordering` only when the records have it, and [validate](tools/validate.md) checks every declaration it finds. The `nwt` command reads all entries in order: after step 2 they are in memory.
 
 ### Over any byte source
 
@@ -241,7 +243,7 @@ The first query is for `TRADE_QUOTE` records of one minute. The minute lies in f
 
 A selective read returns the matching records of the frames it read, and nothing of the frames it skipped. The instrument definitions, the snapshots and the trade history before the first frame it read are not part of the result. Such a result is raw and partial: it is not a reconstructed book, and a reader labels it so.
 
-[query](TOOLS.md#query) writes this label on standard error before the first record:
+[query](tools/query.md) writes this label on standard error before the first record:
 
 ```bash
 python3 tools/nwt.py query work/equity-quotes.store.nwt --type TRADE_QUOTE --from 2025-09-16T08:03:04.5303Z --to 2025-09-16T08:03:04.5304Z --pretty
@@ -259,7 +261,7 @@ To turn a selection into data you can interpret:
 
 1. Read the definitions too. `--type INSTRUMENT_DEF` returns them, and their frames are found through the type mask.
 2. For a book, read every frame from the last snapshot of that book, in file order, and replay the records. [State and recovery](STATE-AND-RECOVERY.md#selective-reads-summaries-and-state) lists the frames each question needs.
-3. For a file you hand to someone else, use [extract](TOOLS.md#extract). It reads the whole input and writes a new container with its own stream ID and sequences.
+3. For a file you hand to someone else, use [extract](tools/extract.md). It reads the whole input and writes a new container with its own stream ID and sequences.
 
 ## Choose settings
 
@@ -274,7 +276,7 @@ Only `DATA` frames are compressed, and only when the compressed form is smaller.
 
 ## Check a store file
 
-[validate](TOOLS.md#validate) reads the whole file and checks the structure, the state rules, the `ordering` declaration and every value of every `FRAME_SUMMARY` record against the frame it describes.
+[validate](tools/validate.md) reads the whole file and checks the structure, the state rules, the `ordering` declaration and every value of every `FRAME_SUMMARY` record against the frame it describes.
 
 ```bash
 python3 tools/nwt.py validate work/equity-quotes.store.nwt
@@ -284,7 +286,7 @@ python3 tools/nwt.py validate work/equity-quotes.store.nwt
 valid records=2481 data_frames=5 summaries=4 ordering=ts_event
 ```
 
-[stats](TOOLS.md#stats) shows how many frames are compressed and what the compression saved:
+[stats](tools/stats.md) shows how many frames are compressed and what the compression saved:
 
 ```bash
 python3 tools/nwt.py stats work/equity-quotes.store.nwt

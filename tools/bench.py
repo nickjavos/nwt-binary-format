@@ -5,10 +5,12 @@
     python3 tools/bench.py --quick    100,000 records, 3 timed runs
 
 Size: the same records as CSV, as JSON Lines, as NWT with raw frames and as NWT with Zstandard frames.
-Speed: the `bench` command of every reference codec that builds on this machine.
+Decode speed: the `bench` command of every reference codec that builds on this machine.
 Selective read: the DATA frames a time-range query reads, against a read of the whole file.
 
 Every number written comes from this run. A measurement that cannot be made is left out with its chart.
+A full run into docs/data also rewrites the table under each chart of the "Size and speed" document,
+in English and in Russian, so the tables and the charts always show the same values.
 """
 
 import argparse
@@ -16,6 +18,7 @@ import itertools
 import json
 import os
 import platform
+import re
 import shutil
 import statistics
 import subprocess
@@ -47,6 +50,20 @@ CSV_ZSTD = {"en": "CSV, Zstandard", "ru": "CSV, Zstandard"}
 JSONL = {"en": "JSON Lines", "ru": "JSON Lines"}
 NWT_RAW = {"en": "NWT, raw frames", "ru": "NWT, кадры без сжатия"}
 NWT_ZSTD = {"en": "NWT, Zstandard frames", "ru": "NWT, кадры Zstandard"}
+DOCUMENTS = {"en": "docs/PERFORMANCE.md", "ru": "docs/ru/PERFORMANCE.md"}
+HEAD = {
+    "sample": {"en": "Sample", "ru": "Образец"},
+    "encoding": {"en": "Encoding", "ru": "Кодировка"},
+    "size": {"en": "Size, MB", "ru": "Размер, МБ"},
+    "codec": {"en": "Codec", "ru": "Кодек"},
+    "frames": {"en": "Frames", "ru": "Кадры"},
+    "records": {"en": "Records per second", "ru": "Записей в секунду"},
+    "mb": {"en": "MB per second", "ru": "МБ в секунду"},
+    "read": {"en": "Read", "ru": "Чтение"},
+    "frames_read": {"en": "`DATA` frames read", "ru": "Прочитано кадров `DATA`"},
+    "time": {"en": "Time, ms", "ru": "Время, мс"},
+}
+CHARTS = {}
 
 
 def say(text):
@@ -71,7 +88,7 @@ def en(n):
 
 
 def ru(n):
-    return f"{n:,}".replace(",", " ")
+    return f"{n:,}".replace(",", "\u00a0")
 
 
 def cores_ru(n):
@@ -217,16 +234,18 @@ def build_large(out, target):
 def run_bench(codecs, files, runs):
     """Median of `runs` runs of every codec's `bench` command on every file.
 
-    Returns {codec: [{"decode": (records/s, MB/s), "encode": (records/s, MB/s)} for each file]}.
+    Returns {codec: [{"decode": (records/s, MB/s)} for each file]}. Only the `decode` line of the output is read.
     The runs go round robin, so a busy moment of the machine falls on every codec and file alike.
     """
-    seen = {(name, i): {"decode": [], "encode": []} for name in codecs for i in range(len(files))}
+    seen = {(name, i): {"decode": []} for name in codecs for i in range(len(files))}
     for _ in range(runs):
         for (name, i), rows in seen.items():
             _, path, records = files[i]
             text = subprocess.run(codecs[name] + ["bench", path], check=True, capture_output=True, text=True).stdout
             for line in text.splitlines():
                 label, *pairs = line.split()
+                if label != "decode":
+                    continue
                 values = dict(pair.split("=") for pair in pairs)
                 assert int(values["records"]) == records, "the codec read a different number of records"
                 rows[label].append((int(values["records_per_second"]), float(values["mb_per_second"])))
@@ -274,7 +293,7 @@ def selective(path, runs):
 
 
 def write_chart(out, name, title, unit, note, series):
-    data = {"kind": "bar", "title": title, "unit": unit, "note": note, "series": series}
+    data = CHARTS[name] = {"kind": "bar", "title": title, "unit": unit, "note": note, "series": series}
     with open(os.path.join(out, name + ".json"), "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
         f.write("\n")
@@ -287,6 +306,62 @@ def bar(label, value, group=None, highlight=False):
         row["group"] = group
     row["highlight"] = highlight
     return row
+
+
+def tables(lang):
+    """The Markdown table that stands under a chart in the document, keyed by the name of that chart."""
+    number = lambda value: f"{value:,}" if lang == "en" else f"{value:,}".replace(",", " ").replace(".", ",")
+    head = lambda *keys: [HEAD[key][lang] for key in keys]
+    series = lambda name: CHARTS[name]["series"]
+    label = lambda s: s["label"][lang]
+
+    def table(columns, rows):
+        row = lambda cells: "| " + " | ".join(cells) + " |\n"
+        return row(columns) + "|" + "---|" * len(columns) + "\n" + "".join(row(cells) for cells in rows)
+
+    def by_sample(name):
+        groups = {}
+        for s in series(name):
+            groups.setdefault(s["group"], []).append(s)
+        columns = head("sample") + [label(s) for s in next(iter(groups.values()))]
+        return table(columns, [[f"`{sample}`"] + [number(s["value"]) for s in row] for sample, row in groups.items()])
+
+    def paired(first, second, *columns, group=False):
+        pairs = list(zip(series(first), series(second)))
+        assert all(a["label"] == b["label"] and a.get("group") == b.get("group") for a, b in pairs)
+        return table(head(*columns), [([a["group"]] if group else []) + [label(a), number(a["value"]), number(b["value"])]
+                                      for a, b in pairs])
+
+    out = {}
+    if "bytes-per-record" in CHARTS:
+        out["bytes-per-record"] = by_sample("bytes-per-record")
+    if "bytes-per-record-compressed" in CHARTS:
+        out["bytes-per-record-compressed"] = by_sample("bytes-per-record-compressed")
+    if "size-by-encoding" in CHARTS:
+        out["size-by-encoding"] = table(head("encoding", "size"),
+                                        [[label(s), number(s["value"])] for s in series("size-by-encoding")])
+    if "decode-throughput" in CHARTS:
+        out["decode-throughput"] = paired("decode-throughput", "decode-throughput-mb", "codec", "frames", "records", "mb", group=True)
+    if "selective-read" in CHARTS:
+        out["selective-read-time"] = paired("selective-read", "selective-read-time", "read", "frames_read", "time")
+    return out
+
+
+def update_documents():
+    """Rewrite the table that follows each chart marker in the two documents."""
+    for lang, path in DOCUMENTS.items():
+        if not os.path.exists(kit(path)):
+            continue
+        with open(kit(path), encoding="utf-8") as f:
+            text = f.read()
+        for name, table in tables(lang).items():
+            marker = re.escape(f"<!-- nwt-chart: {name} -->") + r"\n\n"
+            text, found = re.subn("(" + marker + r")(?:\|.*\n)+", lambda m: m.group(1) + table, text)
+            if found != 1:
+                say(f"{path}: no table under the chart {name}; left as it is")
+        with open(kit(path), "w", encoding="utf-8") as f:
+            f.write(text)
+        say("updated the tables of " + path)
 
 
 def both(en_text, ru_text, hardware):
@@ -373,8 +448,8 @@ def main():
             {"en": "MB", "ru": "МБ"},
             both(f"Measured on {built_en}. 1 MB is 1,048,576 bytes. {how_en} NWT is the whole file with raw frames "
                  "of 1,048,576 bytes.",
-                 f"Измерен {built_ru}. 1 МБ — это 1 048 576 байт. {how_ru} NWT — файл целиком, кадры без "
-                 "сжатия по 1 048 576 байт.", hw),
+                 f"Измерен {built_ru}. 1 МБ — это 1\u00a0048\u00a0576 байт. {how_ru} NWT — файл целиком, кадры без "
+                 "сжатия по 1\u00a0048\u00a0576 байт.", hw),
             [bar(CSV, sig3(least["csv"] / MB)), bar(JSONL, sig3(least["json"] / MB)), bar(NWT_RAW, sig3(raw / MB), None, True)],
         )
 
@@ -383,7 +458,7 @@ def main():
             stored_records = sum(e.record_count for e in reader.index())
         say(f"  store bytes={os.path.getsize(store)} records={stored_records}")
 
-        say(f"throughput: {runs} runs of each codec")
+        say(f"decode speed: {runs} runs of each codec")
         codecs = build_codecs(work)
         files = [({"en": "Raw frames", "ru": "Кадры без сжатия"}, large, target)]
         if zstd:
@@ -398,11 +473,9 @@ def main():
         decode_ru = (" Декодирование проходит контейнер, проверяет CRC-32C каждого кадра, распаковывает кадры "
                      "Zstandard и декодирует каждую запись. Файл Zstandard — файл хранилища, записанный командой "
                      "nwt repack.")
-        encode_en = " Encoding writes the decoded values back to record bytes; frames and checksums are not written."
-        encode_ru = " Кодирование записывает декодированные значения обратно в байты записей; кадры и контрольные суммы не пишутся."
         per_second = {"en": "records per second", "ru": "записей в секунду"}
         mb_second = {"en": "MB per second", "ru": "МБ в секунду"}
-        mb_en, mb_ru = " 1 MB is 1,048,576 bytes of records.", " 1 МБ — это 1 048 576 байт записей."
+        mb_en, mb_ru = " 1 MB is 1,048,576 bytes of records.", " 1 МБ — это 1\u00a0048\u00a0576 байт записей."
         for column, suffix, unit, extra in ((0, "", per_second, ("", "")), (1, "-mb", mb_second, (mb_en, mb_ru))):
             write_chart(
                 args.out, "decode-throughput" + suffix,
@@ -410,12 +483,6 @@ def main():
                 unit, both(timing_en + decode_en + extra[0], timing_ru + decode_ru + extra[1], hw),
                 [bar(label, sig3(rates[name][i]["decode"][column]), name, True)
                  for name in rates for i, (label, _, _) in enumerate(files)],
-            )
-            write_chart(
-                args.out, "encode-throughput" + suffix,
-                {"en": "Encode throughput of the reference codecs", "ru": "Скорость кодирования эталонных кодеков"},
-                unit, both(timing_en + encode_en + extra[0], timing_ru + encode_ru + extra[1], hw),
-                [bar({"en": name, "ru": name}, sig3(rates[name][0]["encode"][column]), None, True) for name in rates],
             )
 
         say("selective read")
@@ -450,6 +517,8 @@ def main():
                  "последней подходящей записи. Чтение файла целиком проходит все кадры и применяет тот же фильтр.", hw),
             [bar(query, sig3(s["query_ms"]), None, True), bar(whole, sig3(s["scan_ms"]))],
         )
+        if not args.quick and os.path.samefile(args.out, kit("docs/data")):
+            update_documents()
     finally:
         for path in (large, store, small):
             if os.path.exists(path):

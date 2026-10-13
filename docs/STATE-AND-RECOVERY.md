@@ -1,6 +1,6 @@
 # State and recovery
 
-This page describes the state a consumer keeps while it reads NWT market data, and how it restores that state after a loss. It is for engineers who build order books, trade tapes or reference stores from NWT records. The rules come from the [Specification](SPECIFICATION.md#ordering-gaps-snapshots-and-replay); their reference implementation is `examples/python/market_state.py`.
+This page describes the state a consumer keeps while it reads NWT market data, and how it restores that state after a loss. It is for engineers who build order books, trade tapes or reference stores from NWT records. The rules come from the [Specification](specification/ordering-gaps-snapshots-and-replay.md); their reference implementation is `examples/python/market_state.py`.
 
 ## State a consumer keeps
 
@@ -31,7 +31,7 @@ A consumer starts with no state: every order book, quote and trading status is u
 
 `SYSTEM`, `TRADE_QUOTE` and `FRAME_SUMMARY` carry no state. A `TRADE_QUOTE` is a trade print together with the quote at that moment; it changes neither the trade lifecycle nor the `QUOTE` state.
 
-A market record needs an `INSTRUMENT_DEF` for its publisher and instrument earlier in the container. The market record types are `TRADE`, `QUOTE`, `BAR`, `MBO`, `BOOK_SNAPSHOT`, `STATUS`, `STATISTICS`, `OPTION_ANALYTICS`, `BOOK_DELTA`, `IMBALANCE`, `TRADE_QUOTE` and `BEST_QUOTE`. The layouts and field rules of every type are in the [Specification](SPECIFICATION.md#record-types).
+A market record needs an `INSTRUMENT_DEF` for its publisher and instrument earlier in the container. The market record types are `TRADE`, `QUOTE`, `BAR`, `MBO`, `BOOK_SNAPSHOT`, `STATUS`, `STATISTICS`, `OPTION_ANALYTICS`, `BOOK_DELTA`, `IMBALANCE`, `TRADE_QUOTE` and `BEST_QUOTE`. The layouts and field rules of every type are in the [Specification](specification/record-types.md).
 
 ## Sequence numbers and ordering
 
@@ -48,7 +48,7 @@ NWT has three counters. They measure different things and are never substituted 
 - **A new container restarts the sequences.** A filtered, merged or re-framed export is a new container with a new stream ID and its own sequences from 1. Its sequences have no holes, so a hole never stands for a source gap.
 - **Retries are deduplicated by identity.** For a retry that is identical byte for byte, the keys are stream ID with `frame_seq`, and stream ID with publisher, channel and `sequence`. The same identity with different bytes is an error.
 
-The rules are in [Record header](SPECIFICATION.md#record-header), [Delivery order](SPECIFICATION.md#delivery-order) and [Deduplication](SPECIFICATION.md#deduplication) of the Specification.
+The rules are in [Record header](specification/record-header.md), [Delivery order](specification/ordering-gaps-snapshots-and-replay.md#delivery-order) and [Deduplication](specification/ordering-gaps-snapshots-and-replay.md#deduplication) of the Specification.
 
 ## Order-level book state
 
@@ -104,7 +104,7 @@ The transitions in the reference implementation:
 
 <!-- nwt-file: examples/python/market_state.py lines=179-231 -->
 
-The Specification defines these rules in [MBO](SPECIFICATION.md#mbo) and [MBO snapshot transaction](SPECIFICATION.md#mbo-snapshot-transaction).
+The Specification defines these rules in [MBO](records/MBO.md) and [MBO snapshot transaction](specification/ordering-gaps-snapshots-and-replay.md#mbo-snapshot-transaction).
 
 ## Aggregate book with snapshots and deltas
 
@@ -130,7 +130,7 @@ The delta rules in the reference implementation:
 
 <!-- nwt-file: examples/python/market_state.py lines=340-364 -->
 
-The Specification defines these rules in [BOOK_SNAPSHOT](SPECIFICATION.md#book_snapshot) and [BOOK_DELTA](SPECIFICATION.md#book_delta).
+The Specification defines these rules in [BOOK_SNAPSHOT](records/BOOK_SNAPSHOT.md) and [BOOK_DELTA](records/BOOK_DELTA.md).
 
 ## Quotes and trading status
 
@@ -164,7 +164,7 @@ The first trade of the container that the reference codecs write with `write` go
 
 After sequence 4 the consumer holds trade 42 as canceled, with its history, and after sequence 5 trade 43 as active.
 
-All records of a lifecycle are in the same container and the same channel. An export that contains a correction also contains the `NEW` record and the corrections before it, even when they lie outside the requested time range. The Specification defines these rules in [TRADE](SPECIFICATION.md#trade).
+All records of a lifecycle are in the same container and the same channel. An export that contains a correction also contains the `NEW` record and the corrections before it, even when they lie outside the requested time range. The Specification defines these rules in [TRADE](records/TRADE.md).
 
 ## Reference data and statistics
 
@@ -218,7 +218,7 @@ A `GAP` record has a non-zero publisher and instrument 0. It applies to every in
 | Best quote | `BEST_QUOTE` |
 | Trading status | `STATUS` |
 
-A recovery snapshot gives the order book at the snapshot point of the source. It does not bring back the trades that were lost, and it does not complete the bars of the interval. The Specification defines these rules in [GAP](SPECIFICATION.md#gap) and [Recovery after a gap](SPECIFICATION.md#recovery-after-a-gap).
+A recovery snapshot gives the order book at the snapshot point of the source. It does not bring back the trades that were lost, and it does not complete the bars of the interval. The Specification defines these rules in [GAP](records/GAP.md) and [Recovery after a gap](specification/ordering-gaps-snapshots-and-replay.md#recovery-after-a-gap).
 
 ### Recovery after a transfer failure
 
@@ -227,7 +227,7 @@ A recovery snapshot gives the order book at the snapshot point of the source. It
 3. Fetch the bytes again from that frame boundary, from the same immutable container: the same stream ID, with header and metadata verified. The bytes and the sequences are the same as in the first transfer.
 4. Continue applying records from that frame. Skip a frame you have already applied by its stream ID and `frame_seq`.
 
-A file without `END` is incomplete even when it stops exactly at a frame boundary. A container whose `END` reports the status aborted is complete as a transfer and unfinished as a data set: the producer stopped early. The Specification covers this in [Resume and byte ranges](SPECIFICATION.md#resume-and-byte-ranges).
+A file without `END` is incomplete even when it stops exactly at a frame boundary. A container whose `END` reports the status aborted is complete as a transfer and unfinished as a data set: the producer stopped early. The Specification covers this in [Resume and byte ranges](specification/transport-and-recovery.md#resume-and-byte-ranges).
 
 ## Selective reads, summaries and state
 
@@ -282,7 +282,7 @@ The conformance file [all-records.nwt](files/samples/all-records.nwt) holds 47 r
 
 The record between sequences 41 and 42 in file order is a `SYSTEM` heartbeat with publisher 0 and channel 0. It has `sequence` 1, because it belongs to the scope of the container and not to publisher 1.
 
-The gap record, as [cat](TOOLS.md#cat) prints it:
+The gap record, as [cat](tools/cat.md) prints it:
 
 ```bash
 python3 tools/nwt.py cat fixtures/golden/all-records.nwt --pretty | sed -n 41p
@@ -348,7 +348,7 @@ python3 examples/python/market_state.py work/types-1-9.nwt
 }
 ```
 
-[validate](TOOLS.md#validate) runs the same rules on any container and names the record that breaks one. A container that holds order records without the definition of their instrument fails on its first record:
+[validate](tools/validate.md) runs the same rules on any container and names the record that breaks one. A container that holds order records without the definition of their instrument fails on its first record:
 
 ```bash
 python3 tools/nwt.py extract fixtures/real-market/equity-orders.nwt work/orders-only.nwt --type MBO

@@ -1,6 +1,6 @@
 # Size and speed
 
-This page gives measurements of NWT Binary Format made on the files of this kit: the size of the same records as text and as NWT, the decode and encode throughput of the four reference codecs, and the number of frames a time-range query reads. One script, `tools/bench.py`, produces every number, and you can rerun it on your own machine. The page is for engineers who choose a storage format for market data and want figures they can check.
+This page gives measurements of NWT Binary Format made on the files of this kit: the size of the same records as text and as NWT, the decode throughput of the four reference codecs, and the number of frames a time-range query reads. One script, `tools/bench.py`, produces every number, and you can rerun it on your own machine. The page is for engineers who choose a storage format for market data and want figures they can check.
 
 ## What was measured
 
@@ -19,9 +19,9 @@ This page gives measurements of NWT Binary Format made on the files of this kit:
 
 **Text encodings.** CSV and JSON Lines are the output of the `to-csv` and `to-json` commands of the reference codec. CSV is one file per record type with a header line, and JSON Lines is one object per record. Each command has a plain output with integers and a `--pretty` output with decimal prices and ISO 8601 timestamps. The script counts the smaller of the two.
 
-**Machine and units.** Machine: Apple M5, 10 cores, 16 GB of memory. Sizes and frame counts are the same on every machine, and throughput is not. 1 MB is 1,048,576 bytes.
+**Machine and units.** Hardware: Apple M5, 10 cores, 16 GB of memory. Sizes and frame counts are the same on every machine, and throughput is not. 1 MB is 1,048,576 bytes.
 
-**How to rerun.** The script builds the Rust, C# and C++ reference codecs into a scratch folder, makes every measurement and writes the chart data to `docs/data/`. It needs `cargo`, `dotnet`, a C++ compiler and [libzstd](https://github.com/facebook/zstd). A codec whose toolchain is missing is left out of the throughput charts.
+**How to rerun.** The script builds the Rust, C# and C++ reference codecs into a scratch folder, makes every measurement and writes the chart data to `docs/data/`. It needs `cargo`, `dotnet`, a C++ compiler and [libzstd](https://github.com/facebook/zstd). A codec whose toolchain is missing is left out of the decode chart. The source of the script is on [GitHub](https://github.com/nickjavos/nwt-binary-format).
 
 <!-- nwt-title: All measurements -->
 ```bash
@@ -35,7 +35,7 @@ python3 tools/bench.py --quick
 
 ## Bytes per record
 
-The chart divides the size of each file by the number of records in it. A record of NWT has binary fields of fixed width. A nanosecond timestamp takes 8 bytes, and the same value takes 19 digits as decimal text. JSON Lines also repeats every field name in every record. The records of `corporate-actions-us` carry long text fields, which NWT stores as UTF-8 without change, so the relative difference between CSV and NWT is the smallest there.
+The chart divides the size of each file by the number of records in it. An NWT record has binary fields of fixed width. A nanosecond timestamp takes 8 bytes, and the same value takes 19 digits as decimal text. JSON Lines also repeats every field name in every record. The records of `corporate-actions-us` carry long text fields, which NWT stores as UTF-8 without change, so the relative difference between CSV and NWT is the smallest there.
 
 <!-- nwt-chart: bytes-per-record -->
 
@@ -79,7 +79,7 @@ The larger file shows the same comparison for 1,000,000 records. After one instr
 
 ## Decode throughput
 
-The `bench` command of each reference codec loads the file into memory and then walks the container. It checks the CRC-32C of every frame, decompresses Zstandard frames and decodes every record into typed values. No text is parsed: a field of a fixed-width record is read at a known offset. A file with Zstandard frames decodes more slowly than a file with raw frames, because each frame is decompressed first.
+The `bench` command of each reference codec loads the file into memory and then walks the container. It checks the CRC-32C of every frame, decompresses Zstandard frames and decodes every record into typed values. No text is parsed: a field of a fixed-width record is read at a known offset. For a file with Zstandard frames the figure includes decompression.
 
 The codecs compute CRC-32C differently. The C++ and C# codecs use the CRC instruction of the processor, the Rust codec uses lookup tables, and the Python codec computes it in interpreted code.
 
@@ -87,27 +87,14 @@ The codecs compute CRC-32C differently. The C++ and C# codecs use the CRC instru
 
 | Codec | Frames | Records per second | MB per second |
 |---|---|---|---|
-| Python | Raw frames | 142,000 | 13.6 |
-| Python | Zstandard frames | 136,000 | 13 |
-| Rust | Raw frames | 5,360,000 | 514 |
-| Rust | Zstandard frames | 5,810,000 | 557 |
-| C# | Raw frames | 3,780,000 | 363 |
-| C# | Zstandard frames | 3,610,000 | 346 |
-| C++ | Raw frames | 11,000,000 | 1,060 |
-| C++ | Zstandard frames | 7,400,000 | 710 |
-
-## Encode throughput
-
-Encoding writes the decoded values back to record bytes. The measurement covers records only: no frame is built, no checksum is computed and nothing is compressed. The C# codec keeps a fixed-width record as a struct with the layout of the record, so it encodes a record with one copy.
-
-<!-- nwt-chart: encode-throughput -->
-
-| Codec | Records per second | MB per second |
-|---|---|---|
-| Python | 4,710,000 | 452 |
-| Rust | 12,500,000 | 1,200 |
-| C# | 77,700,000 | 7,460 |
-| C++ | 12,800,000 | 1,230 |
+| Python | Raw frames | 157,000 | 15 |
+| Python | Zstandard frames | 149,000 | 14.3 |
+| Rust | Raw frames | 7,080,000 | 680 |
+| Rust | Zstandard frames | 5,980,000 | 574 |
+| C# | Raw frames | 4,340,000 | 416 |
+| C# | Zstandard frames | 3,770,000 | 362 |
+| C++ | Raw frames | 10,700,000 | 1,030 |
+| C++ | Zstandard frames | 9,620,000 | 923 |
 
 ## Selective read
 
@@ -115,17 +102,17 @@ The store file made from the larger file has 97 `DATA` frames of 1,048,576 raw b
 
 <!-- nwt-chart: selective-read -->
 
-The second chart gives the time of the same query in the Python `nwt` tool, from opening the file to the last matching record. The whole-file read scans every frame and applies the same filter. Both return the same 181 records. [Store profile](STORE.md#how-a-reader-seeks-by-time-and-instrument) describes how a reader chooses the frames, and [The nwt command](TOOLS.md#query) describes the `query` command.
+The second chart gives the time of the same query in the Python `nwt` tool, from opening the file to the last matching record. The whole-file read scans every frame and applies the same filter. Both return the same 181 records. [Store profile](STORE.md#how-a-reader-seeks-by-time-and-instrument) describes how a reader chooses the frames, and [The nwt command](tools/query.md) describes the `query` command.
 
 <!-- nwt-chart: selective-read-time -->
 
 | Read | `DATA` frames read | Time, ms |
 |---|---|---|
-| Time-range query | 2 | 61.3 |
-| Whole file | 97 | 7,880 |
+| Time-range query | 2 | 58.7 |
+| Whole file | 97 | 6,410 |
 
 ## How to read these numbers
 
 The reference codecs are written for clarity and for byte-exact agreement with each other, and the throughput figures are those of this code. Throughput depends on the processor, on memory and on the record mix: the figures above are for records of 96 and 120 bytes on the machine named on this page. Sizes and frame counts are properties of the files, and a rerun gives the same values on any machine.
 
-[Store profile](STORE.md) · [Compression and integrity](SPECIFICATION.md#compression-and-integrity) · [Use NWT in practice](USE-CASES.md)
+[Store profile](STORE.md) · [Compression and integrity](specification/compression-and-integrity.md) · [Use NWT in practice](USE-CASES.md)

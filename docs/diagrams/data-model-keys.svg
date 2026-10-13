@@ -1,106 +1,57 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 776" role="img" aria-labelledby="nwtd-data-model-keys-w-title nwtd-data-model-keys-w-desc" class="nwt-diagram" font-family="inherit" fill="none">
-<title id="nwtd-data-model-keys-w-title">Keys that join the records</title>
-<desc id="nwtd-data-model-keys-w-desc">Market records, INSTRUMENT_DEF, OPTION_DEF, SYMBOL_MAP, LISTING, SECURITY_DEF and CORPORATE_ACTION all meet on the pair publisher_id and instrument_id; VENUE_DEF is keyed by its MIC code.</desc>
-<defs>
-<marker id="nwtd-data-model-keys-w-a-fg3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1L7 4L1 7z" fill="var(--fg-3, #6b6a65)"/></marker>
-</defs>
-<path d="M300.5 110.5 L360.5 110.5" fill="none" stroke="var(--c2, #2a8c82)"/>
-<path d="M28.5 238.5 L28.5 278.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-data-model-keys-w-a-fg3)"/>
-<path d="M300.5 300.5 L360.5 300.5" fill="none" stroke="var(--c2, #2a8c82)"/>
-<path d="M300.5 450.5 L360.5 450.5" fill="none" stroke="var(--c2, #2a8c82)"/>
-<path d="M300.5 580.5 L360.5 580.5" fill="none" stroke="var(--c2, #2a8c82)"/>
-<path d="M420.5 110.5 L360.5 110.5" fill="none" stroke="var(--c2, #2a8c82)"/>
-<path d="M420.5 260.5 L360.5 260.5" fill="none" stroke="var(--c2, #2a8c82)"/>
-<path d="M448.5 348.5 L448.5 408.5" fill="none" stroke="var(--fg-3, #6b6a65)" stroke-dasharray="4 3" marker-end="url(#nwtd-data-model-keys-w-a-fg3)"/>
-<path d="M448.5 538.5 L448.5 498.5" fill="none" stroke="var(--fg-3, #6b6a65)" stroke-dasharray="4 3" marker-end="url(#nwtd-data-model-keys-w-a-fg3)"/>
-<path d="M420.5 560.5 L360.5 560.5" fill="none" stroke="var(--c2, #2a8c82)"/>
-<path d="M360.5 64V580" fill="none" stroke="var(--c2, #2a8c82)" stroke-width="1.5"/>
-<path d="M0 688.5H720" fill="none" stroke="var(--line-2, #d8d7d2)"/>
-<rect x="220.5" y="0.5" width="279" height="63" rx="3" fill="var(--c2-bg, #e3f3f1)" stroke="var(--c2, #2a8c82)"/>
-<text x="360" y="26" font-size="14" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">publisher_id</tspan> + <tspan font-family="var(--font-mono, ui-monospace, monospace)">instrument_id</tspan></text>
-<text x="360" y="46" font-size="13" fill="var(--fg-2, #63625d)" text-anchor="middle">one instrument of one publisher</text>
-<rect x="0.5" y="88.5" width="299" height="149" rx="3" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
-<text x="12" y="114" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Market records</text>
-<text x="12" y="134" font-size="13" fill="var(--fg-2, #63625d)">12 types: <tspan font-family="var(--font-mono, ui-monospace, monospace)">TRADE</tspan>, <tspan font-family="var(--font-mono, ui-monospace, monospace)">QUOTE</tspan>, <tspan font-family="var(--font-mono, ui-monospace, monospace)">MBO</tspan>, <tspan font-family="var(--font-mono, ui-monospace, monospace)">BAR</tspan> and</text>
-<text x="12" y="154" font-size="13" fill="var(--fg-2, #63625d)">others</text>
-<path d="M12 163.5H288" fill="none" stroke="var(--fg-3, #6b6a65)"/>
-<text x="12" y="182" font-size="13" fill="var(--fg-3, #6b6a65)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">→</tspan></text>
-<text x="28.12" y="182" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">publisher_id, instrument_id</tspan></text>
-<text x="28.12" y="202" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">channel_id, sequence</tspan></text>
-<text x="28.12" y="222" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">ts_event, ts_recv</tspan></text>
-<circle cx="360.5" cy="110.5" r="3" fill="var(--c2, #2a8c82)"/>
-<text x="330" y="104" font-size="13" fill="var(--fg-2, #63625d)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">N</tspan></text>
-<text x="40" y="262" font-size="13" fill="var(--fg-2, #63625d)">needs an earlier <tspan font-family="var(--font-mono, ui-monospace, monospace)">INSTRUMENT_DEF</tspan></text>
-<rect x="0.5" y="278.5" width="299" height="129" rx="3" fill="var(--c2-bg, #e3f3f1)" stroke="var(--c2, #2a8c82)"/>
-<text x="12" y="304" font-size="14" fill="var(--fg, #37352f)" font-weight="600"><tspan font-family="var(--font-mono, ui-monospace, monospace)">INSTRUMENT_DEF</tspan></text>
-<path d="M12 313.5H288" fill="none" stroke="var(--fg-3, #6b6a65)"/>
-<text x="12" y="332" font-size="13" fill="var(--fg-3, #6b6a65)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">#</tspan></text>
-<text x="28.12" y="332" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">publisher_id, instrument_id</tspan></text>
-<text x="12" y="352" font-size="13" fill="var(--fg-3, #6b6a65)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">→</tspan></text>
-<text x="28.12" y="352" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">underlying_instrument_id</tspan></text>
-<text x="28.12" y="372" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">symbol, venue, currency</tspan></text>
-<text x="28.12" y="392" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">quantity_unit, asset_class</tspan></text>
-<circle cx="360.5" cy="300.5" r="3" fill="var(--c2, #2a8c82)"/>
-<text x="330" y="294" font-size="13" fill="var(--fg-2, #63625d)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">1</tspan></text>
-<rect x="0.5" y="428.5" width="299" height="109" rx="3" fill="var(--c2-bg, #e3f3f1)" stroke="var(--c2, #2a8c82)"/>
-<text x="12" y="454" font-size="14" fill="var(--fg, #37352f)" font-weight="600"><tspan font-family="var(--font-mono, ui-monospace, monospace)">OPTION_DEF</tspan></text>
-<path d="M12 463.5H288" fill="none" stroke="var(--fg-3, #6b6a65)"/>
-<text x="12" y="482" font-size="13" fill="var(--fg-3, #6b6a65)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">#</tspan></text>
-<text x="28.12" y="482" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">publisher_id, instrument_id</tspan></text>
-<text x="12" y="502" font-size="13" fill="var(--fg-3, #6b6a65)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">→</tspan></text>
-<text x="28.12" y="502" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">underlying_instrument_id</tspan></text>
-<text x="28.12" y="522" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">strike, expiration_ns, right</tspan></text>
-<circle cx="360.5" cy="450.5" r="3" fill="var(--c2, #2a8c82)"/>
-<text x="330" y="444" font-size="13" fill="var(--fg-2, #63625d)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">1</tspan></text>
-<rect x="0.5" y="558.5" width="299" height="109" rx="3" fill="var(--c2-bg, #e3f3f1)" stroke="var(--c2, #2a8c82)"/>
-<text x="12" y="584" font-size="14" fill="var(--fg, #37352f)" font-weight="600"><tspan font-family="var(--font-mono, ui-monospace, monospace)">SYMBOL_MAP</tspan></text>
-<path d="M12 593.5H288" fill="none" stroke="var(--fg-3, #6b6a65)"/>
-<text x="12" y="612" font-size="13" fill="var(--fg-3, #6b6a65)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">#</tspan></text>
-<text x="28.12" y="612" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">publisher_id, symbology, symbol</tspan></text>
-<text x="12" y="632" font-size="13" fill="var(--fg-3, #6b6a65)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">→</tspan></text>
-<text x="28.12" y="632" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">instrument_id</tspan></text>
-<text x="28.12" y="652" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">valid_from_ns, valid_to_ns</tspan></text>
-<circle cx="360.5" cy="580.5" r="3" fill="var(--c2, #2a8c82)"/>
-<text x="330" y="574" font-size="13" fill="var(--fg-2, #63625d)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">N</tspan></text>
-<rect x="420.5" y="88.5" width="299" height="129" rx="3" fill="var(--c2-bg, #e3f3f1)" stroke="var(--c2, #2a8c82)"/>
-<text x="432" y="114" font-size="14" fill="var(--fg, #37352f)" font-weight="600"><tspan font-family="var(--font-mono, ui-monospace, monospace)">CORPORATE_ACTION</tspan></text>
-<path d="M432 123.5H708" fill="none" stroke="var(--fg-3, #6b6a65)"/>
-<text x="432" y="142" font-size="13" fill="var(--fg-3, #6b6a65)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">#</tspan></text>
-<text x="448.12" y="142" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">publisher_id, unique_id</tspan></text>
-<text x="432" y="162" font-size="13" fill="var(--fg-3, #6b6a65)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">→</tspan></text>
-<text x="448.12" y="162" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">instrument_id</tspan></text>
-<text x="448.12" y="182" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">security_id, issuer_id</tspan></text>
-<text x="448.12" y="202" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">event, ex_ns, payment_ns</tspan></text>
-<circle cx="360.5" cy="110.5" r="3" fill="var(--c2, #2a8c82)"/>
-<text x="390" y="104" font-size="13" fill="var(--fg-2, #63625d)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">N</tspan></text>
-<rect x="420.5" y="238.5" width="299" height="109" rx="3" fill="var(--c2-bg, #e3f3f1)" stroke="var(--c2, #2a8c82)"/>
-<text x="432" y="264" font-size="14" fill="var(--fg, #37352f)" font-weight="600"><tspan font-family="var(--font-mono, ui-monospace, monospace)">SECURITY_DEF</tspan></text>
-<path d="M432 273.5H708" fill="none" stroke="var(--fg-3, #6b6a65)"/>
-<text x="432" y="292" font-size="13" fill="var(--fg-3, #6b6a65)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">#</tspan></text>
-<text x="448.12" y="292" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">publisher_id, instrument_id</tspan></text>
-<text x="448.12" y="312" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">security_id, issuer_id, isin</tspan></text>
-<text x="448.12" y="332" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">operating_mic, segment_mic</tspan></text>
-<circle cx="360.5" cy="260.5" r="3" fill="var(--c2, #2a8c82)"/>
-<text x="390" y="254" font-size="13" fill="var(--fg-2, #63625d)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">1</tspan></text>
-<text x="460" y="372" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">operating_mic</tspan>, <tspan font-family="var(--font-mono, ui-monospace, monospace)">segment_mic</tspan> equal</text>
-<text x="460" y="392" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">mic</tspan></text>
-<rect x="420.5" y="408.5" width="299" height="89" rx="3" fill="var(--c2-bg, #e3f3f1)" stroke="var(--c2, #2a8c82)"/>
-<text x="432" y="434" font-size="14" fill="var(--fg, #37352f)" font-weight="600"><tspan font-family="var(--font-mono, ui-monospace, monospace)">VENUE_DEF</tspan></text>
-<path d="M432 443.5H708" fill="none" stroke="var(--fg-3, #6b6a65)"/>
-<text x="432" y="462" font-size="13" fill="var(--fg-3, #6b6a65)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">#</tspan></text>
-<text x="448.12" y="462" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">publisher_id, mic</tspan></text>
-<text x="448.12" y="482" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">operating_mic, country, name</tspan></text>
-<text x="460" y="522" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">listing_mic</tspan> equals <tspan font-family="var(--font-mono, ui-monospace, monospace)">mic</tspan></text>
-<rect x="420.5" y="538.5" width="299" height="89" rx="3" fill="var(--c2-bg, #e3f3f1)" stroke="var(--c2, #2a8c82)"/>
-<text x="432" y="564" font-size="14" fill="var(--fg, #37352f)" font-weight="600"><tspan font-family="var(--font-mono, ui-monospace, monospace)">LISTING</tspan></text>
-<path d="M432 573.5H708" fill="none" stroke="var(--fg-3, #6b6a65)"/>
-<text x="432" y="592" font-size="13" fill="var(--fg-3, #6b6a65)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">#</tspan></text>
-<text x="448.12" y="592" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">publisher_id, instrument_id</tspan></text>
-<text x="448.12" y="612" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">symbol, name, listing_mic</tspan></text>
-<circle cx="360.5" cy="560.5" r="3" fill="var(--c2, #2a8c82)"/>
-<text x="390" y="554" font-size="13" fill="var(--fg-2, #63625d)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">1</tspan></text>
-<text x="0" y="710" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">#</tspan> key. A later record with the same key replaces the earlier one; <tspan font-family="var(--font-mono, ui-monospace, monospace)">SYMBOL_MAP</tspan> keeps every interval.</text>
-<text x="0" y="730" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">→</tspan> refers to an instrument of the same publisher.</text>
-<text x="0" y="750" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">1</tspan> one current record per instrument. <tspan font-family="var(--font-mono, ui-monospace, monospace)">N</tspan> many records per instrument.</text>
-<text x="0" y="770" font-size="13" fill="var(--fg-2, #63625d)">Dashed: the same MIC code in both records; the format does not check it.</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 391" class="nwt-dg" font-family="inherit" role="img">
+<title>Keys that join the records</title>
+<desc>Market records, INSTRUMENT_DEF, OPTION_DEF, SYMBOL_MAP, LISTING, SECURITY_DEF and CORPORATE_ACTION all meet on the pair publisher_id and instrument_id; VENUE_DEF is keyed by its MIC code.</desc>
+<style>.nwt-dg text{font-size:12px;fill:var(--fg-2,#63625d)}.nwt-dg .t{font-size:13px;font-weight:500;fill:var(--fg,#37352f)}.nwt-dg .p{fill:var(--fg,#37352f)}.nwt-dg .q{fill:var(--fg-3,#6b6a65)}.nwt-dg .m{font-family:var(--font-mono,ui-monospace,monospace)}.nwt-dg .e{text-anchor:end}.nwt-dg .c{text-anchor:middle}.nwt-dg rect,.nwt-dg polygon,.nwt-dg circle{fill:var(--panel,#ffffff);stroke:var(--line-2,#d8d7d2)}.nwt-dg .s{fill:var(--bg-2,#f4f3f0)}.nwt-dg .n{fill:none}.nwt-dg .d{stroke-dasharray:4 3}.nwt-dg .f{stroke:var(--fg,#37352f)}.nwt-dg path{fill:none;stroke:var(--fg-3,#6b6a65)}.nwt-dg .h{stroke:var(--line-2,#d8d7d2)}.nwt-dg .k{fill:var(--fg-3,#6b6a65);stroke:none}</style>
+<path d="M10.5 79.5H34.5"/>
+<path d="M10.5 113.5H34.5"/>
+<path d="M10.5 147.5H34.5"/>
+<path d="M10.5 181.5H34.5"/>
+<path d="M10.5 215.5H34.5"/>
+<path d="M10.5 249.5H34.5"/>
+<path d="M10.5 283.5H34.5"/>
+<path d="M10.5 54V283"/>
+<rect class="f" x="0.5" y="0.5" width="279" height="53" rx="3"/>
+<text x="10" y="22" class="t"><tspan class="m">publisher_id</tspan> + <tspan class="m">instrument_id</tspan></text>
+<text x="10" y="39">the key: one instrument of one publisher</text>
+<rect x="34.5" y="66.5" width="179" height="25" rx="3"/>
+<text x="44" y="83" class="p">Market records, 12 types</text>
+<circle class="k" cx="10.5" cy="79.5" r="2.5"/>
+<text x="24" y="75" class="q c m">N</text>
+<text x="228" y="83"><tspan class="m">→</tspan> key · needs an earlier <tspan class="m">INSTRUMENT_DEF</tspan></text>
+<rect x="34.5" y="100.5" width="179" height="25" rx="3"/>
+<text x="44" y="117" class="p m">INSTRUMENT_DEF</text>
+<circle class="k" cx="10.5" cy="113.5" r="2.5"/>
+<text x="24" y="109" class="q c m">1</text>
+<text x="228" y="117"><tspan class="m">#</tspan> key · <tspan class="m">→</tspan> <tspan class="m">underlying_instrument_id</tspan></text>
+<rect x="34.5" y="134.5" width="179" height="25" rx="3"/>
+<text x="44" y="151" class="p m">OPTION_DEF</text>
+<circle class="k" cx="10.5" cy="147.5" r="2.5"/>
+<text x="24" y="143" class="q c m">1</text>
+<text x="228" y="151"><tspan class="m">#</tspan> key · <tspan class="m">→</tspan> <tspan class="m">underlying_instrument_id</tspan></text>
+<rect x="34.5" y="168.5" width="179" height="25" rx="3"/>
+<text x="44" y="185" class="p m">SYMBOL_MAP</text>
+<circle class="k" cx="10.5" cy="181.5" r="2.5"/>
+<text x="24" y="177" class="q c m">N</text>
+<text x="228" y="185"><tspan class="m">#</tspan> <tspan class="m">publisher_id</tspan>, <tspan class="m">symbology</tspan>, <tspan class="m">symbol</tspan> · <tspan class="m">→</tspan> key</text>
+<rect x="34.5" y="202.5" width="179" height="25" rx="3"/>
+<text x="44" y="219" class="p m">CORPORATE_ACTION</text>
+<circle class="k" cx="10.5" cy="215.5" r="2.5"/>
+<text x="24" y="211" class="q c m">N</text>
+<text x="228" y="219"><tspan class="m">#</tspan> <tspan class="m">publisher_id</tspan>, <tspan class="m">unique_id</tspan> · <tspan class="m">→</tspan> key</text>
+<rect x="34.5" y="236.5" width="179" height="25" rx="3"/>
+<text x="44" y="253" class="p m">SECURITY_DEF</text>
+<circle class="k" cx="10.5" cy="249.5" r="2.5"/>
+<text x="24" y="245" class="q c m">1</text>
+<text x="228" y="253"><tspan class="m">#</tspan> key · <tspan class="m">operating_mic</tspan>, <tspan class="m">segment_mic</tspan></text>
+<rect x="34.5" y="270.5" width="179" height="25" rx="3"/>
+<text x="44" y="287" class="p m">LISTING</text>
+<circle class="k" cx="10.5" cy="283.5" r="2.5"/>
+<text x="24" y="279" class="q c m">1</text>
+<text x="228" y="287"><tspan class="m">#</tspan> key · <tspan class="m">listing_mic</tspan></text>
+<rect x="34.5" y="304.5" width="179" height="25" rx="3"/>
+<text x="44" y="321" class="p m">VENUE_DEF</text>
+<text x="228" y="321"><tspan class="m">#</tspan> <tspan class="m">publisher_id</tspan>, <tspan class="m">mic</tspan> · matched by MIC code</text>
+<text x="0" y="352" class="q"><tspan class="m">#</tspan> key of the record: a later record with the same key replaces the earlier one; <tspan class="m">SYMBOL_MAP</tspan> keeps every interval. <tspan class="m">→</tspan></text>
+<text x="0" y="369" class="q">reference to an instrument.</text>
+<text x="0" y="386" class="q"><tspan class="m">1</tspan> one current record per instrument, <tspan class="m">N</tspan> many. MIC codes are matched by value; the format does not check them.</text>
 </svg>

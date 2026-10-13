@@ -18,7 +18,7 @@
     "en": "Raw frames",
     "ru": "Кадры без сжатия"
    },
-   "value": 142000,
+   "value": 157000,
    "group": "Python",
    "highlight": true
   },
@@ -27,7 +27,7 @@
     "en": "Zstandard frames",
     "ru": "Кадры Zstandard"
    },
-   "value": 136000,
+   "value": 149000,
    "group": "Python",
    "highlight": true
   },
@@ -36,7 +36,7 @@
     "en": "Raw frames",
     "ru": "Кадры без сжатия"
    },
-   "value": 5360000,
+   "value": 7080000,
    "group": "Rust",
    "highlight": true
   },
@@ -45,7 +45,7 @@
     "en": "Zstandard frames",
     "ru": "Кадры Zstandard"
    },
-   "value": 5810000,
+   "value": 5980000,
    "group": "Rust",
    "highlight": true
   },
@@ -54,7 +54,7 @@
     "en": "Raw frames",
     "ru": "Кадры без сжатия"
    },
-   "value": 3780000,
+   "value": 4340000,
    "group": "C#",
    "highlight": true
   },
@@ -63,7 +63,7 @@
     "en": "Zstandard frames",
     "ru": "Кадры Zstandard"
    },
-   "value": 3610000,
+   "value": 3770000,
    "group": "C#",
    "highlight": true
   },
@@ -72,7 +72,7 @@
     "en": "Raw frames",
     "ru": "Кадры без сжатия"
    },
-   "value": 11000000,
+   "value": 10700000,
    "group": "C++",
    "highlight": true
   },
@@ -81,7 +81,7 @@
     "en": "Zstandard frames",
     "ru": "Кадры Zstandard"
    },
-   "value": 7400000,
+   "value": 9620000,
    "group": "C++",
    "highlight": true
   }

@@ -243,7 +243,7 @@ The Rust, C# and C++ codecs are single-source programs. Their fragments use the 
 
 ## Write a file
 
-![Five steps of a writer: open the container, check each record, fill a frame, seal the frame, close the container; beside them the bytes each step writes](diagrams/write-path.svg "The steps of a writer and the bytes each step writes")
+![Five steps of a writer: open the container, check each record, fill a frame, seal the frame, close the container, with the bytes each step writes](diagrams/write-path.svg "The steps of a writer and the bytes each step writes")
 
 1. Build the manifest: the dataset name, the producer, the profile, the clock `posix-ns`, the publishers and one schema entry for every record type you write. Declare `BOOK_DELTA` with `required` set to `true` and `FRAME_SUMMARY` with `required` set to `false`.
 2. Choose a stream ID of 16 random bytes that are not all zero, and the creation time in nanoseconds.
@@ -251,7 +251,7 @@ The Rust, C# and C++ codecs are single-source programs. Their fragments use the 
 4. Give every record the next sequence of its publisher and channel, starting at 1, and encode it. Collect records into a frame until the frame is full, then write the `DATA` frame with its record count, its time bounds and the CRC-32C of the raw payload. Store the Zstandard form only when it is smaller than the raw payload.
 5. Close the container: write the last `DATA` frame, the `INDEX` frames with one 40-byte entry per `DATA` frame, and `END` with the index offset, the totals and the status.
 
-The result is a container that [validate](TOOLS.md#validate) accepts.
+The result is a container that [validate](tools/validate.md) accepts.
 
 <!-- nwt-tabs -->
 <!-- nwt-title: Python -->
@@ -438,7 +438,7 @@ All four produce the same 88 bytes:
 2a000000 00000000 00000000 00000000 01010000 00000000
 ```
 
-A record that belongs to a lifecycle depends on other records: a `TRADE` correction names the sequence of its original, and an `MBO` change names an order that the order book holds. After you change such a record, check the stream with the state rules described in [State and recovery](STATE-AND-RECOVERY.md). [Examples by record type](FEED-COOKBOOK.md) shows the fields of every record type.
+A record that belongs to a lifecycle depends on other records: a `TRADE` correction names the sequence of its original, and an `MBO` change names an order that the order book holds. After you change such a record, check the stream with the state rules described in [State and recovery](STATE-AND-RECOVERY.md). The pages of [Record types](records/INDEX.md) show the fields of every record type.
 
 ## Check a codec against the conformance files
 
@@ -481,7 +481,7 @@ The conformance files are [all-records.nwt](files/samples/all-records.nwt) and [
    ```
 
    The loop prints nothing when every file is rejected.
-7. **Validate what you write.** Run [validate](TOOLS.md#validate) on containers your writer produces. It applies the structural checks and the state rules to every record.
+7. **Validate what you write.** Run [validate](tools/validate.md) on containers your writer produces. It applies the structural checks and the state rules to every record.
 
 ## Extend the schema
 
