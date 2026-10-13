@@ -1,0 +1,27 @@
+{
+  "label": "imbalance-none",
+  "type": 16,
+  "fields": {
+    "record_bytes": "104",
+    "record_type": "16",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "2001",
+    "ts_event": "1760000060000018000",
+    "ts_recv": "1760000060000018100",
+    "sequence": "36",
+    "auction_ns": "18446744073709551615",
+    "reference_price": "149250000000",
+    "near_price": "-9223372036854775808",
+    "far_price": "-9223372036854775808",
+    "paired_quantity": "18446744073709551615",
+    "imbalance_quantity": "0",
+    "imbalance_side": "0",
+    "auction_type": "0",
+    "reserved": "0"
+  },
+  "texts": {},
+  "levels": []
+}

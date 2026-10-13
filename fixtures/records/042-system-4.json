@@ -1,0 +1,25 @@
+{
+  "label": "system-4",
+  "type": 9,
+  "fields": {
+    "record_bytes": "104",
+    "record_type": "9",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "0",
+    "ts_event": "1700000000000041000",
+    "ts_recv": "1700000000000041100",
+    "sequence": "42",
+    "code": "4",
+    "text_bytes": "36",
+    "severity": "2",
+    "reserved": "0",
+    "related_recovery_id": "4"
+  },
+  "texts": {
+    "text": "Recovery received — café / 東京"
+  },
+  "levels": []
+}

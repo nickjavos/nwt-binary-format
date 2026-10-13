@@ -1,0 +1,15 @@
+[package]
+name = "nwt-example"
+version = "0.1.0"
+edition = "2021"
+
+# The Zstd codec (codec 1) is on by default. Build with --no-default-features to leave it out:
+# codec 1 then fails with "Zstd library not available" and raw files keep working.
+[features]
+default = ["zstd"]
+zstd = ["dep:zstd"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+zstd = { version = "0.13", optional = true }

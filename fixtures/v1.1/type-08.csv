@@ -1,0 +1,2 @@
+record_bytes,record_type,schema_version,flags,publisher_id,channel_id,instrument_id,ts_event,ts_recv,sequence,first_missing_source_sequence,last_missing_source_sequence,reason,recovery_id
+80,8,1,0,1,0,0,1760000061000001000,1760000061000001100,41,500,509,1,1

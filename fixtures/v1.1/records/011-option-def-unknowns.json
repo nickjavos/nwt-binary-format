@@ -1,0 +1,37 @@
+{
+  "label": "option-def-unknowns",
+  "type": 11,
+  "fields": {
+    "record_bytes": "104",
+    "record_type": "11",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "2004",
+    "ts_event": "1760000000000010000",
+    "ts_recv": "1760000000000010100",
+    "sequence": "11",
+    "underlying_instrument_id": "0",
+    "expiration_ns": "1768597200000000000",
+    "strike": "12500000000",
+    "contract_multiplier": "-9223372036854775808",
+    "right": "2",
+    "exercise_style": "0",
+    "settlement": "0",
+    "closing_type": "0",
+    "option_flags": "3",
+    "reserved": "0",
+    "root_bytes": "4",
+    "underlying_symbol_bytes": "4",
+    "osi_symbol_bytes": "0",
+    "currency_bytes": "0"
+  },
+  "texts": {
+    "root": "ZZZQ",
+    "underlying_symbol": "ZZZQ",
+    "osi_symbol": "",
+    "currency": ""
+  },
+  "levels": []
+}

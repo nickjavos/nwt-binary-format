@@ -1,0 +1,2 @@
+record_bytes,record_type,schema_version,flags,publisher_id,channel_id,instrument_id,ts_event,ts_recv,sequence,bid_price,ask_price,bid_quantity,ask_quantity,bid_order_count,ask_order_count,quote_flags
+96,2,1,0,1,0,2001,1760000001000001000,1760000001000001100,16,149240000000,149260000000,300000000000,200000000000,2,1,0

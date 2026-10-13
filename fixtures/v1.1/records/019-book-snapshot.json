@@ -1,0 +1,40 @@
+{
+  "label": "book-snapshot",
+  "type": 5,
+  "fields": {
+    "record_bytes": "152",
+    "record_type": "5",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "2001",
+    "ts_event": "1760000060000002000",
+    "ts_recv": "1760000060000002100",
+    "sequence": "19",
+    "levels": "2",
+    "book_flags": "0",
+    "reserved": "0"
+  },
+  "texts": {},
+  "levels": [
+    {
+      "bid_price": "149240000000",
+      "ask_price": "149260000000",
+      "bid_quantity": "300000000000",
+      "ask_quantity": "200000000000",
+      "bid_count": "2",
+      "ask_count": "1",
+      "reserved": "0"
+    },
+    {
+      "bid_price": "149230000000",
+      "ask_price": "149270000000",
+      "bid_quantity": "500000000000",
+      "ask_quantity": "400000000000",
+      "bid_count": "3",
+      "ask_count": "2",
+      "reserved": "0"
+    }
+  ]
+}

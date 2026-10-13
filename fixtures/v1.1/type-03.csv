@@ -1,0 +1,2 @@
+record_bytes,record_type,schema_version,flags,publisher_id,channel_id,instrument_id,ts_event,ts_recv,sequence,interval_start_ns,interval_end_ns,open,high,low,close,volume,trade_count,bar_flags
+112,3,1,0,1,0,2001,1760000060000000000,1760000060000000100,17,1760000000000000000,1760000060000000000,149250000000,149250000000,149250000000,149250000000,100000000000,1,0

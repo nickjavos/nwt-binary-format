@@ -1,0 +1,102 @@
+ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|Test Issue|NASDAQ Symbol
+A|Agilent Technologies, Inc. Common Stock|N|A|N|100|N|A
+AA|Alcoa Corporation Common Stock |N|AA|N|100|N|AA
+AAA|Alternative Access First Priority CLO Bond ETF|P|AAA|Y|100|N|AAA
+AAAA|Amplius Aggressive Asset Allocation ETF|Z|AAAA|Y|100|N|AAAA
+AAAC|Columbia AAA CLO ETF|P|AAAC|Y|100|N|AAAC
+AAAD|PGIM AAA CLO Aggregate Duration ETF|P|AAAD|Y|100|N|AAAD
+AAAU|Goldman Sachs Physical Gold ETF Shares|Z|AAAU|Y|100|N|AAAU
+AAC|Ares Acquisition Corporation III Class A Ordinary Shares|N|AAC|N|100|N|AAC
+AAC.U|Ares Acquisition Corporation III Units, each consisting of one Class A ordinary share and one-tenth of one redeemable warrant|N|AAC.U|N|100|N|AAC=
+AAC.W|Ares Acquisition Corporation III Redeemable warrants, each whole warrant exercisable for one Class A ordinary share at an exercise price of $11.50|N|AAC.WS|N|100|N|AAC+
+AADX|Applied Aerospace & Defense, Inc. Common Stock|N|AADX|N|100|N|AADX
+AAMI|Acadian Asset Management Inc. Common Stock|N|AAMI|N|100|N|AAMI
+AAOG|Leverage Shares 2X Long AAOI Daily ETF|Z|AAOG|Y|100|N|AAOG
+AAOX|Tradr 2X Long AAOI Daily ETF|Z|AAOX|Y|100|N|AAOX
+AAOZ|Tradr 2X Short AAOI Daily ETF|Z|AAOZ|Y|100|N|AAOZ
+AAP|Advance Auto Parts Inc.|N|AAP|N|100|N|AAP
+AAPE|Leverage Shares 2X Long AAPL Daily ETF|Z|AAPE|Y|100|N|AAPE
+AAPR|Innovator Equity Defined Protection ETF - 2 Yr to April 2028|Z|AAPR|Y|100|N|AAPR
+AAPW|Roundhill AAPL WeeklyPay ETF|Z|AAPW|Y|100|N|AAPW
+AAPX|T-Rex 2X Long Apple Daily Target ETF|Z|AAPX|Y|100|N|AAPX
+AAPY|Kurv Yield Premium Strategy Apple (AAPL) ETF|Z|AAPY|Y|100|N|AAPY
+AAT|American Assets Trust, Inc. Common Stock|N|AAT|N|100|N|AAT
+AAUA|Alpha Architect US Equity 3 ETF|Z|AAUA|Y|100|N|AAUA
+AAUC|Allied Gold Corporation Common Shares|N|AAUC|N|100|N|AAUC
+AB|AllianceBernstein Holding L.P.  Units|N|AB|N|100|N|AB
+ABBV|AbbVie Inc. Common Stock|N|ABBV|N|100|N|ABBV
+ABCB|Ameris Bancorp Common Stock|N|ABCB|N|100|N|ABCB
+ABEQ|Absolute Select Value ETF|P|ABEQ|Y|100|N|ABEQ
+ABEV|Ambev S.A. American Depositary Shares (Each representing 1 Common Share)|N|ABEV|N|100|N|ABEV
+ABFL|Abacus FCF Leaders ETF|Z|ABFL|Y|100|N|ABFL
+ABG|Asbury Automotive Group Inc Common Stock|N|ABG|N|100|N|ABG
+ABLD|Abacus FCF Real Assets Leaders ETF|Z|ABLD|Y|100|N|ABLD
+ABLG|Abacus FCF International Leaders ETF|Z|ABLG|Y|100|N|ABLG
+ABLS|Abacus FCF Small Cap Leaders ETF|Z|ABLS|Y|100|N|ABLS
+ABM|ABM Industries Incorporated Common Stock|N|ABM|N|100|N|ABM
+ABND|American Century Core Plus Income ETF|P|ABND|Y|100|N|ABND
+ABOT|Abacus FCF Innovation Leaders ETF|Z|ABOT|Y|100|N|ABOT
+ABR|Arbor Realty Trust Common Stock|N|ABR|N|100|N|ABR
+ABR$D|Arbor Realty Trust 6.375% Series D Cumulative Redeemable Preferred Stock, Liquidation Preference $25.00 per Share|N|ABRpD|N|100|N|ABR-D
+ABR$E|Arbor Realty Trust 6.25% Series E Cumulative Redeemable Preferred Stock|N|ABRpE|N|100|N|ABR-E
+ABR$F|Arbor Realty Trust 6.25% Series F Fixed-to-Floating Rate Cumulative Redeemable Preferred Stock, Liquidation Preference $25.00 per share|N|ABRpF|N|100|N|ABR-F
+ABT|Abbott Laboratories Common Stock|N|ABT|N|100|N|ABT
+ABUF|Aptus Laddered Buffer ETF|Z|ABUF|Y|100|N|ABUF
+ABX|Abacus Global Management, Inc. Class A Common Stock|N|ABX|N|100|N|ABX
+ABXB|Abacus Flexible Bond Leaders ETF|Z|ABXB|Y|100|N|ABXB
+ABXL|Abacus Global Management, Inc. 9.875% Fixed Rate Senior Notes due 2028|N|ABXL|N|100|N|ABXL
+ACA|Arcosa, Inc. Common Stock |N|ACA|N|100|N|ACA
+ACCO|Acco Brands Corporation Common Stock|N|ACCO|N|100|N|ACCO
+ACCS|ACCESS Newswire Inc. Common Stock|A|ACCS|N|100|N|ACCS
+ACEI|Innovator Equity Autocallable Income Strategy ETF|P|ACEI|Y|100|N|ACEI
+ACEL|Accel Entertainment, Inc. |N|ACEL|N|100|N|ACEL
+ACES|ALPS Clean Energy ETF|P|ACES|Y|100|N|ACES
+ACGO|Hartford Alpha Capture Growth ETF|Z|ACGO|Y|100|N|ACGO
+ACGR|American Century Large Cap Growth ETF|P|ACGR|Y|100|N|ACGR
+ACH|Accendra Health, Inc. Common Stock|N|ACH|N|100|N|ACH
+ACHR|Archer Aviation Inc. Class A Common Stock|N|ACHR|N|100|N|ACHR
+ACHX|Corgi ACHR 2x Daily ETF|Z|ACHX|Y|100|N|ACHX
+ACI|Albertsons Companies, Inc. Class A Common Stock|N|ACI|N|100|N|ACI
+ACIG|Hartford Alpha Capture International Growth ETF|Z|ACIG|Y|100|N|ACIG
+ACII|Innovator Index Autocallable Income Strategy ETF|P|ACII|Y|100|N|ACII
+ACIO|Aptus Collared Investment Opportunity ETF|Z|ACIO|Y|100|N|ACIO
+ACKY|VistaShares Target 15 ACKtivist Distribution ETF|P|ACKY|Y|100|N|ACKY
+ACLC|American Century Large Cap Equity ETF|P|ACLC|Y|100|N|ACLC
+ACLO|TCW AAA CLO ETF|N|ACLO|Y|100|N|ACLO
+ACLZ|Corgi ACLS 2x Daily ETF|Z|ACLZ|Y|100|N|ACLZ
+ACM|AECOM Common Stock|N|ACM|N|100|N|ACM
+ACMG|American Century Mid Cap Growth Insights ETF|Z|ACMG|Y|100|N|ACMG
+ACMM|Corgi ACMR 2x Daily ETF|Z|ACMM|Y|100|N|ACMM
+ACN|Accenture plc Class A Ordinary Shares (Ireland)|N|ACN|N|100|N|ACN
+ACOM|Harbor Active Commodity ETF|P|ACOM|Y|100|N|ACOM
+ACP|abrdn Income Credit Strategies Fund Common Shares|N|ACP|N|100|N|ACP
+ACP$A|abrdn Income Credit Strategies Fund 5.250% Series A Perpetual Preferred Stock|N|ACPpA|N|100|N|ACP-A
+ACR|ACRES Commercial Realty Corp. Common Stock|N|ACR|N|100|N|ACR
+ACR$C|ACRES Commercial Realty Corp. 8.625% Fixed-to-Floating Series C Cumulative Redeemable Preferred Stock |N|ACRpC|N|100|N|ACR-C
+ACR$D|ACRES Commercial Realty Corp. 7.875% Series D Cumulative Redeemable Preferred Stock|N|ACRpD|N|100|N|ACR-D
+ACRE|Ares Commercial Real Estate Corporation Common Stock|N|ACRE|N|100|N|ACRE
+ACSG|American Century Small Cap Growth Insights ETF|Z|ACSG|Y|100|N|ACSG
+ACSI|American Customer Satisfaction ETF|Z|ACSI|Y|100|N|ACSI
+ACSM|Hartford Alpha Capture SMID Cap ETF|Z|ACSM|Y|100|N|ACSM
+ACSV|American Century Small Cap Value Insights ETF|Z|ACSV|Y|100|N|ACSV
+ACTS|FIS Tactical Equity ETF|P|ACTS|Y|100|N|ACTS
+ACU|Acme United Corporation. Common Stock|A|ACU|N|100|N|ACU
+ACV|Virtus Diversified Income & Convertible Fund Common Shares of Beneficial Interest|N|ACV|N|100|N|ACV
+ACVA|ACV Auctions Inc. Class A Common Stock|N|ACVA|N|100|N|ACVA
+ACVF|American Conservative Values ETF|P|ACVF|Y|100|N|ACVF
+ACVT|Advent Convertible Bond ETF|P|ACVT|Y|100|N|ACVT
+ACVU|Hartford Alpha Capture Value ETF|Z|ACVU|Y|100|N|ACVU
+ACWV|iShares MSCI Global Min Vol Factor ETF|Z|ACWV|Y|100|N|ACWV
+ACYB|FT Vest Laddered Autocallable Buffer & Resilient Income ETF|P|ACYB|Y|100|N|ACYB
+ACYN|FT Vest Laddered Autocallable Barrier & Income ETF|P|ACYN|Y|100|N|ACYN
+ACYQ|FT Vest Autocallable Barrier & High Income ETF|P|ACYQ|Y|100|N|ACYQ
+ACYS|FT Vest Laddered Autocallable Barrier & Resilient Income ETF|P|ACYS|Y|100|N|ACYS
+AD|Array Digital Infrastructure, Inc. Common Shares|N|AD|N|100|N|AD
+ADBU|Direxion Daily ADBE Bull 2X ETF|P|ADBU|Y|100|N|ADBU
+ADC|Agree Realty Corporation Common Stock|N|ADC|N|100|N|ADC
+ADC$A|Agree Realty Corporation Depositary Shares, each representing 1/1,000th of a 4.250% Series A Cumulative Redeemable Preferred Stock|N|ADCpA|N|100|N|ADC-A
+ADCT|ADC Therapeutics SA Common Shares|N|ADCT|N|100|N|ADCT
+ADDS|Hedgeye Index Adds ETF|P|ADDS|Y|100|N|ADDS
+ADIG|ADI Global Distribution Inc. Common Stock|N|ADIG|N|100|N|ADIG
+ADIU|Leverage Shares 2X Long ADI Daily ETF|Z|ADIU|Y|100|N|ADIU
+File Creation Time: 1013202612:11||||||

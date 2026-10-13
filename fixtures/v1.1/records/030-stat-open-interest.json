@@ -1,0 +1,25 @@
+{
+  "label": "stat-open-interest",
+  "type": 13,
+  "fields": {
+    "record_bytes": "80",
+    "record_type": "13",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "2002",
+    "ts_event": "1760000060000012000",
+    "ts_recv": "1760000060000012100",
+    "sequence": "30",
+    "ts_ref": "1759968000000000000",
+    "price": "-9223372036854775808",
+    "quantity": "4321000000000",
+    "stat_type": "8",
+    "action": "1",
+    "stat_flags": "0",
+    "reserved": "0"
+  },
+  "texts": {},
+  "levels": []
+}

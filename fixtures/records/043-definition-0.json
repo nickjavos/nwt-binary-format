@@ -1,0 +1,35 @@
+{
+  "label": "definition-0",
+  "type": 6,
+  "fields": {
+    "record_bytes": "136",
+    "record_type": "6",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "2000",
+    "ts_event": "1700000000000042000",
+    "ts_recv": "1700000000000042100",
+    "sequence": "43",
+    "price_increment": "10000000",
+    "quantity_increment": "1000000000",
+    "contract_multiplier": "1000000000",
+    "expiration_ns": "18446744073709551615",
+    "underlying_instrument_id": "0",
+    "strike": "-9223372036854775808",
+    "asset_class": "0",
+    "reserved": "0",
+    "symbol_bytes": "5",
+    "venue_bytes": "7",
+    "currency_bytes": "3",
+    "quantity_unit_bytes": "4"
+  },
+  "texts": {
+    "symbol": "EXM-0",
+    "venue": "EXAMPLE",
+    "currency": "USD",
+    "quantity_unit": "unit"
+  },
+  "levels": []
+}

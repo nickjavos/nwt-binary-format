@@ -1,0 +1,2 @@
+record_bytes,record_type,schema_version,flags,publisher_id,channel_id,instrument_id,ts_event,ts_recv,sequence,status,reason,status_flags
+64,7,1,0,1,0,2001,1760000060000001000,1760000060000001100,18,2,1,0

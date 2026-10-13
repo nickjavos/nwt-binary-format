@@ -1,0 +1,3 @@
+record_bytes,record_type,schema_version,flags,publisher_id,channel_id,instrument_id,ts_event,ts_recv,sequence,order_id,price,quantity,priority,action,side,mbo_flags
+88,4,1,0,1,0,2001,2025-10-09T08:54:20.000007000Z,2025-10-09T08:54:20.000007100Z,25,0,,0.000000000,18446744073709551615,4,0,0
+88,4,1,0,1,0,2001,2025-10-09T08:54:20.000008000Z,2025-10-09T08:54:20.000008100Z,26,9001,149.240000000,100.000000000,1,1,1,0

@@ -1,0 +1,2 @@
+record_bytes,record_type,schema_version,flags,publisher_id,channel_id,instrument_id,ts_event,ts_recv,sequence,code,text_bytes,severity,related_recovery_id,text
+64,9,1,0,0,0,0,1760000061000002000,1760000061000002100,1,1,0,0,0,

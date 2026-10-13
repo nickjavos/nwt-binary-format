@@ -1,0 +1,147 @@
+{
+  "bytes": 7632,
+  "sha256": "5b15390e0afd23ee0f8ab4490fd0980a61a0ede8c05d963f29b51fbb3ecf9b59",
+  "records": 49,
+  "frames": 19,
+  "coverage": {
+    "TRADE": {
+      "record_count": 4,
+      "all_fixed_fields_present": true,
+      "text_fields": [],
+      "payload_fields": [
+        "price",
+        "quantity",
+        "trade_id",
+        "original_sequence",
+        "action",
+        "aggressor",
+        "conditions",
+        "reserved"
+      ]
+    },
+    "QUOTE": {
+      "record_count": 5,
+      "all_fixed_fields_present": true,
+      "text_fields": [],
+      "payload_fields": [
+        "bid_price",
+        "ask_price",
+        "bid_quantity",
+        "ask_quantity",
+        "bid_order_count",
+        "ask_order_count",
+        "quote_flags",
+        "reserved"
+      ]
+    },
+    "BAR": {
+      "record_count": 2,
+      "all_fixed_fields_present": true,
+      "text_fields": [],
+      "payload_fields": [
+        "interval_start_ns",
+        "interval_end_ns",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "trade_count",
+        "bar_flags"
+      ]
+    },
+    "MBO": {
+      "record_count": 11,
+      "all_fixed_fields_present": true,
+      "text_fields": [],
+      "payload_fields": [
+        "order_id",
+        "price",
+        "quantity",
+        "priority",
+        "action",
+        "side",
+        "mbo_flags",
+        "reserved"
+      ]
+    },
+    "BOOK_SNAPSHOT": {
+      "record_count": 4,
+      "all_fixed_fields_present": true,
+      "text_fields": [],
+      "payload_fields": [
+        "levels",
+        "book_flags",
+        "reserved"
+      ]
+    },
+    "INSTRUMENT_DEF": {
+      "record_count": 8,
+      "all_fixed_fields_present": true,
+      "text_fields": [
+        "symbol",
+        "venue",
+        "currency",
+        "quantity_unit"
+      ],
+      "payload_fields": [
+        "price_increment",
+        "quantity_increment",
+        "contract_multiplier",
+        "expiration_ns",
+        "underlying_instrument_id",
+        "strike",
+        "asset_class",
+        "reserved",
+        "symbol_bytes",
+        "venue_bytes",
+        "currency_bytes",
+        "quantity_unit_bytes"
+      ]
+    },
+    "STATUS": {
+      "record_count": 7,
+      "all_fixed_fields_present": true,
+      "text_fields": [],
+      "payload_fields": [
+        "status",
+        "reason",
+        "status_flags",
+        "reserved"
+      ]
+    },
+    "GAP": {
+      "record_count": 4,
+      "all_fixed_fields_present": true,
+      "text_fields": [],
+      "payload_fields": [
+        "first_missing_source_sequence",
+        "last_missing_source_sequence",
+        "reason",
+        "reserved",
+        "recovery_id"
+      ]
+    },
+    "SYSTEM": {
+      "record_count": 4,
+      "all_fixed_fields_present": true,
+      "text_fields": [
+        "text"
+      ],
+      "payload_fields": [
+        "code",
+        "text_bytes",
+        "severity",
+        "reserved",
+        "related_recovery_id"
+      ]
+    }
+  },
+  "semantic_final_state": {
+    "definitions": 8,
+    "trade_ids": 2,
+    "bars": 2,
+    "valid_mbo_books": 1,
+    "gap_events": 4
+  }
+}

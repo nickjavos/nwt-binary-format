@@ -1,0 +1,29 @@
+{
+  "label": "best-quote-sampled",
+  "type": 19,
+  "fields": {
+    "record_bytes": "112",
+    "record_type": "19",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "2001",
+    "ts_event": "1760000061000000000",
+    "ts_recv": "1760000061000000100",
+    "sequence": "40",
+    "bid_price": "149230000000",
+    "ask_price": "-9223372036854775808",
+    "bid_quantity": "500000000000",
+    "ask_quantity": "0",
+    "bid_order_count": "3",
+    "ask_order_count": "0",
+    "quote_flags": "1",
+    "bid_publisher_id": "2",
+    "ask_publisher_id": "0",
+    "reserved": "0",
+    "interval_ns": "1000000000"
+  },
+  "texts": {},
+  "levels": []
+}

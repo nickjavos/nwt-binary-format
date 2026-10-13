@@ -1,0 +1,27 @@
+{
+  "label": "imbalance-buy",
+  "type": 16,
+  "fields": {
+    "record_bytes": "104",
+    "record_type": "16",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "2001",
+    "ts_event": "1760000060000017000",
+    "ts_recv": "1760000060000017100",
+    "sequence": "35",
+    "auction_ns": "1760040000000000000",
+    "reference_price": "149250000000",
+    "near_price": "149300000000",
+    "far_price": "149350000000",
+    "paired_quantity": "50000000000000",
+    "imbalance_quantity": "12000000000000",
+    "imbalance_side": "1",
+    "auction_type": "2",
+    "reserved": "0"
+  },
+  "texts": {},
+  "levels": []
+}

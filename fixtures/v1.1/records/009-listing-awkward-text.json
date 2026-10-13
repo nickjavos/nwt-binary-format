@@ -1,0 +1,34 @@
+{
+  "label": "listing-awkward-text",
+  "type": 12,
+  "fields": {
+    "record_bytes": "128",
+    "record_type": "12",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "2006",
+    "ts_event": "18446744073709551615",
+    "ts_recv": "1760000000000008100",
+    "sequence": "9",
+    "round_lot": "10",
+    "listing_flags": "2",
+    "market_tier": "0",
+    "financial_flags": "0",
+    "reserved": "0",
+    "symbol_bytes": "4",
+    "name_bytes": "40",
+    "listing_mic_bytes": "0",
+    "cqs_symbol_bytes": "5",
+    "alt_symbol_bytes": "0"
+  },
+  "texts": {
+    "symbol": "AWKW",
+    "name": "Awkward, \"Quoted\" \\ Name\nLine two\u0001 café",
+    "listing_mic": "",
+    "cqs_symbol": "AWK.W",
+    "alt_symbol": ""
+  },
+  "levels": []
+}

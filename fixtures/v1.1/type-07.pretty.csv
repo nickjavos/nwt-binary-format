@@ -1,0 +1,2 @@
+record_bytes,record_type,schema_version,flags,publisher_id,channel_id,instrument_id,ts_event,ts_recv,sequence,status,reason,status_flags
+64,7,1,0,1,0,2001,2025-10-09T08:54:20.000001000Z,2025-10-09T08:54:20.000001100Z,18,2,1,0

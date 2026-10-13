@@ -1,0 +1,26 @@
+{
+  "label": "mbo-snapshot-ask",
+  "type": 4,
+  "fields": {
+    "record_bytes": "88",
+    "record_type": "4",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "1001",
+    "ts_event": "1700000000000017000",
+    "ts_recv": "1700000000000017100",
+    "sequence": "18",
+    "order_id": "202",
+    "price": "124000000000",
+    "quantity": "9000000000",
+    "priority": "18446744073709551615",
+    "action": "1",
+    "side": "2",
+    "mbo_flags": "0",
+    "reserved": "0"
+  },
+  "texts": {},
+  "levels": []
+}

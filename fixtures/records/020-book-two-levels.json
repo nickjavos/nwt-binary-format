@@ -1,0 +1,40 @@
+{
+  "label": "book-two-levels",
+  "type": 5,
+  "fields": {
+    "record_bytes": "152",
+    "record_type": "5",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "1001",
+    "ts_event": "1700000000000019000",
+    "ts_recv": "1700000000000019100",
+    "sequence": "20",
+    "levels": "2",
+    "book_flags": "0",
+    "reserved": "0"
+  },
+  "texts": {},
+  "levels": [
+    {
+      "bid_price": "123000000000",
+      "ask_price": "124000000000",
+      "bid_quantity": "10000000000",
+      "ask_quantity": "11000000000",
+      "bid_count": "1",
+      "ask_count": "1",
+      "reserved": "0"
+    },
+    {
+      "bid_price": "122000000000",
+      "ask_price": "-9223372036854775808",
+      "bid_quantity": "12000000000",
+      "ask_quantity": "0",
+      "bid_count": "2",
+      "ask_count": "0",
+      "reserved": "0"
+    }
+  ]
+}

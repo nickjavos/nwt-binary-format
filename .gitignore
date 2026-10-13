@@ -1,0 +1,15 @@
+work*/
+.superpowers/
+target/
+bin/
+obj/
+__pycache__/
+.DS_Store
+site/
+dist/
+__pycache__/
+.DS_Store
+examples/rust/target/
+examples/csharp/bin/
+examples/csharp/obj/
+examples/cpp/build/

@@ -1,0 +1,29 @@
+{
+  "label": "analytics-iv-only",
+  "type": 14,
+  "fields": {
+    "record_bytes": "120",
+    "record_type": "14",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "2002",
+    "ts_event": "1760000060000015000",
+    "ts_recv": "1760000060000015100",
+    "sequence": "33",
+    "implied_volatility": "260000000",
+    "delta": "-9223372036854775808",
+    "gamma": "-9223372036854775808",
+    "theta": "-9223372036854775808",
+    "vega": "-9223372036854775808",
+    "rho": "-9223372036854775808",
+    "underlying_price": "-9223372036854775808",
+    "theoretical_price": "-9223372036854775808",
+    "price_basis": "0",
+    "model": "0",
+    "reserved": "0"
+  },
+  "texts": {},
+  "levels": []
+}

@@ -1,0 +1,22 @@
+{
+  "label": "status-2",
+  "type": 7,
+  "fields": {
+    "record_bytes": "64",
+    "record_type": "7",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "1001",
+    "ts_event": "1700000000000024000",
+    "ts_recv": "1700000000000024100",
+    "sequence": "25",
+    "status": "2",
+    "reason": "2",
+    "status_flags": "0",
+    "reserved": "0"
+  },
+  "texts": {},
+  "levels": []
+}

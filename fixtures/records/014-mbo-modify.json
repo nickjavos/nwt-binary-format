@@ -1,0 +1,26 @@
+{
+  "label": "mbo-modify",
+  "type": 4,
+  "fields": {
+    "record_bytes": "88",
+    "record_type": "4",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "1001",
+    "ts_event": "1700000000000013000",
+    "ts_recv": "1700000000000013100",
+    "sequence": "14",
+    "order_id": "101",
+    "price": "123500000000",
+    "quantity": "8000000000",
+    "priority": "101",
+    "action": "2",
+    "side": "1",
+    "mbo_flags": "0",
+    "reserved": "0"
+  },
+  "texts": {},
+  "levels": []
+}

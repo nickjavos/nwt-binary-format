@@ -1,0 +1,25 @@
+{
+  "label": "system-1",
+  "type": 9,
+  "fields": {
+    "record_bytes": "64",
+    "record_type": "9",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "0",
+    "ts_event": "1700000000000038000",
+    "ts_recv": "1700000000000038100",
+    "sequence": "39",
+    "code": "1",
+    "text_bytes": "0",
+    "severity": "0",
+    "reserved": "0",
+    "related_recovery_id": "0"
+  },
+  "texts": {
+    "text": ""
+  },
+  "levels": []
+}

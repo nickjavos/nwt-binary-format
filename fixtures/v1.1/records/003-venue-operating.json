@@ -1,0 +1,43 @@
+{
+  "label": "venue-operating",
+  "type": 10,
+  "fields": {
+    "record_bytes": "192",
+    "record_type": "10",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "0",
+    "ts_event": "1760000000000002000",
+    "ts_recv": "1760000000000002100",
+    "sequence": "3",
+    "created_ns": "1433116800000000000",
+    "updated_ns": "1711324800000000000",
+    "expiry_ns": "18446744073709551615",
+    "kind": "1",
+    "status": "1",
+    "mic_bytes": "4",
+    "operating_mic_bytes": "4",
+    "country_bytes": "2",
+    "category_bytes": "4",
+    "acronym_bytes": "4",
+    "city_bytes": "8",
+    "name_bytes": "20",
+    "legal_entity_bytes": "24",
+    "lei_bytes": "20",
+    "reserved": "0"
+  },
+  "texts": {
+    "mic": "XNWT",
+    "operating_mic": "XNWT",
+    "country": "US",
+    "category": "RMKT",
+    "acronym": "NWTX",
+    "city": "NEW YORK",
+    "name": "NWT EXAMPLE EXCHANGE",
+    "legal_entity": "NWT EXAMPLE EXCHANGE LLC",
+    "lei": "EXAMPLE00LEI00000001"
+  },
+  "levels": []
+}

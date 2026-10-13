@@ -1,0 +1,17 @@
+{
+  "bad-enum.nwt": "reject",
+  "bad-mask.nwt": "reject",
+  "nonzero-reserved.nwt": "reject",
+  "text-over-limit.nwt": "reject",
+  "undeclared-publisher.nwt": "reject",
+  "undeclared-type.nwt": "reject",
+  "wrong-fixed-size.nwt": "reject",
+  "wrong-minor.nwt": "reject",
+  "wrong-minor-new-types.nwt": "reject",
+  "wrong-text-exact.nwt": "reject",
+  "zstd-content-size.nwt": "reject",
+  "zstd-dictionary.nwt": "reject",
+  "zstd-skippable.nwt": "reject",
+  "zstd-trailing-bytes.nwt": "reject",
+  "zstd-window.nwt": "reject"
+}

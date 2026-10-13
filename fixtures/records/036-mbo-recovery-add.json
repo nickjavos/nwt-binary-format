@@ -1,0 +1,26 @@
+{
+  "label": "mbo-recovery-add",
+  "type": 4,
+  "fields": {
+    "record_bytes": "88",
+    "record_type": "4",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "1001",
+    "ts_event": "1700000000000035000",
+    "ts_recv": "1700000000000035100",
+    "sequence": "36",
+    "order_id": "301",
+    "price": "123000000000",
+    "quantity": "1000000000",
+    "priority": "1",
+    "action": "1",
+    "side": "1",
+    "mbo_flags": "0",
+    "reserved": "0"
+  },
+  "texts": {},
+  "levels": []
+}

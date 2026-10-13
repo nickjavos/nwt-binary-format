@@ -1,0 +1,43 @@
+{
+  "label": "venue-expired",
+  "type": 10,
+  "fields": {
+    "record_bytes": "144",
+    "record_type": "10",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "0",
+    "ts_event": "1760000000000004000",
+    "ts_recv": "1760000000000004100",
+    "sequence": "5",
+    "created_ns": "18446744073709551615",
+    "updated_ns": "1703980800000000000",
+    "expiry_ns": "1703980800000000000",
+    "kind": "1",
+    "status": "3",
+    "mic_bytes": "4",
+    "operating_mic_bytes": "4",
+    "country_bytes": "2",
+    "category_bytes": "4",
+    "acronym_bytes": "4",
+    "city_bytes": "6",
+    "name_bytes": "18",
+    "legal_entity_bytes": "0",
+    "lei_bytes": "0",
+    "reserved": "0"
+  },
+  "texts": {
+    "mic": "XOLD",
+    "operating_mic": "XOLD",
+    "country": "GB",
+    "category": "MLTF",
+    "acronym": "OLDX",
+    "city": "LONDON",
+    "name": "OLD EXAMPLE MARKET",
+    "legal_entity": "",
+    "lei": ""
+  },
+  "levels": []
+}

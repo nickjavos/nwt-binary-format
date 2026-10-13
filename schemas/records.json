@@ -1,0 +1,2470 @@
+{
+  "format": "NWT",
+  "revision": "1.1-draft.1",
+  "header": [
+    {
+      "name": "record_bytes",
+      "bytes": 4,
+      "signed": false,
+      "meaning": "Total bytes from record start through final padding, including the 48-byte common header. Derived by encoder; multiple of 8, maximum 1 MiB."
+    },
+    {
+      "name": "record_type",
+      "bytes": 2,
+      "signed": false,
+      "meaning": "Standard schema identifier 1\u201322. Selects payload layout. It is not a source exchange message ID."
+    },
+    {
+      "name": "schema_version",
+      "bytes": 1,
+      "signed": false,
+      "meaning": "Exactly 1 for every standard schema in this draft. A different version is a different wire contract."
+    },
+    {
+      "name": "flags",
+      "bytes": 1,
+      "signed": false,
+      "meaning": "Bit 0 REPLAY; bit 1 SUSPECT. All other bits zero. Flags do not alter byte layout or waive validation."
+    },
+    {
+      "name": "publisher_id",
+      "bytes": 4,
+      "signed": false,
+      "meaning": "Producer-assigned publisher namespace. Nonzero for types 1\u20138, 10\u201319 and 21\u201322. SYSTEM may use 0 with channel 0; FRAME_SUMMARY always does."
+    },
+    {
+      "name": "channel_id",
+      "bytes": 4,
+      "signed": false,
+      "meaning": "Logical producer partition. Zero is valid. Sequence continuity is checked independently per publisher/channel."
+    },
+    {
+      "name": "instrument_id",
+      "bytes": 8,
+      "signed": false,
+      "meaning": "Opaque instrument identity scoped by dataset and publisher. Nonzero for types 1\u20137, 11\u201319 and 21\u201322; zero for GAP, SYSTEM, VENUE_DEF and FRAME_SUMMARY."
+    },
+    {
+      "name": "ts_event",
+      "bytes": 8,
+      "signed": false,
+      "kind": "time",
+      "meaning": "Source event time in POSIX nanoseconds; UINT64_MAX means unavailable. BAR requires interval end. It may move backward."
+    },
+    {
+      "name": "ts_recv",
+      "bytes": 8,
+      "signed": false,
+      "kind": "time",
+      "meaning": "Producer capture time in POSIX nanoseconds; UINT64_MAX means unavailable. No assumption that it exceeds event time."
+    },
+    {
+      "name": "sequence",
+      "bytes": 8,
+      "signed": false,
+      "meaning": "Normalized output position per container/publisher/channel. Starts at 1, increments by one, never wraps. Not the exchange sequence."
+    }
+  ],
+  "level": [
+    {
+      "name": "bid_price",
+      "bytes": 8,
+      "signed": true,
+      "kind": "price",
+      "meaning": "Signed bid price \u00d7 10^9. INT64_MIN means this side/level is absent; then its size and count must both be zero."
+    },
+    {
+      "name": "ask_price",
+      "bytes": 8,
+      "signed": true,
+      "kind": "price",
+      "meaning": "Signed ask price \u00d7 10^9. INT64_MIN means this side/level is absent; then its size and count must both be zero."
+    },
+    {
+      "name": "bid_quantity",
+      "bytes": 8,
+      "signed": false,
+      "kind": "quantity",
+      "meaning": "Bid size \u00d7 10^9. Present side requires 1 through UINT64_MAX\u22121; absent side requires 0."
+    },
+    {
+      "name": "ask_quantity",
+      "bytes": 8,
+      "signed": false,
+      "kind": "quantity",
+      "meaning": "Ask size \u00d7 10^9. Present side requires 1 through UINT64_MAX\u22121; absent side requires 0."
+    },
+    {
+      "name": "bid_count",
+      "bytes": 4,
+      "signed": false,
+      "meaning": "Integral bid order count for this level. Same presence/null rules as bid_order_count."
+    },
+    {
+      "name": "ask_count",
+      "bytes": 4,
+      "signed": false,
+      "meaning": "Integral ask order count for this level. Same presence/null rules as ask_order_count."
+    },
+    {
+      "name": "reserved",
+      "bytes": 8,
+      "signed": false,
+      "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+    }
+  ],
+  "schemas": [
+    {
+      "type": 1,
+      "name": "TRADE",
+      "version": 1,
+      "fixed_bytes": 88,
+      "fields": [
+        {
+          "name": "price",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Signed currency amount \u00d7 10^9. INT64_MIN is null. Negative and zero prices are allowed unless a specific action requires null."
+        },
+        {
+          "name": "quantity",
+          "bytes": 8,
+          "signed": false,
+          "kind": "quantity",
+          "meaning": "Nonnegative quantity in definition units \u00d7 10^9. UINT64_MAX is null. Action-specific rules distinguish positive size, zero, and null."
+        },
+        {
+          "name": "trade_id",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Nonzero trade identity within instrument/publisher/channel/container. Remains stable through correction and cancellation."
+        },
+        {
+          "name": "original_sequence",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "0 for NEW. CANCEL/CORRECT reference the original NEW sequence in the same scope, not the previous correction."
+        },
+        {
+          "name": "action",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "1 NEW, 2 CANCEL, 3 CORRECT. NEW introduces a trade; CORRECT replaces its values; CANCEL terminates it."
+        },
+        {
+          "name": "aggressor",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "0 unknown, 1 buyer, 2 seller. This is aggressor direction, not resting-order book side. CANCEL requires 0."
+        },
+        {
+          "name": "conditions",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "Bit 0 off-book. All other bits zero. CANCEL requires zero."
+        },
+        {
+          "name": "reserved",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        }
+      ],
+      "texts": [],
+      "has_levels": false
+    },
+    {
+      "type": 2,
+      "name": "QUOTE",
+      "version": 1,
+      "fixed_bytes": 96,
+      "fields": [
+        {
+          "name": "bid_price",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Signed bid price \u00d7 10^9. INT64_MIN means this side/level is absent; then its size and count must both be zero."
+        },
+        {
+          "name": "ask_price",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Signed ask price \u00d7 10^9. INT64_MIN means this side/level is absent; then its size and count must both be zero."
+        },
+        {
+          "name": "bid_quantity",
+          "bytes": 8,
+          "signed": false,
+          "kind": "quantity",
+          "meaning": "Bid size \u00d7 10^9. Present side requires 1 through UINT64_MAX\u22121; absent side requires 0."
+        },
+        {
+          "name": "ask_quantity",
+          "bytes": 8,
+          "signed": false,
+          "kind": "quantity",
+          "meaning": "Ask size \u00d7 10^9. Present side requires 1 through UINT64_MAX\u22121; absent side requires 0."
+        },
+        {
+          "name": "bid_order_count",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "Integral bid order count. Present side: positive or UINT32_MAX (unknown). Absent side: 0."
+        },
+        {
+          "name": "ask_order_count",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "Integral ask order count. Present side: positive or UINT32_MAX (unknown). Absent side: 0."
+        },
+        {
+          "name": "quote_flags",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "Bit 0 indicative. All other bits zero. This is a complete replacement of both quote sides."
+        },
+        {
+          "name": "reserved",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        }
+      ],
+      "texts": [],
+      "has_levels": false
+    },
+    {
+      "type": 3,
+      "name": "BAR",
+      "version": 1,
+      "fixed_bytes": 112,
+      "fields": [
+        {
+          "name": "interval_start_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "Inclusive start of a completed bar, POSIX ns, non-null and strictly less than interval_end_ns."
+        },
+        {
+          "name": "interval_end_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "Exclusive end of a completed bar, POSIX ns, non-null. Equal to common ts_event."
+        },
+        {
+          "name": "open",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "First trade price \u00d7 10^9 under the aggregation policy. Null only for empty bars."
+        },
+        {
+          "name": "high",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Maximum trade price \u00d7 10^9. Must be at least open and close; null only for empty bars."
+        },
+        {
+          "name": "low",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Minimum trade price \u00d7 10^9. Must be at most open and close; null only for empty bars."
+        },
+        {
+          "name": "close",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Last trade price \u00d7 10^9 under the aggregation policy. Null only for empty bars."
+        },
+        {
+          "name": "volume",
+          "bytes": 8,
+          "signed": false,
+          "kind": "quantity",
+          "meaning": "Traded quantity \u00d7 10^9, not currency turnover. Positive/non-null for nonempty bars; zero for empty bars."
+        },
+        {
+          "name": "trade_count",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "Positive integral count for nonempty bars; zero for empty bars. UINT32_MAX is not valid for this schema."
+        },
+        {
+          "name": "bar_flags",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "Bit 0 empty. Empty bars have four null prices, zero volume, and zero count. All other bits zero."
+        }
+      ],
+      "texts": [],
+      "has_levels": false
+    },
+    {
+      "type": 4,
+      "name": "MBO",
+      "version": 1,
+      "fixed_bytes": 88,
+      "fields": [
+        {
+          "name": "order_id",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Nonzero live-order key in the book scope. 0 only for CLEAR, SNAPSHOT_BEGIN, SNAPSHOT_END. IDs may be reused after deletion."
+        },
+        {
+          "name": "price",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Signed currency amount \u00d7 10^9. INT64_MIN is null. Negative and zero prices are allowed unless a specific action requires null."
+        },
+        {
+          "name": "quantity",
+          "bytes": 8,
+          "signed": false,
+          "kind": "quantity",
+          "meaning": "Nonnegative quantity in definition units \u00d7 10^9. UINT64_MAX is null. Action-specific rules distinguish positive size, zero, and null."
+        },
+        {
+          "name": "priority",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Ascending queue rank/key. UINT64_MAX means unknown. Lower known values have earlier priority at one side/price."
+        },
+        {
+          "name": "action",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "1 ADD, 2 MODIFY, 3 DELETE, 4 CLEAR, 5 SNAPSHOT_BEGIN, 6 SNAPSHOT_END. MODIFY sets absolute remaining size, never a delta."
+        },
+        {
+          "name": "side",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "0 none/control, 1 bid, 2 ask. ADD/MODIFY require bid/ask; DELETE and snapshot/control actions require 0."
+        },
+        {
+          "name": "mbo_flags",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "Zero in v1.0. No implied execution, partial-fill, or snapshot bits."
+        },
+        {
+          "name": "reserved",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        }
+      ],
+      "texts": [],
+      "has_levels": false
+    },
+    {
+      "type": 5,
+      "name": "BOOK_SNAPSHOT",
+      "version": 1,
+      "fixed_bytes": 56,
+      "fields": [
+        {
+          "name": "levels",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "Number of 48-byte paired bid/ask elements, 0\u20131024. Encoder derives it from the level array. Unequal depths use absent-side suffixes."
+        },
+        {
+          "name": "book_flags",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "Bit 0 depth-limited: deeper prices may exist. All other bits zero. Zero levels is a valid empty observed book."
+        },
+        {
+          "name": "reserved",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        }
+      ],
+      "texts": [],
+      "has_levels": true
+    },
+    {
+      "type": 6,
+      "name": "INSTRUMENT_DEF",
+      "version": 1,
+      "fixed_bytes": 112,
+      "fields": [
+        {
+          "name": "price_increment",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Minimum fixed price step \u00d7 10^9; positive or INT64_MIN (unknown/variable schedule). Does not change wire scale."
+        },
+        {
+          "name": "quantity_increment",
+          "bytes": 8,
+          "signed": false,
+          "kind": "quantity",
+          "meaning": "Quantity step in definition units \u00d7 10^9; positive or UINT64_MAX (unknown). Does not change wire scale."
+        },
+        {
+          "name": "contract_multiplier",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Signed fixed-point multiplier \u00d7 10^9; positive or INT64_MIN (unknown). No universal cash-value formula is implied."
+        },
+        {
+          "name": "expiration_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "Expiration instant in POSIX ns; UINT64_MAX if unavailable/not applicable."
+        },
+        {
+          "name": "underlying_instrument_id",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Same-publisher instrument ID; 0 when absent. Underlying definition need not be included in the container."
+        },
+        {
+          "name": "strike",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Strike price \u00d7 10^9; INT64_MIN if unavailable/not applicable. Not enough information to infer option right/style."
+        },
+        {
+          "name": "asset_class",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "0 unspecified, 1 equity, 2 future, 3 option, 4 FX, 5 crypto, 6 index, 7 fixed income."
+        },
+        {
+          "name": "reserved",
+          "bytes": 7,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        },
+        {
+          "name": "symbol_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of symbol, 1\u2013255. Computed, not character count."
+        },
+        {
+          "name": "venue_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of venue, 0\u2013255. Empty is allowed."
+        },
+        {
+          "name": "currency_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of currency code, 1\u201316."
+        },
+        {
+          "name": "quantity_unit_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of quantity-unit code, 1\u201332."
+        }
+      ],
+      "texts": [
+        "symbol",
+        "venue",
+        "currency",
+        "quantity_unit"
+      ],
+      "has_levels": false,
+      "text_limits": {
+        "symbol": [
+          1,
+          255
+        ],
+        "venue": [
+          0,
+          255
+        ],
+        "currency": [
+          1,
+          16
+        ],
+        "quantity_unit": [
+          1,
+          32
+        ]
+      }
+    },
+    {
+      "type": 7,
+      "name": "STATUS",
+      "version": 1,
+      "fixed_bytes": 64,
+      "fields": [
+        {
+          "name": "status",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "0 unknown, 1 pre-open, 2 open, 3 halted, 4 closed, 5 auction. Replacement administrative state; does not clear books."
+        },
+        {
+          "name": "reason",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "0 unspecified, 1 scheduled, 2 volatility, 3 regulatory, 4 technical."
+        },
+        {
+          "name": "status_flags",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "Zero in v1.0."
+        },
+        {
+          "name": "reserved",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        }
+      ],
+      "texts": [],
+      "has_levels": false
+    },
+    {
+      "type": 8,
+      "name": "GAP",
+      "version": 1,
+      "fixed_bytes": 80,
+      "fields": [
+        {
+          "name": "first_missing_source_sequence",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Inclusive first missing source-native sequence, or UINT64_MAX when unknown. Both endpoints must be null together."
+        },
+        {
+          "name": "last_missing_source_sequence",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Inclusive last missing source-native sequence, or UINT64_MAX when unknown. If known, first \u2264 last."
+        },
+        {
+          "name": "reason",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "1 source packet loss, 2 source reset, 3 producer overflow, 4 unknown discontinuity."
+        },
+        {
+          "name": "reserved",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        },
+        {
+          "name": "recovery_id",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Nonzero identifier unique among GAP records in this container. Diagnostic correlation only; not a snapshot ID."
+        }
+      ],
+      "texts": [],
+      "has_levels": false
+    },
+    {
+      "type": 9,
+      "name": "SYSTEM",
+      "version": 1,
+      "fixed_bytes": 64,
+      "fields": [
+        {
+          "name": "code",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "1 heartbeat, 2 info, 3 warning, 4 error. SYSTEM error does not replace END."
+        },
+        {
+          "name": "text_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of text, 0\u20134096. Heartbeat requires 0."
+        },
+        {
+          "name": "severity",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "0 info for heartbeat/info, 1 for warning, 2 for error. Must agree with code."
+        },
+        {
+          "name": "reserved",
+          "bytes": 3,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        },
+        {
+          "name": "related_recovery_id",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "0 or a previously emitted GAP recovery ID. Heartbeat requires 0."
+        }
+      ],
+      "texts": [
+        "text"
+      ],
+      "has_levels": false,
+      "text_limits": {
+        "text": [
+          0,
+          4096
+        ]
+      }
+    },
+    {
+      "type": 10,
+      "name": "VENUE_DEF",
+      "version": 1,
+      "fixed_bytes": 96,
+      "fields": [
+        {
+          "name": "created_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "Date the venue record was created, midnight UTC of the source date in POSIX ns; UINT64_MAX if unavailable."
+        },
+        {
+          "name": "updated_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "Date of the last change to the venue record, midnight UTC in POSIX ns; UINT64_MAX if unavailable."
+        },
+        {
+          "name": "expiry_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "Date the venue code expires, midnight UTC in POSIX ns; UINT64_MAX when the venue has no expiry."
+        },
+        {
+          "name": "kind",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "1 operating venue, 2 market segment. An operating venue requires mic equal to operating_mic."
+        },
+        {
+          "name": "status",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "1 active, 2 updated, 3 expired."
+        },
+        {
+          "name": "mic_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of mic, exactly 4. Computed, not character count."
+        },
+        {
+          "name": "operating_mic_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of operating_mic, exactly 4. Computed, not character count."
+        },
+        {
+          "name": "country_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of country, exactly 2. Computed, not character count."
+        },
+        {
+          "name": "category_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of category, 0 or 4. Computed, not character count."
+        },
+        {
+          "name": "acronym_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of acronym, 0\u201364. Computed, not character count."
+        },
+        {
+          "name": "city_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of city, 0\u2013128. Computed, not character count."
+        },
+        {
+          "name": "name_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of name, 1\u2013255. Computed, not character count."
+        },
+        {
+          "name": "legal_entity_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of legal_entity, 0\u2013255. Computed, not character count."
+        },
+        {
+          "name": "lei_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of lei, 0 or 20. Computed, not character count."
+        },
+        {
+          "name": "reserved",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        }
+      ],
+      "texts": [
+        "mic",
+        "operating_mic",
+        "country",
+        "category",
+        "acronym",
+        "city",
+        "name",
+        "legal_entity",
+        "lei"
+      ],
+      "has_levels": false,
+      "enums": {
+        "kind": [
+          1,
+          2
+        ],
+        "status": [
+          1,
+          2,
+          3
+        ]
+      },
+      "text_limits": {
+        "mic": [
+          4,
+          4
+        ],
+        "operating_mic": [
+          4,
+          4
+        ],
+        "country": [
+          2,
+          2
+        ],
+        "acronym": [
+          0,
+          64
+        ],
+        "city": [
+          0,
+          128
+        ],
+        "name": [
+          1,
+          255
+        ],
+        "legal_entity": [
+          0,
+          255
+        ]
+      },
+      "text_exact": {
+        "category": [
+          0,
+          4
+        ],
+        "lei": [
+          0,
+          20
+        ]
+      }
+    },
+    {
+      "type": 11,
+      "name": "OPTION_DEF",
+      "version": 1,
+      "fixed_bytes": 96,
+      "fields": [
+        {
+          "name": "underlying_instrument_id",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Same-publisher instrument ID of the underlying; 0 when it has no ID in this namespace, which requires a non-empty underlying_symbol."
+        },
+        {
+          "name": "expiration_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "Expiration instant in POSIX ns. Non-null. Equals the INSTRUMENT_DEF expiration when one exists."
+        },
+        {
+          "name": "strike",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Strike price \u00d7 10^9. Non-null. Equals the INSTRUMENT_DEF strike when one exists."
+        },
+        {
+          "name": "contract_multiplier",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Signed fixed-point multiplier \u00d7 10^9; positive or INT64_MIN (unknown)."
+        },
+        {
+          "name": "right",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "1 call, 2 put."
+        },
+        {
+          "name": "exercise_style",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "0 unknown, 1 American, 2 European. Never inferred from the symbol."
+        },
+        {
+          "name": "settlement",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "0 unknown, 1 physical, 2 cash. Never inferred from the symbol."
+        },
+        {
+          "name": "closing_type",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "0 unknown, 1 normal hours, 2 late hours."
+        },
+        {
+          "name": "option_flags",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "Bit 0 pending; bit 1 adjusted (non-standard deliverable). All other bits zero."
+        },
+        {
+          "name": "reserved",
+          "bytes": 3,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        },
+        {
+          "name": "root_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of root, 1\u201316. Computed, not character count."
+        },
+        {
+          "name": "underlying_symbol_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of underlying_symbol, 0\u2013255. Computed, not character count."
+        },
+        {
+          "name": "osi_symbol_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of osi_symbol, 0 or 21. Computed, not character count."
+        },
+        {
+          "name": "currency_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of currency, 0\u201316. Computed, not character count."
+        }
+      ],
+      "texts": [
+        "root",
+        "underlying_symbol",
+        "osi_symbol",
+        "currency"
+      ],
+      "has_levels": false,
+      "enums": {
+        "right": [
+          1,
+          2
+        ],
+        "exercise_style": [
+          0,
+          1,
+          2
+        ],
+        "settlement": [
+          0,
+          1,
+          2
+        ],
+        "closing_type": [
+          0,
+          1,
+          2
+        ]
+      },
+      "masks": {
+        "option_flags": 3
+      },
+      "text_limits": {
+        "root": [
+          1,
+          16
+        ],
+        "underlying_symbol": [
+          0,
+          255
+        ],
+        "currency": [
+          0,
+          16
+        ]
+      },
+      "text_exact": {
+        "osi_symbol": [
+          0,
+          21
+        ]
+      }
+    },
+    {
+      "type": 12,
+      "name": "LISTING",
+      "version": 1,
+      "fixed_bytes": 72,
+      "fields": [
+        {
+          "name": "round_lot",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "Round-lot size as an integral count of units; UINT32_MAX if unavailable. Not scaled by 10^9."
+        },
+        {
+          "name": "listing_flags",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "Bit 0 ETF; bit 1 test issue; bit 2 NextShares. All other bits zero."
+        },
+        {
+          "name": "market_tier",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "0 unspecified, 1 global select, 2 global, 3 capital."
+        },
+        {
+          "name": "financial_flags",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "Bit 0 reported; bit 1 deficient; bit 2 delinquent; bit 3 bankrupt. Bits 1\u20133 require bit 0. Value 1 is normal; 0 means the source reports no financial status."
+        },
+        {
+          "name": "reserved",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        },
+        {
+          "name": "symbol_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of symbol, 1\u2013255. Computed, not character count."
+        },
+        {
+          "name": "name_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of name, 0\u2013512. Computed, not character count."
+        },
+        {
+          "name": "listing_mic_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of listing_mic, 0 or 4. Computed, not character count."
+        },
+        {
+          "name": "cqs_symbol_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of cqs_symbol, 0\u2013255. Computed, not character count."
+        },
+        {
+          "name": "alt_symbol_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of alt_symbol, 0\u2013255. Computed, not character count."
+        },
+        {
+          "name": "reserved",
+          "bytes": 6,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        }
+      ],
+      "texts": [
+        "symbol",
+        "name",
+        "listing_mic",
+        "cqs_symbol",
+        "alt_symbol"
+      ],
+      "has_levels": false,
+      "enums": {
+        "market_tier": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      "masks": {
+        "listing_flags": 7,
+        "financial_flags": 15
+      },
+      "text_limits": {
+        "symbol": [
+          1,
+          255
+        ],
+        "name": [
+          0,
+          512
+        ],
+        "cqs_symbol": [
+          0,
+          255
+        ],
+        "alt_symbol": [
+          0,
+          255
+        ]
+      },
+      "text_exact": {
+        "listing_mic": [
+          0,
+          4
+        ]
+      }
+    },
+    {
+      "type": 13,
+      "name": "STATISTICS",
+      "version": 1,
+      "fixed_bytes": 80,
+      "fields": [
+        {
+          "name": "ts_ref",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "Start of the session or date the value refers to, POSIX ns; UINT64_MAX if unavailable."
+        },
+        {
+          "name": "price",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Value \u00d7 10^9 for price statistics (types 1\u20136). Non-null for SET of a price type; INT64_MIN otherwise."
+        },
+        {
+          "name": "quantity",
+          "bytes": 8,
+          "signed": false,
+          "kind": "quantity",
+          "meaning": "Value \u00d7 10^9 for quantity statistics (types 7\u20138). Non-null for SET of a quantity type; UINT64_MAX otherwise."
+        },
+        {
+          "name": "stat_type",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "1 open, 2 high, 3 low, 4 close, 5 settlement, 6 VWAP (price types); 7 volume, 8 open interest (quantity types)."
+        },
+        {
+          "name": "action",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "1 SET, 2 DELETE. SET replaces the value for (instrument, stat_type, ts_ref); DELETE withdraws it and requires both values null."
+        },
+        {
+          "name": "stat_flags",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "Bit 0 preliminary. All other bits zero. DELETE requires zero."
+        },
+        {
+          "name": "reserved",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        }
+      ],
+      "texts": [],
+      "has_levels": false,
+      "enums": {
+        "stat_type": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "action": [
+          1,
+          2
+        ]
+      },
+      "masks": {
+        "stat_flags": 1
+      }
+    },
+    {
+      "type": 14,
+      "name": "OPTION_ANALYTICS",
+      "version": 1,
+      "fixed_bytes": 120,
+      "fields": [
+        {
+          "name": "implied_volatility",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Annualised implied volatility \u00d7 10^9 (1.0 = 100%). INT64_MIN is null; otherwise not negative."
+        },
+        {
+          "name": "delta",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Delta \u00d7 10^9. INT64_MIN is null; otherwise within \u22121 to +1."
+        },
+        {
+          "name": "gamma",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Gamma \u00d7 10^9, per 1.00 move in the underlying. INT64_MIN is null; otherwise not negative."
+        },
+        {
+          "name": "theta",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Theta \u00d7 10^9, currency per calendar day. INT64_MIN is null."
+        },
+        {
+          "name": "vega",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Vega \u00d7 10^9, currency per 0.01 change in volatility. INT64_MIN is null."
+        },
+        {
+          "name": "rho",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Rho \u00d7 10^9, currency per 0.01 change in rate. INT64_MIN is null."
+        },
+        {
+          "name": "underlying_price",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Underlying price \u00d7 10^9 used for the calculation. INT64_MIN is null."
+        },
+        {
+          "name": "theoretical_price",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Model price of the option \u00d7 10^9. INT64_MIN is null."
+        },
+        {
+          "name": "price_basis",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "0 unspecified, 1 mid, 2 last, 3 bid, 4 ask, 5 settlement."
+        },
+        {
+          "name": "model",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "0 unspecified, 1 Black-Scholes-Merton, 2 Black-76, 3 binomial, 4 other."
+        },
+        {
+          "name": "reserved",
+          "bytes": 6,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        }
+      ],
+      "texts": [],
+      "has_levels": false,
+      "enums": {
+        "price_basis": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "model": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    },
+    {
+      "type": 15,
+      "name": "BOOK_DELTA",
+      "version": 1,
+      "fixed_bytes": 72,
+      "fields": [
+        {
+          "name": "price",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Level price \u00d7 10^9. Non-null for SET and DELETE; INT64_MIN for CLEAR. Levels are keyed by price, not rank."
+        },
+        {
+          "name": "quantity",
+          "bytes": 8,
+          "signed": false,
+          "kind": "quantity",
+          "meaning": "New aggregate size at this price \u00d7 10^9. SET: 1 through UINT64_MAX\u22121. DELETE and CLEAR: 0."
+        },
+        {
+          "name": "order_count",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "Integral order count at the level; UINT32_MAX if unknown. DELETE and CLEAR require UINT32_MAX."
+        },
+        {
+          "name": "action",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "1 SET, 2 DELETE, 3 CLEAR. SET adds or replaces a level; CLEAR empties one side or the whole book."
+        },
+        {
+          "name": "side",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "1 bid, 2 ask, 0 both. 0 is valid only for CLEAR."
+        },
+        {
+          "name": "delta_flags",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "Bit 0 LAST_IN_EVENT: the last delta of one source event. All other bits zero."
+        },
+        {
+          "name": "reserved",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        }
+      ],
+      "texts": [],
+      "has_levels": false,
+      "enums": {
+        "action": [
+          1,
+          2,
+          3
+        ],
+        "side": [
+          0,
+          1,
+          2
+        ]
+      },
+      "masks": {
+        "delta_flags": 1
+      }
+    },
+    {
+      "type": 16,
+      "name": "IMBALANCE",
+      "version": 1,
+      "fixed_bytes": 104,
+      "fields": [
+        {
+          "name": "auction_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "Scheduled auction time in POSIX ns; UINT64_MAX if unavailable."
+        },
+        {
+          "name": "reference_price",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Reference price \u00d7 10^9 for the imbalance. Non-null."
+        },
+        {
+          "name": "near_price",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Indicative price \u00d7 10^9 from auction and continuous interest; INT64_MIN if unavailable."
+        },
+        {
+          "name": "far_price",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Indicative price \u00d7 10^9 from auction interest only; INT64_MIN if unavailable."
+        },
+        {
+          "name": "paired_quantity",
+          "bytes": 8,
+          "signed": false,
+          "kind": "quantity",
+          "meaning": "Quantity \u00d7 10^9 matched at the reference price; UINT64_MAX if unavailable."
+        },
+        {
+          "name": "imbalance_quantity",
+          "bytes": 8,
+          "signed": false,
+          "kind": "quantity",
+          "meaning": "Unmatched quantity \u00d7 10^9. Non-null; zero exactly when imbalance_side is 0."
+        },
+        {
+          "name": "imbalance_side",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "0 none, 1 buy, 2 sell."
+        },
+        {
+          "name": "auction_type",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "0 unspecified, 1 opening, 2 closing, 3 reopening, 4 IPO, 5 intraday."
+        },
+        {
+          "name": "reserved",
+          "bytes": 6,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        }
+      ],
+      "texts": [],
+      "has_levels": false,
+      "enums": {
+        "imbalance_side": [
+          0,
+          1,
+          2
+        ],
+        "auction_type": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    },
+    {
+      "type": 17,
+      "name": "SYMBOL_MAP",
+      "version": 1,
+      "fixed_bytes": 72,
+      "fields": [
+        {
+          "name": "valid_from_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "Inclusive start of the mapping interval in POSIX ns. Non-null."
+        },
+        {
+          "name": "valid_to_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "Exclusive end of the mapping interval in POSIX ns; UINT64_MAX means open-ended. Otherwise greater than valid_from_ns."
+        },
+        {
+          "name": "symbology",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "1 native, 2 OSI, 3 ISIN, 4 FIGI, 5 root, 6 continuous. Root is one-to-many; the others name one instrument at any time."
+        },
+        {
+          "name": "reserved",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        },
+        {
+          "name": "symbol_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of symbol, 1\u2013255. Computed, not character count."
+        },
+        {
+          "name": "reserved",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        }
+      ],
+      "texts": [
+        "symbol"
+      ],
+      "has_levels": false,
+      "enums": {
+        "symbology": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ]
+      },
+      "text_limits": {
+        "symbol": [
+          1,
+          255
+        ]
+      }
+    },
+    {
+      "type": 18,
+      "name": "TRADE_QUOTE",
+      "version": 1,
+      "fixed_bytes": 120,
+      "fields": [
+        {
+          "name": "price",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Trade price \u00d7 10^9. Non-null."
+        },
+        {
+          "name": "quantity",
+          "bytes": 8,
+          "signed": false,
+          "kind": "quantity",
+          "meaning": "Trade size \u00d7 10^9. Positive and non-null."
+        },
+        {
+          "name": "trade_id",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Trade identity within instrument/publisher/channel/container; 0 when unknown."
+        },
+        {
+          "name": "bid_price",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Signed bid price \u00d7 10^9. INT64_MIN means the bid side is absent; then its size and count must both be zero."
+        },
+        {
+          "name": "ask_price",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Signed ask price \u00d7 10^9. INT64_MIN means the ask side is absent; then its size and count must both be zero."
+        },
+        {
+          "name": "bid_quantity",
+          "bytes": 8,
+          "signed": false,
+          "kind": "quantity",
+          "meaning": "Bid size \u00d7 10^9. Present side requires 1 through UINT64_MAX\u22121; absent side requires 0."
+        },
+        {
+          "name": "ask_quantity",
+          "bytes": 8,
+          "signed": false,
+          "kind": "quantity",
+          "meaning": "Ask size \u00d7 10^9. Present side requires 1 through UINT64_MAX\u22121; absent side requires 0."
+        },
+        {
+          "name": "bid_order_count",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "Integral bid order count. Present side: positive or UINT32_MAX (unknown). Absent side: 0."
+        },
+        {
+          "name": "ask_order_count",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "Integral ask order count. Present side: positive or UINT32_MAX (unknown). Absent side: 0."
+        },
+        {
+          "name": "aggressor",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "0 unknown, 1 buyer, 2 seller. Aggressor direction, not resting-order book side."
+        },
+        {
+          "name": "reserved",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        },
+        {
+          "name": "conditions",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "Bit 0 off-book. All other bits zero."
+        },
+        {
+          "name": "reserved",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        }
+      ],
+      "texts": [],
+      "has_levels": false,
+      "enums": {
+        "aggressor": [
+          0,
+          1,
+          2
+        ]
+      },
+      "masks": {
+        "conditions": 1
+      }
+    },
+    {
+      "type": 19,
+      "name": "BEST_QUOTE",
+      "version": 1,
+      "fixed_bytes": 112,
+      "fields": [
+        {
+          "name": "bid_price",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Signed bid price \u00d7 10^9. INT64_MIN means the bid side is absent; then its size and count must both be zero."
+        },
+        {
+          "name": "ask_price",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Signed ask price \u00d7 10^9. INT64_MIN means the ask side is absent; then its size and count must both be zero."
+        },
+        {
+          "name": "bid_quantity",
+          "bytes": 8,
+          "signed": false,
+          "kind": "quantity",
+          "meaning": "Bid size \u00d7 10^9. Present side requires 1 through UINT64_MAX\u22121; absent side requires 0."
+        },
+        {
+          "name": "ask_quantity",
+          "bytes": 8,
+          "signed": false,
+          "kind": "quantity",
+          "meaning": "Ask size \u00d7 10^9. Present side requires 1 through UINT64_MAX\u22121; absent side requires 0."
+        },
+        {
+          "name": "bid_order_count",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "Integral bid order count. Present side: positive or UINT32_MAX (unknown). Absent side: 0."
+        },
+        {
+          "name": "ask_order_count",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "Integral ask order count. Present side: positive or UINT32_MAX (unknown). Absent side: 0."
+        },
+        {
+          "name": "quote_flags",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "Bit 0 indicative. All other bits zero."
+        },
+        {
+          "name": "bid_publisher_id",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "Declared publisher that set the bid; 0 when the side is absent or the venue is unknown."
+        },
+        {
+          "name": "ask_publisher_id",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "Declared publisher that set the ask; 0 when the side is absent or the venue is unknown."
+        },
+        {
+          "name": "reserved",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        },
+        {
+          "name": "interval_ns",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "0 for an event-driven quote; otherwise the sampling interval in ns, with ts_event at the interval end. A duration, not a timestamp."
+        }
+      ],
+      "texts": [],
+      "has_levels": false,
+      "masks": {
+        "quote_flags": 1
+      }
+    },
+    {
+      "type": 20,
+      "name": "FRAME_SUMMARY",
+      "version": 1,
+      "fixed_bytes": 104,
+      "fields": [
+        {
+          "name": "data_frame_seq",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "frame_seq of the DATA frame this record describes."
+        },
+        {
+          "name": "data_frame_offset",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Byte offset of that frame header, absolute from container byte 0."
+        },
+        {
+          "name": "stored_bytes",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "stored_bytes of that frame, so its payload can be fetched in one read."
+        },
+        {
+          "name": "codec",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "Codec of that frame: 0 raw, 1 Zstd."
+        },
+        {
+          "name": "summary_flags",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "Bit 0: the frame has a record with null ts_event. Bit 1: non-null ts_event is non-decreasing within the frame. All other bits zero."
+        },
+        {
+          "name": "reserved",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        },
+        {
+          "name": "type_mask",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Bit n (1\u201363) set when standard record type n is present in the frame; bit 0 set when any other type is present."
+        },
+        {
+          "name": "min_instrument_id",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Smallest non-zero instrument ID in the frame; 0 when none."
+        },
+        {
+          "name": "max_instrument_id",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Largest non-zero instrument ID in the frame; 0 when none."
+        },
+        {
+          "name": "reserved",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        }
+      ],
+      "texts": [],
+      "has_levels": false,
+      "enums": {
+        "codec": [
+          0,
+          1
+        ]
+      },
+      "masks": {
+        "summary_flags": 3
+      }
+    },
+    {
+      "type": 21,
+      "name": "SECURITY_DEF",
+      "version": 1,
+      "fixed_bytes": 216,
+      "fields": [
+        {
+          "name": "listing_group_id",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Producer identifier that groups the listings of one security; 0 when none."
+        },
+        {
+          "name": "security_id",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Producer identifier of the security; 0 when none."
+        },
+        {
+          "name": "issuer_id",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Producer identifier of the issuer; 0 when none."
+        },
+        {
+          "name": "listing_created_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "When the listing record was created at the source, POSIX ns; UINT64_MAX if unavailable."
+        },
+        {
+          "name": "listing_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "Listing date, POSIX ns; UINT64_MAX if unavailable."
+        },
+        {
+          "name": "delisting_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "Delisting date, POSIX ns; UINT64_MAX when the listing is not delisted or the date is unavailable."
+        },
+        {
+          "name": "shares_outstanding",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Shares outstanding as a whole count, not scaled by 10^9 (large issuers exceed the scaled range); UINT64_MAX if unavailable."
+        },
+        {
+          "name": "shares_outstanding_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "Date the shares-outstanding figure refers to, POSIX ns; UINT64_MAX if unavailable."
+        },
+        {
+          "name": "lot_size",
+          "bytes": 8,
+          "signed": false,
+          "kind": "quantity",
+          "meaning": "Trading lot size \u00d7 10^9; UINT64_MAX if unavailable."
+        },
+        {
+          "name": "par_value",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Par value \u00d7 10^9 in par_value_currency; INT64_MIN if unavailable."
+        },
+        {
+          "name": "votes_per_share",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Votes per share \u00d7 10^9; INT64_MIN if unavailable."
+        },
+        {
+          "name": "cik",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Regulatory central index key of the issuer; 0 when none."
+        },
+        {
+          "name": "sic",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "Standard industrial classification code; 0 when none."
+        },
+        {
+          "name": "naics",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "North American industry classification code; 0 when none."
+        },
+        {
+          "name": "listing_source",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "0 unknown, 1 main, 2 secondary."
+        },
+        {
+          "name": "security_flags",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "Bit 0 multi-currency. All other bits zero."
+        },
+        {
+          "name": "reserved",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        },
+        {
+          "name": "issuer_name_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of issuer_name, 0\u2013255. Computed, not character count."
+        },
+        {
+          "name": "description_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of description, 0\u2013255. Computed, not character count."
+        },
+        {
+          "name": "security_type_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of security_type, 0\u20138. Computed, not character count."
+        },
+        {
+          "name": "structure_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of structure, 0\u20138. Computed, not character count."
+        },
+        {
+          "name": "listing_status_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of listing_status, 0\u20138. Computed, not character count."
+        },
+        {
+          "name": "voting_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of voting, 0\u20138. Computed, not character count."
+        },
+        {
+          "name": "primary_exchange_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of primary_exchange, 0\u201316. Computed, not character count."
+        },
+        {
+          "name": "exchange_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of exchange, 0\u201316. Computed, not character count."
+        },
+        {
+          "name": "operating_mic_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of operating_mic, 0 or 4. Computed, not character count."
+        },
+        {
+          "name": "segment_mic_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of segment_mic, 0 or 4. Computed, not character count."
+        },
+        {
+          "name": "segment_name_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of segment_name, 0\u2013128. Computed, not character count."
+        },
+        {
+          "name": "symbol_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of symbol, 0\u2013255. Computed, not character count."
+        },
+        {
+          "name": "alt_symbol_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of alt_symbol, 0\u2013255. Computed, not character count."
+        },
+        {
+          "name": "local_code_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of local_code, 0\u2013255. Computed, not character count."
+        },
+        {
+          "name": "isin_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of isin, 0 or 12. Computed, not character count."
+        },
+        {
+          "name": "cusip_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of cusip, 0 or 9. Computed, not character count."
+        },
+        {
+          "name": "composite_figi_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of composite_figi, 0 or 12. Computed, not character count."
+        },
+        {
+          "name": "composite_ticker_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of composite_ticker, 0\u201332. Computed, not character count."
+        },
+        {
+          "name": "figi_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of figi, 0 or 12. Computed, not character count."
+        },
+        {
+          "name": "figi_ticker_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of figi_ticker, 0\u201332. Computed, not character count."
+        },
+        {
+          "name": "fisn_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of fisn, 0\u201335. Computed, not character count."
+        },
+        {
+          "name": "lei_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of lei, 0 or 20. Computed, not character count."
+        },
+        {
+          "name": "cfi_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of cfi, 0 or 6. Computed, not character count."
+        },
+        {
+          "name": "cic_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of cic, 0\u20138. Computed, not character count."
+        },
+        {
+          "name": "gics_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of gics, 0\u20138. Computed, not character count."
+        },
+        {
+          "name": "incorporation_country_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of incorporation_country, 0 or 2. Computed, not character count."
+        },
+        {
+          "name": "listing_country_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of listing_country, 0 or 2. Computed, not character count."
+        },
+        {
+          "name": "register_country_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of register_country, 0 or 2. Computed, not character count."
+        },
+        {
+          "name": "trading_currency_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of trading_currency, 0\u201316. Computed, not character count."
+        },
+        {
+          "name": "par_value_currency_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of par_value_currency, 0\u201316. Computed, not character count."
+        }
+      ],
+      "texts": [
+        "issuer_name",
+        "description",
+        "security_type",
+        "structure",
+        "listing_status",
+        "voting",
+        "primary_exchange",
+        "exchange",
+        "operating_mic",
+        "segment_mic",
+        "segment_name",
+        "symbol",
+        "alt_symbol",
+        "local_code",
+        "isin",
+        "cusip",
+        "composite_figi",
+        "composite_ticker",
+        "figi",
+        "figi_ticker",
+        "fisn",
+        "lei",
+        "cfi",
+        "cic",
+        "gics",
+        "incorporation_country",
+        "listing_country",
+        "register_country",
+        "trading_currency",
+        "par_value_currency"
+      ],
+      "has_levels": false,
+      "enums": {
+        "listing_source": [
+          0,
+          1,
+          2
+        ]
+      },
+      "masks": {
+        "security_flags": 1
+      },
+      "text_limits": {
+        "issuer_name": [
+          0,
+          255
+        ],
+        "description": [
+          0,
+          255
+        ],
+        "security_type": [
+          0,
+          8
+        ],
+        "structure": [
+          0,
+          8
+        ],
+        "listing_status": [
+          0,
+          8
+        ],
+        "voting": [
+          0,
+          8
+        ],
+        "primary_exchange": [
+          0,
+          16
+        ],
+        "exchange": [
+          0,
+          16
+        ],
+        "segment_name": [
+          0,
+          128
+        ],
+        "symbol": [
+          0,
+          255
+        ],
+        "alt_symbol": [
+          0,
+          255
+        ],
+        "local_code": [
+          0,
+          255
+        ],
+        "composite_ticker": [
+          0,
+          32
+        ],
+        "figi_ticker": [
+          0,
+          32
+        ],
+        "fisn": [
+          0,
+          35
+        ],
+        "cic": [
+          0,
+          8
+        ],
+        "gics": [
+          0,
+          8
+        ],
+        "trading_currency": [
+          0,
+          16
+        ],
+        "par_value_currency": [
+          0,
+          16
+        ]
+      },
+      "text_exact": {
+        "operating_mic": [
+          0,
+          4
+        ],
+        "segment_mic": [
+          0,
+          4
+        ],
+        "isin": [
+          0,
+          12
+        ],
+        "cusip": [
+          0,
+          9
+        ],
+        "composite_figi": [
+          0,
+          12
+        ],
+        "figi": [
+          0,
+          12
+        ],
+        "lei": [
+          0,
+          20
+        ],
+        "cfi": [
+          0,
+          6
+        ],
+        "incorporation_country": [
+          0,
+          2
+        ],
+        "listing_country": [
+          0,
+          2
+        ],
+        "register_country": [
+          0,
+          2
+        ]
+      }
+    },
+    {
+      "type": 22,
+      "name": "CORPORATE_ACTION",
+      "version": 1,
+      "fixed_bytes": 184,
+      "fields": [
+        {
+          "name": "security_id",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Producer identifier of the security; 0 when none."
+        },
+        {
+          "name": "issuer_id",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Producer identifier of the issuer; 0 when none."
+        },
+        {
+          "name": "created_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "When the event record was created at the source, POSIX ns; UINT64_MAX if unavailable."
+        },
+        {
+          "name": "effective_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "Effective date, POSIX ns; UINT64_MAX if unavailable."
+        },
+        {
+          "name": "ex_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "Ex-date, POSIX ns; UINT64_MAX if unavailable."
+        },
+        {
+          "name": "record_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "Record date, POSIX ns; UINT64_MAX if unavailable."
+        },
+        {
+          "name": "payment_ns",
+          "bytes": 8,
+          "signed": false,
+          "kind": "time",
+          "meaning": "Payment date, POSIX ns; UINT64_MAX if unavailable."
+        },
+        {
+          "name": "record_date_id",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Producer identifier of the record-date entry; 0 when none."
+        },
+        {
+          "name": "outturn_security_id",
+          "bytes": 8,
+          "signed": false,
+          "meaning": "Producer identifier of the resulting security; 0 when none."
+        },
+        {
+          "name": "ratio_old",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "Old side of the ratio \u00d7 10^9 (for a 4-for-1 split: 1); INT64_MIN if unavailable."
+        },
+        {
+          "name": "ratio_new",
+          "bytes": 8,
+          "signed": true,
+          "kind": "price",
+          "meaning": "New side of the ratio \u00d7 10^9 (for a 4-for-1 split: 4); INT64_MIN if unavailable."
+        },
+        {
+          "name": "option_id",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "Option number within the event; UINT32_MAX if unavailable."
+        },
+        {
+          "name": "serial_id",
+          "bytes": 4,
+          "signed": false,
+          "meaning": "Serial number within the option; UINT32_MAX if unavailable."
+        },
+        {
+          "name": "action_flags",
+          "bytes": 1,
+          "signed": false,
+          "meaning": "Bit 0 default option. All other bits zero."
+        },
+        {
+          "name": "reserved",
+          "bytes": 3,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        },
+        {
+          "name": "event_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of event, 1\u20138. Computed, not character count."
+        },
+        {
+          "name": "subtype_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of subtype, 0\u201316. Computed, not character count."
+        },
+        {
+          "name": "action_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of action, 0\u20138. Computed, not character count."
+        },
+        {
+          "name": "status_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of status, 0\u20138. Computed, not character count."
+        },
+        {
+          "name": "participation_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of participation, 0\u20138. Computed, not character count."
+        },
+        {
+          "name": "payment_type_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of payment_type, 0\u20138. Computed, not character count."
+        },
+        {
+          "name": "fraction_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of fraction, 0\u20138. Computed, not character count."
+        },
+        {
+          "name": "date_label_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of date_label, 0\u201332. Computed, not character count."
+        },
+        {
+          "name": "related_event_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of related_event, 0\u20138. Computed, not character count."
+        },
+        {
+          "name": "related_event_id_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of related_event_id, 0\u201332. Computed, not character count."
+        },
+        {
+          "name": "event_id_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of event_id, 1\u201332. Computed, not character count."
+        },
+        {
+          "name": "unique_id_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of unique_id, 1\u201348. Computed, not character count."
+        },
+        {
+          "name": "rate_currency_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of rate_currency, 0\u201316. Computed, not character count."
+        },
+        {
+          "name": "outturn_isin_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of outturn_isin, 0 or 12. Computed, not character count."
+        },
+        {
+          "name": "details_bytes",
+          "bytes": 2,
+          "signed": false,
+          "meaning": "UTF-8 byte length of details, 0\u201365535. Computed, not character count."
+        },
+        {
+          "name": "reserved",
+          "bytes": 6,
+          "signed": false,
+          "meaning": "All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage."
+        }
+      ],
+      "texts": [
+        "event",
+        "subtype",
+        "action",
+        "status",
+        "participation",
+        "payment_type",
+        "fraction",
+        "date_label",
+        "related_event",
+        "related_event_id",
+        "event_id",
+        "unique_id",
+        "rate_currency",
+        "outturn_isin",
+        "details"
+      ],
+      "has_levels": false,
+      "masks": {
+        "action_flags": 1
+      },
+      "text_limits": {
+        "event": [
+          1,
+          8
+        ],
+        "subtype": [
+          0,
+          16
+        ],
+        "action": [
+          0,
+          8
+        ],
+        "status": [
+          0,
+          8
+        ],
+        "participation": [
+          0,
+          8
+        ],
+        "payment_type": [
+          0,
+          8
+        ],
+        "fraction": [
+          0,
+          8
+        ],
+        "date_label": [
+          0,
+          32
+        ],
+        "related_event": [
+          0,
+          8
+        ],
+        "related_event_id": [
+          0,
+          32
+        ],
+        "event_id": [
+          1,
+          32
+        ],
+        "unique_id": [
+          1,
+          48
+        ],
+        "rate_currency": [
+          0,
+          16
+        ],
+        "details": [
+          0,
+          65535
+        ]
+      },
+      "text_exact": {
+        "outturn_isin": [
+          0,
+          12
+        ]
+      }
+    }
+  ]
+}

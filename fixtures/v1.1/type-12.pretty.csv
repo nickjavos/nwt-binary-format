@@ -1,0 +1,6 @@
+record_bytes,record_type,schema_version,flags,publisher_id,channel_id,instrument_id,ts_event,ts_recv,sequence,round_lot,listing_flags,market_tier,financial_flags,symbol_bytes,name_bytes,listing_mic_bytes,cqs_symbol_bytes,alt_symbol_bytes,symbol,name,listing_mic,cqs_symbol,alt_symbol
+120,12,1,0,1,0,2001,,2025-10-09T08:53:20.000005100Z,6,100,0,1,1,4,32,4,4,4,NWTX,NWT Example Corp. - Common Stock,XNWT,NWTX,NWTX
+112,12,1,0,1,0,2003,,2025-10-09T08:53:20.000006100Z,7,100,1,2,3,4,21,4,0,5,NWTE,NWT Example Index ETF,XNWT,,NWT.E
+80,12,1,0,1,0,2005,,,8,4294967295,0,0,0,3,0,0,0,0,MIN,,,,
+128,12,1,0,1,0,2006,,2025-10-09T08:53:20.000008100Z,9,10,2,0,0,4,40,0,5,0,AWKW,"Awkward, ""Quoted"" \ Name
+Line two café",,AWK.W,

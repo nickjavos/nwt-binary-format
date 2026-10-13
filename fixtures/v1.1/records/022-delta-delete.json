@@ -1,0 +1,25 @@
+{
+  "label": "delta-delete",
+  "type": 15,
+  "fields": {
+    "record_bytes": "72",
+    "record_type": "15",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "2001",
+    "ts_event": "1760000060000004000",
+    "ts_recv": "1760000060000004100",
+    "sequence": "22",
+    "price": "149230000000",
+    "quantity": "0",
+    "order_count": "4294967295",
+    "action": "2",
+    "side": "1",
+    "delta_flags": "1",
+    "reserved": "0"
+  },
+  "texts": {},
+  "levels": []
+}

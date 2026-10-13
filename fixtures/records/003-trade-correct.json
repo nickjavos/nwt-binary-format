@@ -1,0 +1,26 @@
+{
+  "label": "trade-correct",
+  "type": 1,
+  "fields": {
+    "record_bytes": "88",
+    "record_type": "1",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "1001",
+    "ts_event": "1700000000000002000",
+    "ts_recv": "1700000000000002100",
+    "sequence": "3",
+    "price": "123460000000",
+    "quantity": "12000000000",
+    "trade_id": "42",
+    "original_sequence": "2",
+    "action": "3",
+    "aggressor": "2",
+    "conditions": "1",
+    "reserved": "0"
+  },
+  "texts": {},
+  "levels": []
+}

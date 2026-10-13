@@ -1,0 +1,25 @@
+{
+  "label": "stat-settlement-preliminary",
+  "type": 13,
+  "fields": {
+    "record_bytes": "80",
+    "record_type": "13",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "2001",
+    "ts_event": "1760000060000010000",
+    "ts_recv": "1760000060000010100",
+    "sequence": "28",
+    "ts_ref": "1759968000000000000",
+    "price": "149300000000",
+    "quantity": "18446744073709551615",
+    "stat_type": "5",
+    "action": "1",
+    "stat_flags": "1",
+    "reserved": "0"
+  },
+  "texts": {},
+  "levels": []
+}

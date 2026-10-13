@@ -1,0 +1,25 @@
+{
+  "label": "symbol-map-native",
+  "type": 17,
+  "fields": {
+    "record_bytes": "80",
+    "record_type": "17",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "2001",
+    "ts_event": "1760000000000011000",
+    "ts_recv": "1760000000000011100",
+    "sequence": "12",
+    "valid_from_ns": "1577923200000000000",
+    "valid_to_ns": "18446744073709551615",
+    "symbology": "1",
+    "reserved": "0",
+    "symbol_bytes": "4"
+  },
+  "texts": {
+    "symbol": "NWTX"
+  },
+  "levels": []
+}

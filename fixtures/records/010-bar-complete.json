@@ -1,0 +1,27 @@
+{
+  "label": "bar-complete",
+  "type": 3,
+  "fields": {
+    "record_bytes": "112",
+    "record_type": "3",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "1001",
+    "ts_event": "1700000000000000000",
+    "ts_recv": "1700000000000009100",
+    "sequence": "10",
+    "interval_start_ns": "1699999940000000000",
+    "interval_end_ns": "1700000000000000000",
+    "open": "123000000000",
+    "high": "125000000000",
+    "low": "122000000000",
+    "close": "124000000000",
+    "volume": "42000000000",
+    "trade_count": "4",
+    "bar_flags": "0"
+  },
+  "texts": {},
+  "levels": []
+}

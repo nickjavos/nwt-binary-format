@@ -1,0 +1,2 @@
+record_bytes,record_type,schema_version,flags,publisher_id,channel_id,instrument_id,ts_event,ts_recv,sequence,price,quantity,trade_id,original_sequence,action,aggressor,conditions
+88,1,1,0,1,0,2001,2025-10-09T08:53:21.000000000Z,2025-10-09T08:53:21.000000100Z,15,149.250000000,100.000000000,1,0,1,1,0

@@ -1,0 +1,23 @@
+{
+  "label": "gap-3",
+  "type": 8,
+  "fields": {
+    "record_bytes": "80",
+    "record_type": "8",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "0",
+    "ts_event": "1700000000000030000",
+    "ts_recv": "1700000000000030100",
+    "sequence": "31",
+    "first_missing_source_sequence": "18446744073709551615",
+    "last_missing_source_sequence": "18446744073709551615",
+    "reason": "3",
+    "reserved": "0",
+    "recovery_id": "3"
+  },
+  "texts": {},
+  "levels": []
+}

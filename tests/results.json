@@ -1,0 +1,65 @@
+{
+  "status": "PASS",
+  "record_types": 9,
+  "catalog_records": 49,
+  "frame_count": 19,
+  "bytes": 7632,
+  "sha256": "5b15390e0afd23ee0f8ab4490fd0980a61a0ede8c05d963f29b51fbb3ecf9b59",
+  "checks": {
+    "writer_checks": 4,
+    "cross_language_reads": 16,
+    "raw_record_reads": 196,
+    "single_type_writes": 36,
+    "boundary_reads": 12,
+    "malformed_rejections": 100,
+    "semantic_checks": 14
+  },
+  "malformed_cases": [
+    "header-crc",
+    "metadata-crc",
+    "frame-header-crc",
+    "payload-crc",
+    "missing-end",
+    "truncated-end",
+    "trailing-byte",
+    "wrong-count",
+    "frame-sequence",
+    "oversize-frame",
+    "unsupported-codec",
+    "frame-reserved",
+    "record-short",
+    "record-long",
+    "record-misaligned",
+    "record-flags",
+    "record-version",
+    "record-reserved",
+    "record-sequence",
+    "levels-limit",
+    "string-length",
+    "invalid-utf8",
+    "embedded-nul",
+    "definition-padding",
+    "index-offset"
+  ],
+  "semantic_result": {
+    "definitions": 8,
+    "trade_ids": 2,
+    "bars": 2,
+    "valid_mbo_books": 1,
+    "gap_events": 4
+  },
+  "limits": [
+    "Raw codec only",
+    "Fixed example manifest",
+    "Full market-state checks are Python-only",
+    "Whole-file teaching programs, 64 MiB input cap"
+  ],
+  "tested_environment": {
+    "platform": "macOS arm64",
+    "python": "3.13.15",
+    "rust": "1.98.1",
+    "dotnet_sdk": "10.0.401",
+    "cpp": "Apple Clang 21.0.0, C++20",
+    "nlohmann_json": "3.12.0"
+  }
+}

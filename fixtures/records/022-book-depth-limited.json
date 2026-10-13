@@ -1,0 +1,31 @@
+{
+  "label": "book-depth-limited",
+  "type": 5,
+  "fields": {
+    "record_bytes": "104",
+    "record_type": "5",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "1001",
+    "ts_event": "1700000000000021000",
+    "ts_recv": "1700000000000021100",
+    "sequence": "22",
+    "levels": "1",
+    "book_flags": "1",
+    "reserved": "0"
+  },
+  "texts": {},
+  "levels": [
+    {
+      "bid_price": "123000000000",
+      "ask_price": "124000000000",
+      "bid_quantity": "1000000000",
+      "ask_quantity": "1000000000",
+      "bid_count": "1",
+      "ask_count": "1",
+      "reserved": "0"
+    }
+  ]
+}

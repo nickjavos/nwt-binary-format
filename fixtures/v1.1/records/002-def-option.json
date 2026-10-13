@@ -1,0 +1,35 @@
+{
+  "label": "def-option",
+  "type": 6,
+  "fields": {
+    "record_bytes": "152",
+    "record_type": "6",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "2002",
+    "ts_event": "1760000000000001000",
+    "ts_recv": "1760000000000001100",
+    "sequence": "2",
+    "price_increment": "10000000",
+    "quantity_increment": "1000000000",
+    "contract_multiplier": "100000000000",
+    "expiration_ns": "1766178000000000000",
+    "underlying_instrument_id": "2001",
+    "strike": "150000000000",
+    "asset_class": "3",
+    "reserved": "0",
+    "symbol_bytes": "21",
+    "venue_bytes": "7",
+    "currency_bytes": "3",
+    "quantity_unit_bytes": "8"
+  },
+  "texts": {
+    "symbol": "NWTX  251219C00150000",
+    "venue": "EXAMPLE",
+    "currency": "USD",
+    "quantity_unit": "contract"
+  },
+  "levels": []
+}
