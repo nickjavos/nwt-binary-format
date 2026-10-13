@@ -37,4 +37,4 @@ with open("work/equity-quotes.store.nwt", "rb") as f:
 734 177290000000
 ```
 
-[Store profile](../STORE.md#over-any-byte-source) has a program that reads a store file through a `read_at` function and counts the bytes it fetches.
+[Store profile](../store/how-a-reader-seeks-by-time-and-instrument.md#over-any-byte-source) has a program that reads a store file through a `read_at` function and counts the bytes it fetches.

@@ -97,4 +97,4 @@
    {"source":"SECURITY_DEF","publisher_id":"1","instrument_id":"137786","identifier":"isin","symbol":"COST","isin":"US22160K1051","cusip":"22160K105","composite_figi":"BBG000F6H8W8","figi":"BBG000F6HLL1"}
    ```
 
-**Result.** You can label any market record with the texts of its definition, match the instruments of a feed to a symbol directory, and find an instrument by symbol, ISIN, CUSIP or FIGI. [Reference data samples](../REAL-DATA.md#instrument-identifiers) explains how the directory samples derive their instrument IDs, and [Reference data and statistics](../STATE-AND-RECOVERY.md#reference-data-and-statistics) gives the key of every reference record type.
+**Result.** You can label any market record with the texts of its definition, match the instruments of a feed to a symbol directory, and find an instrument by symbol, ISIN, CUSIP or FIGI. [Reference data samples](../real-data/instrument-identifiers.md) explains how the directory samples derive their instrument IDs, and [Reference data and statistics](../state/reference-data-and-statistics.md) gives the key of every reference record type.

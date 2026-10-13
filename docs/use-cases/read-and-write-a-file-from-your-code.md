@@ -83,4 +83,4 @@ record_bytes,record_type,schema_version,flags,publisher_id,channel_id,instrument
 120,18,1,0,2,0,11667,2025-09-16T08:00:00.283911761Z,2025-09-16T08:00:00.284075365Z,3,177.180000000,100.000000000,0,177.180000000,183.000000000,100.000000000,200.000000000,1,1,2,0
 ```
 
-**Result.** You have a program that reads, computes and writes NWT with the Python reference codec, and a file that all four reference codecs read identically. The [Implementation guide](../IMPLEMENTATION-GUIDE.md#build-and-run) lists the toolchains and the build options, and shows the same reading and writing in Rust, C# and C++ under [Read a file](../IMPLEMENTATION-GUIDE.md#read-a-file) and [Write a file](../IMPLEMENTATION-GUIDE.md#write-a-file).
+**Result.** You have a program that reads, computes and writes NWT with the Python reference codec, and a file that all four reference codecs read identically. The [Implementation guide](../implementation/build-and-run.md) lists the toolchains and the build options, and shows the same reading and writing in Rust, C# and C++ under [Read a file](../implementation/read-a-file.md) and [Write a file](../implementation/write-a-file.md).

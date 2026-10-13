@@ -15,8 +15,8 @@ This page defines the terms of the NWT Binary Format documentation, each with th
 | `PROVENANCE` | The optional metadata element: a JSON object that describes the source of the data and the rules of its conversion. It is descriptive and changes no wire rule. See [PROVENANCE](specification/metadata.md#provenance). |
 | publisher | A source of records, declared in the manifest with an ID, a name and a venue. Every record names its publisher in `publisher_id`; 0 is the scope of the container. |
 | producer | The party that creates a container: it captures or converts source data and runs the writer. The manifest names it in `producer`. A producer is not a publisher. |
-| writer | A program that writes a container: it emits the container header and the metadata, packs whole records into frames and closes the container with the `END` frame. See [Write a file](IMPLEMENTATION-GUIDE.md#write-a-file). |
-| reader | A program that reads a container: it checks the container header, the metadata and every frame, and decodes the records. See [Read a file](IMPLEMENTATION-GUIDE.md#read-a-file). |
+| writer | A program that writes a container: it emits the container header and the metadata, packs whole records into frames and closes the container with the `END` frame. See [Write a file](implementation/write-a-file.md). |
+| reader | A program that reads a container: it checks the container header, the metadata and every frame, and decodes the records. See [Read a file](implementation/read-a-file.md). |
 | frame | A checksummed unit of a container: a 64-byte frame header, a payload and zero padding. Its kind is `DATA`, `INDEX` or `END`. See [Frames](specification/frames.md). |
 | frame header | The 64 bytes at the start of every frame: the kind, the codec, the stored and raw payload sizes, the record count, `frame_seq`, the lowest and highest `ts_event`, and two CRC-32C values. See [Frame header](specification/frames.md#frame-header). |
 | `DATA` | The frame kind that carries records. A `DATA` frame holds one or more whole records, and a record never crosses a frame boundary. See [DATA frames](specification/frames.md#data-frames). |
@@ -26,7 +26,7 @@ This page defines the terms of the NWT Binary Format documentation, each with th
 | Zstandard | The optional compression of a `DATA` frame: codec 1 stores the payload as one [Zstandard](https://github.com/facebook/zstd) frame, and codec 0 stores it raw. Each frame is compressed on its own. See [Zstandard](specification/compression-and-integrity.md#zstandard). |
 | store profile | A set of writer choices for files that are queried: large frames, Zstandard compression, an `INDEX`, `FRAME_SUMMARY` records and a declared `ordering`. A store file is an ordinary container. See [Store profile](STORE.md). |
 | `ordering` | The optional manifest property that states the order of the records: `ts_event`, `instrument,ts_event` or `none`. A producer declares it only when it holds. See [MANIFEST](specification/metadata.md#manifest). |
-| selective read | A read that uses the `INDEX` and the `FRAME_SUMMARY` records to fetch only the frames that can hold a match. Its result is partial: definitions and book state from the skipped frames are not included. See [How a reader seeks by time and instrument](STORE.md#how-a-reader-seeks-by-time-and-instrument). |
+| selective read | A read that uses the `INDEX` and the `FRAME_SUMMARY` records to fetch only the frames that can hold a match. Its result is partial: definitions and book state from the skipped frames are not included. See [How a reader seeks by time and instrument](store/how-a-reader-seeks-by-time-and-instrument.md). |
 
 ## Records and fields
 
@@ -44,7 +44,7 @@ This page defines the terms of the NWT Binary Format documentation, each with th
 | timestamp | An unsigned 64-bit count of nanoseconds since 1970-01-01T00:00:00 UTC. `ts_event` is the event time at the source, and `ts_recv` is the capture time at the producer. See [Time](specification/data-types-and-conventions.md#time). |
 | `instrument_id` | The 64-bit identifier of an instrument in the namespace of its publisher, carried in every record header. It is 0 in records that belong to no instrument. See [Identifiers](specification/data-types-and-conventions.md#identifiers). |
 | channel | A logical partition of the records of one publisher, defined by the producer and carried in `channel_id`. 0 is a valid channel. |
-| sequence number | The value of `sequence` in the record header: the output position of a record within its publisher and channel, counted from 1 without holes. It is not a sequence number of an exchange. See [Sequence numbers and ordering](STATE-AND-RECOVERY.md#sequence-numbers-and-ordering). |
+| sequence number | The value of `sequence` in the record header: the output position of a record within its publisher and channel, counted from 1 without holes. It is not a sequence number of an exchange. See [Sequence numbers and ordering](state/sequence-numbers-and-ordering.md). |
 | `frame_seq` | The counter in the frame header that numbers the frames of a container from 0. A hole means a transfer failure. |
 | `FRAME_SUMMARY` | Record type 20. One record describes one `DATA` frame: its offset, its stored size, its codec, a mask of the record types it holds and its range of instrument IDs. See [FRAME_SUMMARY](records/FRAME_SUMMARY.md). |
 
@@ -86,13 +86,13 @@ This page defines the terms of the NWT Binary Format documentation, each with th
 | Term | Meaning |
 |---|---|
 | consumer | A program that applies the records of a container in delivery order to keep state, such as order books, quotes and trades. |
-| state | What a consumer keeps while it reads records: definitions, order books, the top of book, the trading status, trade lifecycles and reference records. Each record creates, replaces or ends one piece of it. See [State a consumer keeps](STATE-AND-RECOVERY.md#state-a-consumer-keeps). |
+| state | What a consumer keeps while it reads records: definitions, order books, the top of book, the trading status, trade lifecycles and reference records. Each record creates, replaces or ends one piece of it. See [State a consumer keeps](state/state-a-consumer-keeps.md). |
 | delivery order | The order of the bytes in the container. A consumer applies records in this order; timestamps can move backward. See [Delivery order](specification/ordering-gaps-snapshots-and-replay.md#delivery-order). |
 | gap | A loss of data at the source that the producer reports with a `GAP` record, type 8. It makes the order books, the top of book and the trading status of its publisher and channel unknown. See [GAP](records/GAP.md). |
 | snapshot | A complete replacement of a book. The aggregate book takes it from one `BOOK_SNAPSHOT`; the order-level book takes it from the `MBO` records between `SNAPSHOT_BEGIN` and `SNAPSHOT_END`. See [MBO snapshot transaction](specification/ordering-gaps-snapshots-and-replay.md#mbo-snapshot-transaction). |
-| recovery | The return to valid state after a loss. After a gap, each piece of state is valid again when its own record arrives; after a transfer failure, the consumer reads again from the last verified frame. See [Gaps and recovery](STATE-AND-RECOVERY.md#gaps-and-recovery). |
+| recovery | The return to valid state after a loss. After a gap, each piece of state is valid again when its own record arrives; after a transfer failure, the consumer reads again from the last verified frame. See [Gaps and recovery](state/gaps-and-recovery.md). |
 | replay | Reading stored records in delivery order to rebuild state. A book replay starts at a `CLEAR` or a completed snapshot and applies every record after it. The record header flag `REPLAY` marks a record as historical or replayed. |
-| transfer failure | Damaged or missing bytes of a container: a checksum that does not match, a hole in `frame_seq` or `sequence`, or the end of input before `END`. It is not a gap. See [Transfer failure versus source failure](STATE-AND-RECOVERY.md#transfer-failure-versus-source-failure). |
+| transfer failure | Damaged or missing bytes of a container: a checksum that does not match, a hole in `frame_seq` or `sequence`, or the end of input before `END`. It is not a gap. See [Transfer failure versus source failure](state/gaps-and-recovery.md#transfer-failure-versus-source-failure). |
 
 ## Kit and conformance
 

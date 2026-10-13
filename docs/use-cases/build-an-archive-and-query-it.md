@@ -83,4 +83,4 @@
 
    The first query reads the container header, the metadata, the `END` frame, the `INDEX`, the summary frame and one of the ten `DATA` frames that hold the records. The second query reads four of the ten. The byte counts follow the stored sizes of the frames, which depend on the version of the Zstandard library.
 
-**Result.** You have one validated archive of three sources and two queries that return the same records as a full scan while they read a fraction of the file. [Store profile](../STORE.md) describes the layout, the read path and the choice of frame size, and [What a partial read returns](../STORE.md#what-a-partial-read-returns) explains the label.
+**Result.** You have one validated archive of three sources and two queries that return the same records as a full scan while they read a fraction of the file. [Store profile](../STORE.md) describes the layout, the read path and the choice of frame size, and [What a partial read returns](../store/what-a-partial-read-returns.md) explains the label.

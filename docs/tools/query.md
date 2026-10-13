@@ -28,4 +28,4 @@ python3 tools/nwt.py query work/equity-quotes.store.nwt --type TRADE_QUOTE --fro
 {"type_name":"TRADE_QUOTE","record_bytes":"120","record_type":"18","schema_version":"1","flags":"0","publisher_id":"2","channel_id":"0","instrument_id":"11667","ts_event":"2025-09-16T08:03:04.530358866Z","ts_recv":"2025-09-16T08:03:04.530522753Z","sequence":"736","price":"177.290000000","quantity":"250.000000000","trade_id":"0","bid_price":"177.260000000","ask_price":"177.300000000","bid_quantity":"20.000000000","ask_quantity":"1100.000000000","bid_order_count":"1","ask_order_count":"2","aggressor":"0","conditions":"0"}
 ```
 
-[Store profile](../STORE.md#how-a-reader-seeks-by-time-and-instrument) describes the read path step by step.
+[Store profile](../store/how-a-reader-seeks-by-time-and-instrument.md) describes the read path step by step.

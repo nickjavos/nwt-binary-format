@@ -50,7 +50,7 @@ CSV_ZSTD = {"en": "CSV, Zstandard", "ru": "CSV, Zstandard"}
 JSONL = {"en": "JSON Lines", "ru": "JSON Lines"}
 NWT_RAW = {"en": "NWT, raw frames", "ru": "NWT, кадры без сжатия"}
 NWT_ZSTD = {"en": "NWT, Zstandard frames", "ru": "NWT, кадры Zstandard"}
-DOCUMENTS = {"en": "docs/PERFORMANCE.md", "ru": "docs/ru/PERFORMANCE.md"}
+DOCUMENTS = {"en": "docs/performance", "ru": "docs/ru/performance"}  # folders of the parts
 HEAD = {
     "sample": {"en": "Sample", "ru": "Образец"},
     "encoding": {"en": "Encoding", "ru": "Кодировка"},
@@ -348,20 +348,27 @@ def tables(lang):
 
 
 def update_documents():
-    """Rewrite the table that follows each chart marker in the two documents."""
-    for lang, path in DOCUMENTS.items():
-        if not os.path.exists(kit(path)):
+    """Rewrite the table that follows each chart marker in the part files of the two documents."""
+    for lang, folder in DOCUMENTS.items():
+        if not os.path.isdir(kit(folder)):
             continue
-        with open(kit(path), encoding="utf-8") as f:
-            text = f.read()
+        files = sorted(f for f in os.listdir(kit(folder)) if f.endswith(".md"))
+        texts = {}
+        for name_md in files:
+            with open(kit(folder + "/" + name_md), encoding="utf-8") as f:
+                texts[name_md] = f.read()
         for name, table in tables(lang).items():
             marker = re.escape(f"<!-- nwt-chart: {name} -->") + r"\n\n"
-            text, found = re.subn("(" + marker + r")(?:\|.*\n)+", lambda m: m.group(1) + table, text)
+            found = 0
+            for name_md in files:
+                texts[name_md], n = re.subn("(" + marker + r")(?:\|.*\n)+", lambda m: m.group(1) + table, texts[name_md])
+                found += n
             if found != 1:
-                say(f"{path}: no table under the chart {name}; left as it is")
-        with open(kit(path), "w", encoding="utf-8") as f:
-            f.write(text)
-        say("updated the tables of " + path)
+                say(f"{folder}: no table under the chart {name}; left as it is")
+        for name_md in files:
+            with open(kit(folder + "/" + name_md), "w", encoding="utf-8") as f:
+                f.write(texts[name_md])
+        say("updated the tables of " + folder)
 
 
 def both(en_text, ru_text, hardware):
