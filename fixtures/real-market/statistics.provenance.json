@@ -2,7 +2,7 @@
   "conversion_policy": "Prices, sizes and timestamps are exact; nothing is rounded. Source publisher and instrument IDs are kept; the channel is the source channel_id, or 0 when the file has none. NWT sequences restart at 1 per (publisher, channel); the source sequence number is not carried. Source flags are not carried. Each instrument's definition comes from the venue's definition file and is written before its first record. Source stat_type -> NWT stat_type: 1 opening price -> 1 open; 5 session high -> 2 high; 4 session low -> 3 low; 11 close price -> 4 close; 3 settlement price -> 5 settlement; 6 cleared volume -> 7 volume; 9 open interest -> 8 open interest. Any other source type stops the conversion. update_action 1 -> SET, 2 -> DELETE. An empty ts_ref is null. On a settlement price, source stat_flags bit 0 means final: a settlement without it is written with the preliminary bit set. Any other flag value, or a flag on another type, stops the conversion. A row with no value (an empty price, or the source's null quantity) is skipped and counted.",
   "converter": "tools/nwt_convert_market.py csv-statistics",
   "definitions_sha256": "39c27660ad0c43bade12d9b1065a8a48412fe7db6c5df92f8af6d8816b8296c8",
-  "license_reference": "Licensed vendor data. Check the licence before redistributing.",
+  "license_reference": "Licensed market data; see the Licenses document.",
   "notes": {
     "instruments left out by --skip-undefined (no currency in the definition row)": 169,
     "option rows with no underlying ID or symbol: INSTRUMENT_DEF only, no OPTION_DEF": 1689
@@ -20,7 +20,7 @@
   "rows_skipped": {
     "rows of instruments left out by --skip-undefined": 169
   },
-  "source_format": "vendor CSV export",
+  "source_format": "exchange market-data export (CSV)",
   "source_rows": 2000,
   "source_schema": "statistics",
   "source_sha256": "c2e5a121d4c704b521d28750ac1a6c6a0f9f4e8550d4c3c4ba57eb5bc52e16c5",

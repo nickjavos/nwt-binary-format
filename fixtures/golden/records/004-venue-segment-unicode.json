@@ -1,0 +1,43 @@
+{
+  "label": "venue-segment-unicode",
+  "type": 10,
+  "fields": {
+    "record_bytes": "392",
+    "record_type": "10",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "0",
+    "ts_event": "1760000000000003000",
+    "ts_recv": "1760000000000003100",
+    "sequence": "4",
+    "created_ns": "1572825600000000000",
+    "updated_ns": "1613347200000000000",
+    "expiry_ns": "18446744073709551615",
+    "kind": "2",
+    "status": "2",
+    "mic_bytes": "4",
+    "operating_mic_bytes": "4",
+    "country_bytes": "2",
+    "category_bytes": "0",
+    "acronym_bytes": "0",
+    "city_bytes": "0",
+    "name_bytes": "255",
+    "legal_entity_bytes": "24",
+    "lei_bytes": "0",
+    "reserved": "0"
+  },
+  "texts": {
+    "mic": "NWTS",
+    "operating_mic": "XNWT",
+    "country": "US",
+    "category": "",
+    "acronym": "",
+    "city": "",
+    "name": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééX",
+    "legal_entity": "Unicode Segment Operator",
+    "lei": ""
+  },
+  "levels": []
+}

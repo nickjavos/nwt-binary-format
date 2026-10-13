@@ -1,936 +1,1380 @@
-# NWT Binary Format
+# Specification
 
-## Version 1.1 — Proposed specification
+This specification defines the NWT Binary Format: the bytes of a container, its metadata, its frames and its 22 standard record types, and the rules that a reader and a writer follow. It is the normative reference for engineers who implement a reader, a writer or a data pipeline for market data and reference data.
 
-**Document status:** implementation draft, revision 1.1-draft.1
-**Date:** 13 October 2026
-**Format identifier:** NWT
-**Scope:** binary transport and storage of normalized market data and reference data, with an extension mechanism for other event data.
+[How it works](HOW-IT-WORKS.md) introduces the format with diagrams. The [Field reference](FIELD-REFERENCE.md) describes every field of every record type, and [Examples by record type](FEED-COOKBOOK.md) shows each record type as bytes. The [Implementation guide](IMPLEMENTATION-GUIDE.md) covers building a reader and a writer. [State and recovery](STATE-AND-RECOVERY.md) covers the state a consumer keeps.
 
-This document proposes a format. It does not describe an existing NWT standard or claim deployment or measured performance. “NWT” is treated as the requested product name; no expansion of the acronym is assumed. All NWT allocations and layouts below are design decisions in this draft.
+## Conformance
 
-NWT is a container of framed, checksummed records. A metadata block declares the schemas and publishers in use. Frames carry fixed-layout records with nanosecond timestamps, 64-bit instrument IDs and exact fixed-point decimals. The same bytes serve live transport and file storage.
+### Requirement keywords
 
-**What revision 1.1 adds.** Thirteen record types (10–22) for reference data and market-data extras; an optional `ordering` property in the manifest; FRAME_SUMMARY records, a richer index that a 1.0 reader skips; and a **store profile**, a set of writer choices that make a file fast to query while using the same container. The container header, TLV encoding, frame envelope, record header, INDEX and END are unchanged. Types 1–9 and every byte of a 1.0 file keep their meaning, so a 1.0 file is a valid 1.1 input. Types 1–9 use the `spec_uri` `urn:nwt:spec:1.0`; types 10–22 use `urn:nwt:spec:1.1`.
+This specification uses no special requirement keywords. It states each rule as a fact about the format, in the present tense, and a rule has no exceptions. A conforming writer produces only containers in which every rule holds, and a conforming reader checks the rules of the capabilities it claims and reports an error for input that breaks one. A recommendation is introduced by "we recommend", and an implementation can depart from it for a documented operational reason.
 
-This revision includes a [complete field reference](FIELD-REFERENCE.md), a [feed cookbook](FEED-COOKBOOK.md), an [implementation guide](IMPLEMENTATION-GUIDE.md), a [store guide](STORE.md) and a [tool guide](TOOLS.md).
+### Scope
 
-## Contents
+NWT is a container of framed, checksummed records. It carries normalized market data and reference data, and it has private record types for other event data. The same bytes serve a live byte stream and a file.
 
-1. Requirements and conformance
-2. Architecture and design decisions
-3. Primitive types and numerical conventions
-4. Container header
-5. Metadata
-6. Frame envelope
-7. Record header
-8. Standard record schemas
-9. Ordering, gaps, snapshots, and replay
-10. Compression and integrity
-11. Index, summaries, store profile and end-of-stream
-12. Transport and recovery
-13. Schema evolution and registries
-14. Decoder and encoder requirements
-15. Security and operational limits
-16. Interoperability and conversion
-17. Examples and binary test vectors
-18. Conformance test plan
-19. Performance and implementation guidance
-20. Release acceptance and future work
-21. References
-22. Developer kit and clarified implementation boundaries
+The format provides deterministic decoding, bounded memory use, several record types in one container, incremental streaming, nanosecond timestamps, exact decimal values and corruption detection.
 
-## 1. Requirements and conformance
+The format does not define:
 
-The words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** identify mandatory requirements, recommendations, and optional behavior. A recommendation may be departed from for a documented operational reason; a mandatory requirement may not.
+- datagram delivery;
+- a socket handshake, subscription negotiation or authentication messages;
+- distributed consensus or exactly-once application processing;
+- arbitrary-precision decimals, or a decimal scale other than 10⁻⁹;
+- encryption, signatures or authenticated containers;
+- dictionary compression;
+- a source cursor for replay;
+- an index of definitions or of book state;
+- corrections that span containers;
+- metadata that changes inside a container.
 
-NWT targets deterministic decoding, bounded memory use, mixed schemas, incremental streaming, nanosecond timestamps, precise decimal values, corruption detection, and a shared representation for live and historical data. It supports ordered byte streams and files. Datagram delivery, bidirectional subscription negotiation, authentication messages, distributed consensus, exactly-once application processing, and arbitrary precision decimals are outside this specification. Types 11, 21 and 22 carry the option, security-master and corporate-action fields listed in §8; anything beyond those fields, such as full terms and conditions or entitlement data, needs a private schema.
+`OPTION_DEF`, `SECURITY_DEF` and `CORPORATE_ACTION` carry the option, security-master and corporate-action fields listed in their sections. Data beyond those fields, such as full terms and conditions or entitlement data, needs a private schema.
 
-Conformance claims MUST identify the following capabilities:
+### Capabilities
+
+A conformance claim names the capabilities it covers.
 
 | Capability | Requirement |
 |---|---|
-| Core reader | Container, metadata, codec 0, frame integrity, record envelopes, INDEX and END |
-| Core writer | Emit fully valid containers and the schemas it advertises |
-| Zstd reader/writer | Optional codec 1 support, explicitly advertised |
-| Store reader/writer | The store profile of §11.4: INDEX, FRAME_SUMMARY, optional `ordering`, and selective frame reads |
-| Market-data reader | Semantics of every standard schema listed in its supported subset |
-| Lossless relay | Preserve all record bytes, including unknown optional records |
-| Semantic consumer | Refuse unsupported required schemas; disclose skipped optional data |
+| Core reader | Container, metadata, codec 0, frame integrity, record headers, `INDEX` and `END` |
+| Core writer | Emits fully valid containers and the schemas it advertises |
+| Zstandard reader or writer | Codec 1. Optional, and advertised explicitly |
+| Store reader or writer | The [store profile](#store-profile): `INDEX`, `FRAME_SUMMARY`, the optional `ordering` property and selective frame reads |
+| Market-data reader | The rules of every standard schema in its supported subset |
+| Lossless relay | Preserves all record bytes, including optional records it does not know |
+| Semantic consumer | Refuses required schemas it does not support and reports the optional data it skips |
 
-A core reader may inspect opaque records without interpreting their payloads. It MUST NOT claim market-data semantic conformance merely because framing succeeds. Optional Zstd support means an uncompressed-only reader is conformant but cannot read every NWT file.
+- A core reader can inspect records without interpreting their payloads.
+- Successful framing is not market-data conformance. A reader that checks only the binary shape does not enforce the trade and book rules, the definition rules or the state rules.
+- A reader that supports only codec 0 is conformant, but it cannot read every NWT file.
 
-## 2. Architecture and design decisions
+## File structure
+
+A container is one byte sequence: a container header, metadata, a series of frames, and one `END` frame that closes it. `DATA` frames carry the records. The layout is the same for a file and for a live stream.
+
+![A container from byte 0 to the end: the container header, the metadata, DATA frames, optional INDEX frames and the END frame, each with its offset and size](diagrams/file-structure.svg "The parts of a container, with their offsets and sizes")
 
 ```text
 Container
-  64-byte container header
-  metadata TLVs, padded individually to 8 bytes
+  container header     64 bytes
+  metadata             TLV elements, each padded to 8 bytes
   DATA frame 0
   DATA frame 1
   ...
-  optional contiguous INDEX frames
-  END frame, exactly 96 bytes
+  INDEX frames         optional, contiguous
+  END frame            96 bytes
 
 DATA frame
-  64-byte frame header
-  stored payload (raw records or one Zstd frame)
-  zero padding to an 8-byte boundary
+  frame header         64 bytes
+  stored payload       raw records, or one Zstandard frame
+  zero padding         to an 8-byte boundary
 
-Uncompressed DATA payload
-  48-byte record header + schema payload + optional zero padding
-  next complete record
+Raw DATA payload
+  record               48-byte record header, body, zero padding
+  record
+  ...
 ```
 
-There is no global compression wrapper. Each DATA frame is independently decodable after its metadata is known. Records never cross frame boundaries. Metadata is immutable for a container; evolving instrument definitions appear as records. All declared schemas and publishers MUST be known in metadata before any records reference them.
+| Part | Bytes | Content |
+|---|---|---|
+| [Container header](#container-header) | 64 | Magic, version, metadata size, stream identifier, checksums |
+| [Metadata](#metadata) | 8 to 1,048,576 | `MANIFEST` and the optional `PROVENANCE` |
+| [`DATA` frames](#data-frames) | 64 + align8(`stored_bytes`) each | Records |
+| [`INDEX` frames](#index-frames) | 64 + align8(`stored_bytes`) each | Optional. One 40-byte entry for each `DATA` frame |
+| [`END` frame](#end-frame) | 96 | Totals, completion status and the offset of the first `INDEX` frame |
 
-Fixed layouts keep the event path simple. Frames provide batching, bounded decompression, and corruption boundaries at the cost of 64 bytes per batch and possible buffering latency. The 48-byte record header deliberately includes both timestamps, a 64-bit instrument ID, and a sequence number. This is a design tradeoff, not a claim about size or speed.
+### Terms
 
-Design principles, in the order they were applied:
+- **Container.** One complete NWT byte sequence, from the container header to the `END` frame. One file or one stream holds one container.
+- **Metadata.** The TLV elements between the container header and the first frame.
+- **Manifest.** The content of the `MANIFEST` element: the dataset, the publishers and the schemas of the container.
+- **Frame.** A checksummed unit of the container. Its kind is `DATA`, `INDEX` or `END`. A frame kind is not a record type.
+- **Record.** One message of one record type inside a `DATA` frame.
+- **Schema.** A record type together with a schema version: one wire layout and its rules. A feed type of a data source maps to a record type.
+- **Writer** and **reader.** The implementations that encode and decode a container.
+- **Producer** and **consumer.** The systems that own them. The producer decides what the writer emits and owns the identifier namespaces. The consumer applies the decoded records.
+
+### Structural rules
+
+- The container has no global compression wrapper. Each `DATA` frame is decodable on its own after the metadata is known.
+- A record never crosses a frame boundary.
+- Metadata is immutable for a container. Instrument definitions that change over time are records.
+- Every schema and every publisher is declared in the metadata before a record refers to it.
+- The stored length of a frame excludes its outer padding. The length of a record includes its internal padding. Offsets in an index refer to frame headers, never to record starts.
+- The recommended file name suffix is `.nwt`, whether or not frames are compressed. The suggested private media type is `application/x-nwt`.
+
+### Design principles
 
 1. **Fixed layouts.** Every standard record has a fixed size or a size computed from stated lengths. A reader never scans for a terminator.
 2. **Frames are the unit of integrity.** A frame carries one CRC over its raw payload. No record is trusted before its frame passes.
 3. **Byte order is delivery order.** Records are never sorted. Definitions, snapshots and trade lifecycles depend on the order in which they arrive.
-4. **Exact numbers.** Prices and quantities are integers scaled by 10^-9. There is no floating point on the wire.
-5. **Nothing is inferred.** A fact the producer does not know is null or “unknown”. A consumer does not derive it from a symbol.
-6. **Same container for transport and storage.** A store file (§11.4) is an ordinary container written with particular choices. Nothing is added to the container to support it.
+4. **Exact numbers.** Prices and quantities are integers scaled by 10⁻⁹. There is no floating point on the wire.
+5. **Nothing is inferred.** A fact the producer does not know is null or "unknown". A consumer does not derive it from a symbol.
+6. **One container for transport and storage.** A [store file](#store-profile) is an ordinary container written with particular choices. Nothing is added to the container to support it.
 
-Recommended suffix: `.nwt`, whether individual frames are compressed or not. Suggested private media type: `application/x-nwt`; this document does not claim an IANA registration.
+Frames give batching, bounded decompression and corruption boundaries. They cost 64 bytes per batch and can add buffering latency. The 48-byte record header carries both timestamps, a 64-bit instrument ID and a sequence number in every record.
 
-## 3. Primitive types and numerical conventions
+## Data types and conventions
 
-### 3.1 Representation
+### Representation
 
-All integers are little-endian. Signed integers use two's complement. `u8/u16/u32/u64` and `i64` have their stated widths; `bytes[N]` is exactly N octets. There are no implicit compiler padding bytes. Offsets in layout tables are byte offsets from the beginning of that structure. Reserved fields and padding MUST be zero in this version; strict readers MUST reject nonzero values.
+- All integers are little-endian. Signed integers use two's complement.
+- `u8`, `u16`, `u32`, `u64` and `i64` have their stated widths. `bytes[N]` is exactly N bytes.
+- There are no implicit padding bytes of a compiler. Offsets in layout tables are byte offsets from the start of the structure.
+- Reserved fields and padding are zero. A strict reader rejects a nonzero value.
+- Standard record payloads contain no floating-point values and no variable-length integers.
 
-`align8(n) = (n + 7) & ~7`, computed with checked arithmetic. Container metadata, frame starts, and uncompressed record starts are 8-byte aligned relative to their enclosing buffer. Compressed bytes have no record alignment guarantee until decompressed. File-relative alignment does not establish actual memory alignment in an arbitrary network buffer.
+### Alignment
 
-Strings are well-formed UTF-8, not NUL-terminated. String lengths count bytes. Embedded NUL and invalid UTF-8 are prohibited in text fields. Identifiers are case-sensitive and compared byte-for-byte; producers SHOULD use NFC normalization. There are no floating-point values or varints in the standard record payloads.
+`align8(n) = (n + 7) & ~7`, computed with checked arithmetic.
 
-### 3.2 Time
+- Metadata elements, frame starts and the starts of uncompressed records are aligned to 8 bytes relative to their enclosing buffer.
+- Compressed bytes have no record alignment until they are decompressed.
+- Alignment in the file does not establish memory alignment in an arbitrary network buffer.
 
-Timestamps are `u64` nanoseconds since 1970-01-01T00:00:00 on the POSIX time scale. They do not count leap seconds as additional seconds. The null timestamp is `UINT64_MAX`. Zero is the epoch, not null. Sources using another clock scale MUST be normalized before encoding; a leap-smear policy, if used, MUST be described in metadata.
+### Text
 
-`ts_event` is the source event time, or null when unavailable. `ts_recv` is the producer capture time, or null when unavailable. These times need not be ordered and MUST NOT be used to infer network delay without a known clock relationship. A late event retains its original timestamp. this version cannot represent pre-epoch timestamps.
+- Text is well-formed UTF-8. It is not NUL-terminated.
+- A text length counts bytes, not characters.
+- An embedded NUL and invalid UTF-8 are prohibited in text fields.
+- Identifiers are case-sensitive and compared byte for byte. We recommend that producers use NFC normalization.
 
-### 3.3 Decimal values and nulls
+### Time
 
-| Logical type | Wire representation | Meaning | Null |
+A timestamp is a `u64` count of nanoseconds since 1970-01-01T00:00:00 on the POSIX time scale. Leap seconds are not counted as additional seconds.
+
+- The null timestamp is `UINT64_MAX`. Zero is the epoch, not null.
+- A timestamp before the epoch cannot be represented.
+- Time from a source that uses another clock scale is converted to this scale before encoding. A leap-smear policy, if one is used, is described in the metadata.
+- `ts_event` is the source event time, or null when it is unavailable.
+- `ts_recv` is the capture time at the producer, or null when it is unavailable.
+- The two times need not be ordered. A consumer cannot infer network delay from them unless the relationship between the clocks is known.
+- A late event keeps its original timestamp.
+
+### Decimal values and null values
+
+| Logical type | Wire type | Meaning | Null |
 |---|---|---|---|
-| Price | `i64` | integer × 10^-9 in the definition's currency | `INT64_MIN` |
-| Quantity | `u64` | integer × 10^-9 in the definition's quantity unit | `UINT64_MAX` |
-| Multiplier | `i64` | integer × 10^-9 | `INT64_MIN` |
-| Count | `u32` | integral count | `UINT32_MAX` |
-| Identifier | stated unsigned width | opaque namespace value | field-specific |
+| Price | `i64` | Integer × 10⁻⁹, in the currency of the definition | `INT64_MIN` |
+| Quantity | `u64` | Integer × 10⁻⁹, in the quantity unit of the definition | `UINT64_MAX` |
+| Multiplier | `i64` | Integer × 10⁻⁹ | `INT64_MIN` |
+| Count | `u32` | Integral count | `UINT32_MAX` |
+| Identifier | Stated unsigned width | Opaque value in a namespace | Stated with each field |
 
-For example, price 123.45 is encoded as 123450000000; quantity 10 is 10000000000. Price zero and negative prices are valid. Non-null quantities are nonnegative. The largest representable price is approximately 9.22 billion currency units; the largest quantity is approximately 18.45 billion units. Producers MUST reject out-of-range values or use a different registered schema. They MUST NOT silently clamp, wrap, or round.
+The null values are `INT64_MIN` = −9,223,372,036,854,775,808, `UINT64_MAX` = 18,446,744,073,709,551,615 and `UINT32_MAX` = 4,294,967,295. An all-zero value is not a null.
 
-An input with more than nine fractional digits requires an explicit conversion policy outside this format. A conversion that rounds MUST report the loss to the caller and describe it in provenance metadata. Arithmetic SHOULD use checked intermediates wider than 64 bits. There is no universal all-zero null convention.
+- The price 123.45 is encoded as `123450000000`. The quantity 10 is encoded as `10000000000`.
+- A price of zero and a negative price are valid. A non-null quantity is nonnegative.
+- The largest price is about 9.22 billion currency units. The largest quantity is about 18.45 billion units.
+- A producer rejects a value that is out of range, or uses a different registered schema. Silent clamping, wrapping and rounding are not allowed.
+- An input with more than nine fractional digits needs an explicit conversion policy outside this format. A conversion that rounds reports the loss to the caller and describes it in `PROVENANCE`.
+- For arithmetic, we recommend checked intermediates wider than 64 bits.
 
-### 3.4 Identifiers
+### Identifiers
 
-Publisher IDs are `u32`, instrument IDs and order/trade IDs are `u64`. Publisher 0 and instrument 0 are reserved for container/system scope where specifically allowed. Other identifiers may use their full range unless a schema says otherwise. An instrument is identified by `(dataset, publisher_id, instrument_id)`, not by symbol alone. The producer owns that namespace and MUST NOT reuse an instrument ID for a different economic instrument within the same dataset history.
+- A publisher ID is a `u32`. An instrument ID, an order ID and a trade ID are `u64`.
+- Publisher 0 and instrument 0 are reserved for the container and system scope, where a record type allows them. Other identifiers can use their full range unless a schema says otherwise.
+- An instrument is identified by `(dataset, publisher_id, instrument_id)`, not by its symbol alone.
+- The producer owns that namespace. Within the history of one dataset, an instrument ID is never reused for a different economic instrument.
 
-## 4. Container header
+## Container header
 
-The container starts at byte 0 and has this exact 64-byte header:
+The container starts at byte 0 with this 64-byte header.
 
-| Offset | Bytes | Type | Field | Meaning |
-|---:|---:|---|---|---|
-| 0 | 8 | bytes | magic | `4e 57 54 42 49 4e 0d 0a` (`NWTBIN\r\n`) |
-| 8 | 2 | u16 | major | 1 |
-| 10 | 2 | u16 | minor | 0 or 1, by the rule below |
-| 12 | 2 | u16 | header_bytes | 64 |
-| 14 | 2 | u16 | flags | 0 |
-| 16 | 4 | u32 | metadata_bytes | Total padded metadata size |
-| 20 | 4 | u32 | metadata_crc32c | CRC of all metadata bytes including padding |
-| 24 | 16 | bytes | stream_id | Opaque nonzero 128-bit identifier |
-| 40 | 8 | u64 | created_ns | Creation time, or null |
-| 48 | 8 | u64 | reserved | 0 |
-| 56 | 4 | u32 | header_crc32c | CRC of 64 bytes with this field zero |
-| 60 | 4 | u32 | reserved | 0 |
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 0 | `magic` | bytes | 8 | `4e 57 54 42 49 4e 0d 0a`, the ASCII text `NWTBIN\r\n` |
+| 8 | `major` | u16 | 2 | 1 |
+| 10 | `minor` | u16 | 2 | 0 or 1, by the rule below |
+| 12 | `header_bytes` | u16 | 2 | 64 |
+| 14 | `flags` | u16 | 2 | 0 |
+| 16 | `metadata_bytes` | u32 | 4 | Total size of the metadata, including padding |
+| 20 | `metadata_crc32c` | u32 | 4 | CRC of all metadata bytes, including padding |
+| 24 | `stream_id` | bytes | 16 | Opaque nonzero 128-bit identifier |
+| 40 | `created_ns` | u64 | 8 | Creation time, or null |
+| 48 | `reserved` | u64 | 8 | 0 |
+| 56 | `header_crc32c` | u32 | 4 | CRC of the 64 header bytes with this field set to zero |
+| 60 | `reserved` | u32 | 4 | 0 |
 
-`minor` is 1 when the manifest declares at least one of the standard types 10–22, and 0 otherwise. Declaring only private types (32768–65534) does not make it 1. A writer MUST set it by this rule. A reader accepts 0 and 1 and MUST reject a header whose `minor` disagrees with the declared types. The rule makes the minor number a reliable hint: a 1.0 file stays minor 0.
+**Version.**
 
-`metadata_bytes` MUST be a multiple of 8, at least 8, and at most 1,048,576. The first frame begins at `64 + metadata_bytes`. Header validation MUST precede trusting metadata lengths. CRC parameters are in §10.
+- `minor` is 1 when the manifest declares at least one of the standard record types 10–22, and 0 otherwise. Declaring only private types (32,768–65,534) does not make it 1.
+- A writer sets `minor` by this rule.
+- A reader accepts 0 and 1. It rejects a header whose `minor` disagrees with the declared types.
 
-`stream_id` is a byte string, not a little-endian integer or language-specific GUID structure. Its textual form is 32 lowercase hex characters in byte order. It MUST identify one immutable container byte sequence, including metadata and frames. A retransmission of the same bytes preserves it. A new connection producing different framing, a filtered export, repaired file, or recompressed file MUST use a new ID. Producers SHOULD generate it with a cryptographically strong random generator.
+**Metadata size.**
 
-## 5. Metadata
+- `metadata_bytes` is a multiple of 8, at least 8 and at most 1,048,576.
+- The first frame begins at offset `64 + metadata_bytes`.
+- A reader validates the header before it trusts the metadata length.
+- The CRC parameters are in [Compression and integrity](#compression-and-integrity).
 
-### 5.1 TLV encoding
+**Stream identifier.**
 
-Each metadata element is `type:u16, flags:u16, value_bytes:u32, value, padding`. The header is 8 bytes; padding is `align8(8 + value_bytes) - (8 + value_bytes)` zero bytes. `value_bytes` excludes header and padding. Elements exactly fill `metadata_bytes`; no trailing material is permitted.
+- `stream_id` is a byte string. It is not a little-endian integer and not a GUID structure of a programming language. Its text form is 32 lower-case hexadecimal characters in byte order.
+- It identifies one immutable container byte sequence, including metadata and frames. A retransmission of the same bytes keeps it.
+- A new connection that produces different framing, a filtered export, a repaired file and a recompressed file each get a new ID.
+- We recommend generating it with a cryptographically strong random generator.
+- A writer that regenerates the same bytes deterministically, such as a generator of conformance files, can use a fixed ID.
 
-Flag bit 0 is `REQUIRED`. Other bits MUST be zero. A reader MUST reject an unknown required TLV. It MAY skip an unknown optional TLV after validating its bounds and padding. Types 0 and 65535 are invalid; 1–32767 are standard allocations and 32768–65534 are private. All TLV types are singleton; duplicate types are invalid, including unknown types.
+## Metadata
+
+### TLV encoding
+
+The metadata is a sequence of TLV elements. Each element has an 8-byte header, a value and zero padding.
+
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 0 | `type` | u16 | 2 | Element type |
+| 2 | `flags` | u16 | 2 | Bit 0 is `REQUIRED`; other bits are zero |
+| 4 | `value_bytes` | u32 | 4 | Size of the value, without header and padding |
+| 8 | value | bytes | `value_bytes` | The value, then zero padding to a multiple of 8 |
+
+- The padding is `align8(8 + value_bytes) - (8 + value_bytes)` zero bytes.
+- The elements fill `metadata_bytes` exactly. Nothing follows the last element.
+- A reader rejects an unknown element whose `REQUIRED` bit is set. It can skip an unknown optional element after it validates the bounds and padding of that element.
+- Types 0 and 65,535 are invalid. Types 1–32,767 are standard. Types 32,768–65,534 are private.
+- Every type appears at most once. A duplicate type is invalid, including a duplicate of an unknown type.
 
 | Type | Name | Requirement |
 |---:|---|---|
-| 1 | MANIFEST | Exactly one; REQUIRED bit MUST be set |
-| 2 | PROVENANCE | Optional JSON object; REQUIRED bit MUST be clear |
-| 32768–65534 | Private extension | Out-of-band definition; flag controls support requirement |
+| 1 | `MANIFEST` | Exactly one. The `REQUIRED` bit is set |
+| 2 | `PROVENANCE` | Optional JSON object. The `REQUIRED` bit is clear |
+| 32,768–65,534 | Private extension | Defined outside this specification. The `REQUIRED` bit states whether a reader needs to support it |
 
-### 5.2 MANIFEST
+### MANIFEST
 
-The value is a UTF-8 JSON object without BOM. Duplicate object keys, NaN, infinity, malformed Unicode, and JSON nesting deeper than 16 levels MUST be rejected. The maximum is the metadata size limit. Standard JSON numbers in the manifest are restricted to exact integers from 0 through 4294967295; values needing more range MUST be strings with schema-defined syntax. Unknown object properties MAY be ignored and MUST NOT change the interpretation of existing fields.
+The value is a UTF-8 JSON object without a byte order mark.
 
-Required top-level fields are:
+- A reader rejects duplicate object keys, NaN, infinity, malformed Unicode and JSON nested deeper than 16 levels.
+- The size of the manifest is bounded by the maximum metadata size.
+- A JSON number in the manifest is an exact integer from 0 through 4,294,967,295. A value that needs more range is a string with a syntax that the schema defines.
+- A reader can ignore an unknown object property. An unknown property does not change the interpretation of existing fields.
+
+Required top-level fields:
 
 | Field | Type | Rules |
 |---|---|---|
-| `dataset` | string | 1–255 UTF-8 bytes; stable namespace |
-| `producer` | string | 1–255 bytes; producer name/version |
+| `dataset` | string | 1–255 UTF-8 bytes. A stable namespace |
+| `producer` | string | 1–255 bytes. Name and version of the producer |
 | `profile` | string | Exactly `market-data` or `generic-events` |
-| `publishers` | array | Up to 4096 entries; IDs unique |
-| `schemas` | array | 1–4096 entries; `(type,version)` unique |
+| `publishers` | array | Up to 4,096 entries with unique IDs |
+| `schemas` | array | 1–4,096 entries with unique `(type, version)` pairs |
 | `clock` | string | Exactly `posix-ns` |
 
-One optional top-level field is defined:
+Optional top-level field:
 
 | Field | Type | Rules |
 |---|---|---|
-| `ordering` | string | `none` (default when absent), `ts_event`, or `instrument,ts_event`. A claim about byte order; see below |
+| `ordering` | string | `none`, `ts_event` or `instrument,ts_event`. Absent means `none` |
 
-`ordering` is a claim by the producer about the order of records in the container. `ts_event` means the non-null `ts_event` values are non-decreasing in byte order across the whole container; records with a null `ts_event` are exempt. `instrument,ts_event` means the `instrument_id` values are non-decreasing in byte order, and within one `instrument_id` the non-null `ts_event` values are non-decreasing. A producer MUST declare an ordering only when it holds. A validator checks the claim against a full scan, and a false claim is an error. A reader that does not know the property ignores it, so it changes no wire meaning. Binary search by time is valid only when a validated `ts_event` ordering is declared (§11.1).
+**Ordering.** `ordering` is a claim of the producer about the order of records in the container.
 
-Each publisher object contains `id` (1–4294967295), `name` (1–255 bytes), and `venue` (0–255 bytes). An empty publisher list is permitted only when every record uses the system scope. A venue is a producer-defined name, not necessarily a MIC.
+- `ts_event`: the non-null `ts_event` values are non-decreasing in byte order across the whole container. Records with a null `ts_event` are exempt.
+- `instrument,ts_event`: the `instrument_id` values are non-decreasing in byte order, and within one `instrument_id` the non-null `ts_event` values are non-decreasing.
+- A producer declares an ordering only when it holds. A validator checks the claim against a full scan. A false claim is an error.
+- The property changes no wire meaning. A reader that does not use it ignores it.
+- Binary search by time is valid only when a validated `ts_event` ordering is declared. See [`INDEX` frames](#index-frames).
 
-Each schema object contains `type` (1–65534), `version` (1–255), `required` (boolean), `name` (1–255 bytes), and `spec_uri` (1–2048 bytes). Standard schemas use version 1 and their names from §8. The `spec_uri` is `urn:nwt:spec:1.0` for types 1–9 and `urn:nwt:spec:1.1` for types 10–22. A private schema MUST provide a stable URI identifying its exact external specification. A URI is an identifier, not an instruction to fetch or execute code. The registry is a declaration, not an embedded general-purpose schema language.
+**Publishers.** Each publisher object contains `id` (1–4,294,967,295), `name` (1–255 bytes) and `venue` (0–255 bytes).
 
-For built-in stateful types MBO, BOOK_SNAPSHOT, INSTRUMENT_DEF, STATUS, GAP and BOOK_DELTA, `required` MUST be true. For FRAME_SUMMARY, `required` MUST be false, so that a reader that does not know it can skip it. For the other standard types the producer chooses, according to the consumer contract. Every emitted `(type,version)` MUST be declared even if optional. Every nonzero publisher in a record MUST be declared. Extra unused declarations are permitted.
+- The publisher list may be empty only when every record uses the system scope.
+- A venue is a name that the producer defines. It need not be a market identifier code.
+- Every nonzero publisher in a record is declared.
 
-Example:
+**Schemas.** Each schema object contains `type` (1–65,534), `version` (1–255), `required` (boolean), `name` (1–255 bytes) and `spec_uri` (1–2,048 bytes).
 
+- A standard schema uses version 1 and its name from [Record types](#record-types).
+- `spec_uri` is `urn:nwt:spec:1.0` for record types 1–9 and `urn:nwt:spec:1.1` for record types 10–22.
+- A private schema provides a stable URI that identifies its exact external specification. A URI is an identifier. It is not an instruction to fetch or execute code.
+- The schema list is a declaration. It is not an embedded schema language.
+- Every `(type, version)` that the container emits is declared, including optional ones. Declarations that no record uses are permitted.
+- The value of `required` for each standard record type is given in [Scope and required schemas](#scope-and-required-schemas).
+
+**Profiles.**
+
+- `market-data` requires instrument definitions before use and the rules in [Record types](#record-types) and [Ordering, gaps, snapshots and replay](#ordering-gaps-snapshots-and-replay).
+- `generic-events` permits system and private event schemas. The standard record types 1–7 and 10–19 are not allowed in it. It does not relax framing or sequencing.
+- `GAP`, `SYSTEM`, `FRAME_SUMMARY`, `SECURITY_DEF` and `CORPORATE_ACTION` are permitted in either profile.
+
+<!-- nwt-title: Example manifest -->
 ```json
 {
   "dataset": "EXAMPLE.MARKET",
-  "producer": "nwt-example/1.0",
+  "producer": "example-writer/3",
   "profile": "market-data",
   "clock": "posix-ns",
+  "ordering": "ts_event",
   "publishers": [{"id": 1, "name": "Example Feed", "venue": "EXAMPLE"}],
   "schemas": [
     {"type": 1, "version": 1, "required": true, "name": "TRADE", "spec_uri": "urn:nwt:spec:1.0"},
-    {"type": 6, "version": 1, "required": true, "name": "INSTRUMENT_DEF", "spec_uri": "urn:nwt:spec:1.0"}
+    {"type": 6, "version": 1, "required": true, "name": "INSTRUMENT_DEF", "spec_uri": "urn:nwt:spec:1.0"},
+    {"type": 15, "version": 1, "required": true, "name": "BOOK_DELTA", "spec_uri": "urn:nwt:spec:1.1"}
   ]
 }
 ```
 
-`market-data` requires instrument definitions before use and the semantic rules in §8–9. `generic-events` permits system and private event schemas but MUST NOT contain built-in types 1–7 or 10–19; it does not relax framing or sequencing. GAP, SYSTEM and FRAME_SUMMARY are permitted in either profile. This draft places no profile restriction on SECURITY_DEF (21) and CORPORATE_ACTION (22), which are reference records. These rules keep application semantics explicit.
+This manifest declares record type 15, so the container header has `minor` = 1.
 
-### 5.3 PROVENANCE
+### PROVENANCE
 
-This is a JSON object using the same text and nesting constraints. Recommended optional string properties are `source_format`, `source_version`, `converter`, `conversion_policy`, `clock_policy`, and `license_reference`. Each string is at most 4096 bytes. It MUST NOT contain credentials. Provenance is descriptive and MUST NOT override normative wire semantics.
+The value is a JSON object under the same text and nesting rules as `MANIFEST`.
 
-## 6. Frame envelope
+- Recommended optional string properties: `source_format`, `source_version`, `converter`, `conversion_policy`, `clock_policy` and `license_reference`. Each string is at most 4,096 bytes.
+- Credentials are not allowed in it.
+- It is descriptive and cannot override the wire rules of this specification.
 
-### 6.1 Header layout
+## Frames
 
-Every frame begins with this 64-byte header:
+Everything after the metadata is a sequence of frames. A frame is a 64-byte header, a payload and zero padding to an 8-byte boundary. The header states the kind of the frame, the codec and the size of the payload, and it carries the checksums.
 
-| Offset | Bytes | Type | Field | Meaning |
-|---:|---:|---|---|---|
-| 0 | 4 | bytes | magic | `4e 57 46 31` (`NWF1`) |
-| 4 | 1 | u8 | envelope_version | 1 |
-| 5 | 1 | u8 | kind | 1 DATA; 2 INDEX; 3 END |
-| 6 | 1 | u8 | codec | 0 raw; 1 Zstd |
-| 7 | 1 | u8 | flags | 0 |
-| 8 | 2 | u16 | header_bytes | 64 |
-| 10 | 2 | u16 | reserved | 0 |
-| 12 | 4 | u32 | stored_bytes | Payload bytes as stored/transmitted |
-| 16 | 4 | u32 | raw_bytes | Payload bytes after decompression |
-| 20 | 4 | u32 | record_count | DATA records; otherwise 0 |
-| 24 | 8 | u64 | frame_seq | Starts at 0; increments by 1 for every frame |
-| 32 | 8 | u64 | min_event_ns | Minimum non-null DATA event timestamp |
-| 40 | 8 | u64 | max_event_ns | Maximum non-null DATA event timestamp |
-| 48 | 4 | u32 | payload_crc32c | CRC of raw payload |
-| 52 | 4 | u32 | header_crc32c | CRC of 64 bytes with this field zero |
-| 56 | 8 | u64 | reserved | 0 |
+![A frame is a 64-byte header, a payload and zero padding; the payload is stored raw or as one Zstandard frame, and the raw payload is a run of whole records covered by a CRC-32C](diagrams/frame-anatomy.svg "A frame: header, payload and padding, and what each CRC-32C covers")
 
-Total stored frame size is `64 + align8(stored_bytes)`. Padding is outside compression and outside the payload CRC; readers MUST validate that it is zero. For codec 0, `stored_bytes == raw_bytes`. Each length MUST be at most 16,777,216 bytes. Decompression MUST produce exactly `raw_bytes` bytes.
+### Frame header
 
-### 6.2 Kind-specific rules
+Every frame begins with this 64-byte header.
 
-DATA contains one or more complete records and has `record_count >= 1`. `raw_bytes >= 48`, is a multiple of 8, and equals the sum of record lengths. The advertised count MUST equal the parsed count. It cannot exceed `floor(raw_bytes / 48)`.
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 0 | `magic` | bytes | 4 | `4e 57 46 31`, the ASCII text `NWF1` |
+| 4 | `envelope_version` | u8 | 1 | 1 |
+| 5 | `kind` | u8 | 1 | 1 `DATA`, 2 `INDEX`, 3 `END` |
+| 6 | `codec` | u8 | 1 | 0 raw, 1 Zstandard |
+| 7 | `flags` | u8 | 1 | 0 |
+| 8 | `header_bytes` | u16 | 2 | 64 |
+| 10 | `reserved` | u16 | 2 | 0 |
+| 12 | `stored_bytes` | u32 | 4 | Payload bytes as stored or transmitted |
+| 16 | `raw_bytes` | u32 | 4 | Payload bytes after decompression |
+| 20 | `record_count` | u32 | 4 | Number of records in a `DATA` frame; otherwise 0 |
+| 24 | `frame_seq` | u64 | 8 | Starts at 0 and increases by 1 for every frame of any kind |
+| 32 | `min_event_ns` | u64 | 8 | Smallest non-null `ts_event` in a `DATA` frame |
+| 40 | `max_event_ns` | u64 | 8 | Largest non-null `ts_event` in a `DATA` frame |
+| 48 | `payload_crc32c` | u32 | 4 | CRC of the raw payload |
+| 52 | `header_crc32c` | u32 | 4 | CRC of the 64 header bytes with this field set to zero |
+| 56 | `reserved` | u64 | 8 | 0 |
 
-DATA timestamp bounds cover every non-null `ts_event` in the frame, including control records. If all are null, both bounds MUST be null. Otherwise both bounds MUST be non-null and exact, with minimum <= maximum. A null-timestamp record can coexist with non-null bounds; time filtering MUST handle it separately and cannot infer that all records have timestamps from the bounds alone.
+- The total stored size of a frame is `64 + align8(stored_bytes)`.
+- The padding after the payload is outside the compression and outside the payload CRC. A reader validates that it is zero.
+- For codec 0, `stored_bytes` equals `raw_bytes`.
+- `stored_bytes` and `raw_bytes` are each at most 16,777,216.
+- Decompression produces exactly `raw_bytes` bytes.
+- A reader rejects an unknown kind, an unknown envelope version, an unknown codec and nonzero flags.
+- `frame_seq` never wraps.
+- A frame has no optionality bit. A reader cannot skip a frame with an unsupported codec and claim complete decoding.
 
-INDEX and END MUST use codec 0, `record_count = 0`, and both timestamp bounds null. DATA frames precede all INDEX frames. Zero or more contiguous INDEX frames may precede one END. No DATA may follow INDEX. Empty containers are allowed: metadata followed directly by END. Unknown kinds, envelope versions, codecs, and nonzero flags MUST be rejected.
+**Order of frames.** `DATA` frames precede all `INDEX` frames. Zero or more contiguous `INDEX` frames precede exactly one `END` frame. A `DATA` frame cannot follow an `INDEX` frame. An empty container is valid: metadata followed directly by `END`.
 
-Frame sequences MUST NOT wrap. There is no frame-level optionality bit; a reader cannot safely skip a frame with an unsupported codec and claim complete decoding.
+### DATA frames
 
-## 7. Record header
+A `DATA` frame contains one or more complete records.
 
-Every record starts with the following 48 bytes:
+- `record_count` is at least 1. It equals the number of records parsed, and it cannot exceed `floor(raw_bytes / 48)`.
+- `raw_bytes` is at least 48, is a multiple of 8 and equals the sum of the record lengths.
+- `min_event_ns` and `max_event_ns` cover every non-null `ts_event` in the frame, including control records.
+- If every `ts_event` in the frame is null, both bounds are null. Otherwise both bounds are non-null and exact, with minimum ≤ maximum.
+- A record with a null timestamp can share a frame with non-null bounds. A time filter handles such records separately. The bounds do not show that every record has a timestamp.
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 0 | 4 | u32 | record_bytes, including header and padding |
-| 4 | 2 | u16 | record_type |
-| 6 | 1 | u8 | schema_version |
-| 7 | 1 | u8 | flags |
-| 8 | 4 | u32 | publisher_id |
-| 12 | 4 | u32 | channel_id |
-| 16 | 8 | u64 | instrument_id |
-| 24 | 8 | u64 | ts_event |
-| 32 | 8 | u64 | ts_recv |
-| 40 | 8 | u64 | sequence |
+### INDEX frames
 
-`record_bytes` MUST be a multiple of 8, at least 48, and at most 1,048,576. Fixed standard schemas require their exact specified length. Variable standard schemas require the exact computed padded length. Additional trailing fields are not permitted under an existing schema version.
+An `INDEX` frame uses codec 0, `record_count` = 0 and null timestamp bounds. Its payload is one or more 40-byte entries with no count prefix. The entry count is `raw_bytes / 40`, and `raw_bytes` is a positive multiple of 40.
 
-Record flags: bit 0 `REPLAY`, bit 1 `SUSPECT`; bits 2–7 reserved and zero. REPLAY means the producer identifies the record as historical/replayed; it does not alter sequence or identity. SUSPECT means known source-quality concerns; it does not excuse a malformed record. Native retransmission of a container MUST preserve all bytes, including flags.
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 0 | `data_frame_seq` | u64 | 8 | `frame_seq` of the `DATA` frame |
+| 8 | `data_frame_offset` | u64 | 8 | Offset of that frame header from container byte 0 |
+| 16 | `min_event_ns` | u64 | 8 | `min_event_ns` of that frame |
+| 24 | `max_event_ns` | u64 | 8 | `max_event_ns` of that frame |
+| 32 | `raw_bytes` | u32 | 4 | `raw_bytes` of that frame |
+| 36 | `record_count` | u32 | 4 | `record_count` of that frame |
 
-`sequence` identifies the normalized output position within `(stream_id, publisher_id, channel_id)`. It begins at 1 and increases exactly by 1 for each record in that scope, across instruments and types. Zero is invalid. A new container restarts these sequences. The maximum may be used once; another record in that scope requires a new container. `channel_id` 0 is allowed; channels are producer-defined logical partitions, not necessarily exchange channels.
+- If a container has `INDEX` frames, their concatenated entries list every `DATA` frame exactly once, in ascending `frame_seq` order, with values identical to the frame headers.
+- A container can hold several `INDEX` frames to stay within the frame size maximum.
+- An entry cannot refer to metadata, to an `INDEX` frame, to the `END` frame or to bytes outside the container.
+- An empty container has no `INDEX` frames.
 
-These are output sequences, not exchange-native sequence numbers. Source gaps are reported by GAP records. Filtering, merging, and re-batching into a different container require new output sequences. A consumer MUST NOT interpret a missing sequence in a filtered export as a source-feed gap.
+**Using the index.**
 
-## 8. Standard record schemas
+- The index selects candidate frames. It is not a checkpoint of state.
+- Timestamp ranges of frames can overlap or go backward. Binary search by timestamp is invalid unless monotonic order is established separately, for example by a manifest `ordering` of `ts_event` that a validator has checked. See [MANIFEST](#manifest).
+- A general reader examines all index ranges and reads the selected frames in their original order.
+- A reader needs an explicit policy for records with null timestamps. Frame bounds do not identify every frame that holds one.
+- A seek to a trade or a quote still needs the instrument definitions that precede it. `MBO` needs an earlier complete snapshot or `CLEAR` and every update after it.
+- A consumer that seeks without that context labels its results as raw or partial. It cannot claim a reconstructed valid book.
+- [`FRAME_SUMMARY`](#frame_summary) adds the record types and the instrument range of each frame. It does not carry state.
 
-All schemas in this section use version 1. Body offsets below are absolute record offsets. Types 1–7 require nonzero publisher and instrument IDs. Their channel ID and the instrument's publisher MUST agree with the stream context. Types 8–9 and 10–22 have the scope rules given with each type. All enum values not explicitly assigned are reserved and invalid in these schema versions.
+### END frame
+
+The `END` frame uses codec 0, `record_count` = 0 and null timestamp bounds. Its payload is 32 bytes, so the frame is exactly 96 bytes.
+
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 0 | `first_index_offset` | u64 | 8 | Offset of the first `INDEX` frame, or 0 when there is none |
+| 8 | `total_data_frames` | u64 | 8 | Number of `DATA` frames |
+| 16 | `total_records` | u64 | 8 | Number of records in all `DATA` frames |
+| 24 | `completion_status` | u32 | 4 | 0 normal, 1 aborted by the producer |
+| 28 | `reserved` | u32 | 4 | 0 |
+
+- The counts include optional records that a reader does not know. They match the container.
+- A nonzero `first_index_offset` identifies the first `INDEX` frame, and every frame from there to `END` is an `INDEX` frame.
+- The `frame_seq` of `END` equals the number of `DATA` and `INDEX` frames before it.
+- No bytes follow `END` in one NWT object, not even another container. Concatenation needs an external bundle format or separate objects.
+
+**Reading from the end.** A seekable reader can read the last 96 bytes to find the index. It validates `END` and every bound that `END` refers to. This shortcut does not validate the content of the file or the completeness of the index. A strict full validator compares the counts, sequences, entries and payloads with a sequential scan.
+
+**Completion.**
+
+- A normal `END` means the producer completed the container on purpose. It does not certify that the source had no gaps.
+- An aborted `END` preserves a structurally complete prefix and reports unsuccessful completion.
+- End of input without `END` is an incomplete container, even exactly on a frame boundary. A reader can expose a verified prefix only with an explicit incomplete result.
+- A live connection has no `END` yet and is in progress. A clean transport close does not replace `END`.
+
+## Record header
+
+Every record starts with the same 48-byte header, whatever its record type. The header gives the length and the type of the record, its publisher, channel and instrument, two timestamps and a sequence number. The body of the record follows at offset 48.
+
+![A record is a 48-byte header, the fixed fields of its record type, an optional variable part and zero padding; TRADE, BOOK_SNAPSHOT and INSTRUMENT_DEF show the three shapes](diagrams/record-anatomy.svg "A record: the common header, the fixed fields, the variable part and the padding")
+
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 0 | `record_bytes` | u32 | 4 | Size of the record, including this header and the padding |
+| 4 | `record_type` | u16 | 2 | Record type. Selects the body layout |
+| 6 | `schema_version` | u8 | 1 | Schema version. 1 for every standard schema |
+| 7 | `flags` | u8 | 1 | Bit 0 `REPLAY`, bit 1 `SUSPECT`; bits 2–7 are zero |
+| 8 | `publisher_id` | u32 | 4 | Publisher declared in the manifest, or 0 for the system scope |
+| 12 | `channel_id` | u32 | 4 | Logical partition defined by the producer. 0 is valid |
+| 16 | `instrument_id` | u64 | 8 | Instrument in the namespace of the publisher, or 0 |
+| 24 | `ts_event` | u64 | 8 | Source event time, or null |
+| 32 | `ts_recv` | u64 | 8 | Capture time at the producer, or null |
+| 40 | `sequence` | u64 | 8 | Output position within the publisher and channel |
+
+**Length.**
+
+- `record_bytes` is a multiple of 8, at least 48 and at most 1,048,576.
+- A fixed-size standard schema requires its exact length. A variable-size standard schema requires the exact computed padded length.
+- A record carries no additional trailing fields under an existing schema version.
+
+**Flags.**
+
+- `REPLAY`: the producer marks the record as historical or replayed. It does not alter the sequence or the identity of the record.
+- `SUSPECT`: the producer knows of a quality problem at the source. It does not excuse a malformed record.
+- A retransmission of a container preserves all bytes, including flags.
+
+**Sequence.**
+
+- `sequence` is the output position within `(stream_id, publisher_id, channel_id)`. It begins at 1 and increases by exactly 1 for each record in that scope, across instruments and record types. Zero is invalid.
+- A new container restarts the sequences.
+- The maximum value can be used once. Another record in that scope needs a new container.
+- A channel is a logical partition defined by the producer. It need not be an exchange channel.
+- `sequence` is an output sequence, not the sequence number of an exchange. Gaps at the source are reported by [`GAP`](#gap) records.
+- Filtering, merging and re-batching into a different container assign new output sequences. A consumer cannot read a missing sequence in a filtered export as a gap in the source feed.
+
+## Record types
+
+The format defines 22 standard record types.
+
+![The MANIFEST, then three groups of record types: instruments and venues, market records and stream records, with the key that links each group to the one above](diagrams/data-model.svg "The manifest and the three groups of record types")
 
 | Type | Name | Record bytes | Purpose |
-|---:|---|---:|---|
-| 1 | TRADE | 88 | Trade lifecycle |
-| 2 | QUOTE | 96 | Best bid and ask replacement |
-| 3 | BAR | 112 | Completed time bucket |
-| 4 | MBO | 88 | Order-level book mutation and snapshot markers |
-| 5 | BOOK_SNAPSHOT | 56 + 48 × levels | Aggregate depth replacement |
-| 6 | INSTRUMENT_DEF | align8(112 + text bytes) | Instrument interpretation |
-| 7 | STATUS | 64 | Trading status |
-| 8 | GAP | 80 | Source discontinuity |
-| 9 | SYSTEM | align8(64 + text bytes) | Heartbeat or diagnostic |
-| 10 | VENUE_DEF | align8(96 + text bytes) | Trading venue or segment (market identifier code) |
-| 11 | OPTION_DEF | align8(96 + text bytes) | Option contract terms |
-| 12 | LISTING | align8(72 + text bytes) | Symbol-directory listing of one instrument |
-| 13 | STATISTICS | 80 | Open, high, low, close, settlement, VWAP, volume, open interest |
-| 14 | OPTION_ANALYTICS | 120 | Implied volatility and Greeks |
-| 15 | BOOK_DELTA | 72 | Aggregate book change by price level |
-| 16 | IMBALANCE | 104 | Auction imbalance |
-| 17 | SYMBOL_MAP | align8(72 + text bytes) | Symbol valid for an instrument over a time interval |
-| 18 | TRADE_QUOTE | 120 | One trade with the top of book immediately before it |
-| 19 | BEST_QUOTE | 112 | Best bid and offer with the venue of each side |
-| 20 | FRAME_SUMMARY | 104 | Per-frame summary for selective reads |
-| 21 | SECURITY_DEF | align8(216 + text bytes) | Security-master record for one listing |
-| 22 | CORPORATE_ACTION | align8(184 + text bytes) | One corporate-action event |
+|---:|---|---|---|
+| 1 | [`TRADE`](#trade) | 88 | Trade lifecycle |
+| 2 | [`QUOTE`](#quote) | 96 | Replacement of the top of book |
+| 3 | [`BAR`](#bar) | 112 | Completed time bucket |
+| 4 | [`MBO`](#mbo) | 88 | Change of one order in the book, and snapshot markers |
+| 5 | [`BOOK_SNAPSHOT`](#book_snapshot) | 56 + 48 × levels | Replacement of the aggregate depth |
+| 6 | [`INSTRUMENT_DEF`](#instrument_def) | align8(112 + text) | Interpretation of an instrument |
+| 7 | [`STATUS`](#status) | 64 | Trading status |
+| 8 | [`GAP`](#gap) | 80 | Discontinuity at the source |
+| 9 | [`SYSTEM`](#system) | align8(64 + text) | Heartbeat or diagnostic |
+| 10 | [`VENUE_DEF`](#venue_def) | align8(96 + text) | Trading venue or segment, with its market identifier code |
+| 11 | [`OPTION_DEF`](#option_def) | align8(96 + text) | Terms of an option contract |
+| 12 | [`LISTING`](#listing) | align8(72 + text) | Symbol-directory listing of one instrument |
+| 13 | [`STATISTICS`](#statistics) | 80 | Open, high, low, close, settlement, VWAP, volume, open interest |
+| 14 | [`OPTION_ANALYTICS`](#option_analytics) | 120 | Implied volatility and Greeks |
+| 15 | [`BOOK_DELTA`](#book_delta) | 72 | Change of the aggregate book at one price level |
+| 16 | [`IMBALANCE`](#imbalance) | 104 | Auction imbalance |
+| 17 | [`SYMBOL_MAP`](#symbol_map) | align8(72 + text) | Symbol valid for an instrument over a time interval |
+| 18 | [`TRADE_QUOTE`](#trade_quote) | 120 | One trade with the top of book immediately before it |
+| 19 | [`BEST_QUOTE`](#best_quote) | 112 | Best bid and offer with the venue of each side |
+| 20 | [`FRAME_SUMMARY`](#frame_summary) | 104 | Summary of one frame for selective reads |
+| 21 | [`SECURITY_DEF`](#security_def) | align8(216 + text) | Security-master record for one listing |
+| 22 | [`CORPORATE_ACTION`](#corporate_action) | align8(184 + text) | One corporate-action event |
 
-### 8.1 TRADE — type 1
+The same layouts are available as a machine-readable schema: [records.json](files/records.json). The entry for `TRADE` looks like this:
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 8 | i64 | price |
-| 56 | 8 | u64 | quantity |
-| 64 | 8 | u64 | trade_id |
-| 72 | 8 | u64 | original_sequence |
-| 80 | 1 | u8 | action: 1 NEW, 2 CANCEL, 3 CORRECT |
-| 81 | 1 | u8 | aggressor: 0 unknown, 1 buyer, 2 seller |
-| 82 | 2 | u16 | conditions: bit 0 off-book; remaining bits zero |
-| 84 | 4 | u32 | reserved |
+<!-- nwt-file: schemas/records.json lines=116-175 -->
 
-NEW requires non-null price, positive non-null quantity, nonzero `trade_id`, and `original_sequence = 0`. A trade ID is unique for the instrument within the publisher/channel scope of a container. If the source lacks an ID, the producer MUST assign one deterministically within that scope.
+### Common rules
 
-CORRECT carries the complete replacement price, quantity, aggressor, and conditions; price and quantity have the same constraints as NEW. CANCEL requires null price, null quantity, aggressor 0, and conditions 0. CANCEL and CORRECT use the same `trade_id` and point `original_sequence` to that trade's NEW sequence in the same container/channel/instrument. The NEW must precede them. Corrections may repeat; cancel terminates the trade and subsequent correction/cancel is invalid.
+- Every standard schema uses `schema_version` 1.
+- Offsets in the layout tables are counted from the start of the record. The body starts at offset 48, after the [record header](#record-header).
+- Prices, quantities and counts follow [Decimal values and null values](#decimal-values-and-null-values). In the tables, "null allowed" means the null value of the type marks an unavailable fact.
+- Reserved bytes are zero.
+- An enum value that is not assigned and a flag bit that is not assigned are invalid.
 
-An export containing a correction MUST also include its original NEW and intervening lifecycle records, even if outside the requested time interval, or reject the export as unsupported. Cross-container corrections are deliberately unsupported in this version. Stateless consumers may expose lifecycle events; aggregators MUST apply them exactly once in sequence order.
+**Text fields.**
 
-### 8.2 QUOTE — type 2
+- Each text has a `u16` length field in the fixed part of the record. The length counts bytes.
+- The texts follow the fixed part in the order of their length fields, with no separators. Zero padding then fills the record to a multiple of 8 bytes.
+- A length outside the stated range is invalid. A writer checks the range before it writes a length.
+- Text is UTF-8 without NUL. See [Text](#text).
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 8 | i64 | bid_price |
-| 56 | 8 | i64 | ask_price |
-| 64 | 8 | u64 | bid_quantity |
-| 72 | 8 | u64 | ask_quantity |
-| 80 | 4 | u32 | bid_order_count |
-| 84 | 4 | u32 | ask_order_count |
-| 88 | 4 | u32 | quote_flags: bit 0 indicative; others zero |
-| 92 | 4 | u32 | reserved |
+### Scope and required schemas
 
-This is a complete replacement of both sides of the top of book. An absent side MUST use null price, zero quantity, and zero count. A present side MUST use non-null price and positive non-null quantity; count is positive or null. Negative prices are allowed. Crossed or locked quotes are representable and MUST NOT be rejected merely because bid >= ask. An empty quote is valid and clears both sides. It does not clear MBO or aggregate-depth state maintained from other schemas.
+The record type decides which values the header fields `publisher_id` and `instrument_id` take.
 
-### 8.3 BAR — type 3
+| Class | Record types | Header scope |
+|---|---|---|
+| Market record | `TRADE`, `QUOTE`, `BAR`, `MBO`, `BOOK_SNAPSHOT`, `STATUS`, `STATISTICS`, `OPTION_ANALYTICS`, `BOOK_DELTA`, `IMBALANCE`, `TRADE_QUOTE`, `BEST_QUOTE` | Publisher ≠ 0 and instrument ≠ 0. An `INSTRUMENT_DEF` for the instrument comes earlier in byte order |
+| Definition | `INSTRUMENT_DEF` | Publisher ≠ 0 and instrument ≠ 0 |
+| Reference record | `OPTION_DEF`, `LISTING`, `SYMBOL_MAP`, `SECURITY_DEF`, `CORPORATE_ACTION` | Publisher ≠ 0 and instrument ≠ 0 |
+| Reference record | `VENUE_DEF` | Publisher ≠ 0 and instrument = 0 |
+| Control record | `GAP` | Publisher ≠ 0 and instrument = 0 |
+| Control record | `SYSTEM` | Instrument = 0. Publisher 0 with channel 0, or a declared publisher |
+| Control record | `FRAME_SUMMARY` | Publisher 0, channel 0 and instrument 0 |
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 8 | u64 | interval_start_ns |
-| 56 | 8 | u64 | interval_end_ns |
-| 64 | 8 | i64 | open |
-| 72 | 8 | i64 | high |
-| 80 | 8 | i64 | low |
-| 88 | 8 | i64 | close |
-| 96 | 8 | u64 | volume |
-| 104 | 4 | u32 | trade_count |
-| 108 | 4 | u32 | bar_flags: bit 0 empty; others zero |
+- For `TRADE`, `QUOTE`, `BAR`, `MBO`, `BOOK_SNAPSHOT`, `INSTRUMENT_DEF` and `STATUS`, the channel ID and the publisher of the instrument agree with the stream context.
+- A reference record needs no earlier `INSTRUMENT_DEF` and does not replace one.
+- A reference record replaces an earlier record of the same type and identity. The identity of each type is stated in its section.
 
-Intervals are half-open `[start,end)`, non-null, and start < end. `ts_event` MUST equal interval end. BAR represents completed trade-derived buckets only. A nonempty bar requires non-null OHLC, positive non-null volume and positive non-null count, `low <= open/close <= high`, and empty bit clear. An empty bar requires the empty bit, all four prices null, and zero volume/count. Empty bars MUST NOT forward-fill prices.
+The manifest declares each schema with a `required` value.
 
-Each `(publisher, channel, instrument, start, end)` appears at most once per container. Revisable bars and explicit auction/quote-derived bars require a future or private schema. The aggregation policy, including off-book trades and correction cutoff, SHOULD be described in provenance.
+| `required` | Record types |
+|---|---|
+| Always true | `MBO`, `BOOK_SNAPSHOT`, `INSTRUMENT_DEF`, `STATUS`, `GAP`, `BOOK_DELTA` |
+| Always false | `FRAME_SUMMARY`, so that a reader that does not know it can skip it |
+| Chosen by the producer | Every other standard record type, according to the contract with the consumer |
 
-### 8.4 MBO — type 4
+### TRADE
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 8 | u64 | order_id |
-| 56 | 8 | i64 | price |
-| 64 | 8 | u64 | quantity |
-| 72 | 8 | u64 | priority |
-| 80 | 1 | u8 | action |
-| 81 | 1 | u8 | side: 0 none, 1 bid, 2 ask |
-| 82 | 2 | u16 | mbo_flags: 0 |
-| 84 | 4 | u32 | reserved |
+`TRADE` (type 1, 88 bytes) reports one step in the lifecycle of a trade: a new trade, a correction or a cancellation.
 
-Actions are 1 ADD, 2 MODIFY, 3 DELETE, 4 CLEAR, 5 SNAPSHOT_BEGIN, and 6 SNAPSHOT_END. Book identity is `(publisher, channel, instrument)`. ADD/MODIFY require nonzero order ID, side 1 or 2, non-null price, and positive non-null quantity. Quantity is the absolute remaining size, not a delta. MODIFY replaces price, quantity, and priority but MUST preserve side; a side change requires DELETE then ADD. Order IDs MUST be unique among live orders in a book; reuse after DELETE is permitted.
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `price` | i64 | 8 | Trade price. Null for `CANCEL` |
+| 56 | `quantity` | u64 | 8 | Trade size. Null for `CANCEL` |
+| 64 | `trade_id` | u64 | 8 | Nonzero trade identifier. Stable through correction and cancellation |
+| 72 | `original_sequence` | u64 | 8 | 0 for `NEW`. For `CANCEL` and `CORRECT`, the `sequence` of the `NEW` record of the trade |
+| 80 | `action` | u8 | 1 | 1 `NEW`, 2 `CANCEL`, 3 `CORRECT` |
+| 81 | `aggressor` | u8 | 1 | 0 unknown, 1 buyer, 2 seller |
+| 82 | `conditions` | u16 | 2 | Bit 0 off-book; other bits zero |
+| 84 | `reserved` | u32 | 4 | 0 |
 
-DELETE requires an existing order ID, side 0, null price, zero quantity, and null priority (`UINT64_MAX`). It removes the whole order. CLEAR, SNAPSHOT_BEGIN, and SNAPSHOT_END require ID 0, side 0, null price, zero quantity, and null priority.
+- `NEW` requires a non-null price, a positive non-null quantity, a nonzero `trade_id` and `original_sequence` = 0.
+- A trade ID is unique for the instrument within the publisher and channel scope of a container. If the source has no ID, the producer assigns one deterministically within that scope.
+- `CORRECT` carries the complete replacement price, quantity, aggressor and conditions. Its price and quantity follow the rules of `NEW`.
+- `CANCEL` requires a null price, a null quantity, aggressor 0 and conditions 0.
+- `CANCEL` and `CORRECT` use the `trade_id` of the trade and set `original_sequence` to the sequence of its `NEW` record in the same container, channel and instrument. The `NEW` record precedes them.
+- Corrections can repeat. A cancel ends the trade. A correction or a cancel after it is invalid.
+- An export that contains a correction also includes the original `NEW` and the lifecycle records between them, even when they lie outside the requested time interval. An export that cannot include them is rejected as unsupported.
+- A correction cannot refer to a trade in another container.
+- A stateless consumer can expose lifecycle events as they are. An aggregator applies each of them exactly once, in sequence order.
 
-`priority` is an ascending source-provided rank/key, or null if unavailable. Smaller values have earlier priority at the same side and price. If non-null keys tie, use ascending order ID for deterministic iteration; the tie-break MUST NOT be presented as known exchange priority. Price ordering is descending for bids and ascending for asks. Arrival order alone MUST NOT be represented as definitive queue priority when the source does not supply it.
+### QUOTE
 
-CLEAR sets the book to a valid empty state. Snapshot rules are in §9. A trade record does not implicitly mutate MBO; executions must arrive as MODIFY/DELETE as appropriate. Unknown-order MODIFY/DELETE and duplicate live-order ADD are semantic errors, not silent no-ops.
+`QUOTE` (type 2, 96 bytes) replaces both sides of the top of book.
 
-### 8.5 BOOK_SNAPSHOT — type 5
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `bid_price` | i64 | 8 | Bid price. Null when the side is absent |
+| 56 | `ask_price` | i64 | 8 | Ask price. Null when the side is absent |
+| 64 | `bid_quantity` | u64 | 8 | Bid size. 0 when the side is absent |
+| 72 | `ask_quantity` | u64 | 8 | Ask size. 0 when the side is absent |
+| 80 | `bid_order_count` | u32 | 4 | Number of bid orders. 0 when the side is absent |
+| 84 | `ask_order_count` | u32 | 4 | Number of ask orders. 0 when the side is absent |
+| 88 | `quote_flags` | u32 | 4 | Bit 0 indicative; other bits zero |
+| 92 | `reserved` | u32 | 4 | 0 |
 
-This record replaces a ranked aggregate book of at most 1024 levels on each side. It is atomic and contained in one record.
+- An absent side has a null price, zero quantity and zero count.
+- A present side has a non-null price and a quantity from 1 through `UINT64_MAX` − 1. Its count is positive or null.
+- Negative prices are allowed.
+- A crossed or locked quote is representable. Bid ≥ ask is not a reason for a reader to reject a quote.
+- An empty quote is valid and clears both sides. It does not clear `MBO` state or aggregate-depth state kept from other record types.
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 2 | u16 | levels: 0–1024 |
-| 50 | 2 | u16 | book_flags: bit 0 depth-limited; others zero |
-| 52 | 4 | u32 | reserved |
-| 56 | 48 × levels | array | paired bid/ask levels |
+### BAR
 
-Each 48-byte element contains, at relative offsets 0/8/16/24/32/36/40: `bid_price:i64`, `ask_price:i64`, `bid_quantity:u64`, `ask_quantity:u64`, `bid_count:u32`, `ask_count:u32`, `reserved:u64`. Presence rules match QUOTE. Bids MUST be strictly decreasing in price, asks strictly increasing. Each side may have fewer levels than the other; absent elements MUST form a suffix on that side. The final element MUST have at least one present side, unless `levels = 0`. Duplicate price levels are invalid.
+`BAR` (type 3, 112 bytes) reports one completed time bucket built from trades.
 
-`levels = 0` represents an empty observed book. The depth-limited flag means deeper prices may exist beyond the reported ranks; consumers MUST NOT infer a full exchange book. Even a zero-level snapshot may be depth-limited if the producer cannot attest completeness. This record initializes/replaces aggregate state only; it cannot reconstruct individual orders or repair MBO state.
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `interval_start_ns` | u64 | 8 | Inclusive start of the interval. Non-null |
+| 56 | `interval_end_ns` | u64 | 8 | Exclusive end of the interval. Non-null |
+| 64 | `open` | i64 | 8 | First trade price. Null only for an empty bar |
+| 72 | `high` | i64 | 8 | Highest trade price. Null only for an empty bar |
+| 80 | `low` | i64 | 8 | Lowest trade price. Null only for an empty bar |
+| 88 | `close` | i64 | 8 | Last trade price. Null only for an empty bar |
+| 96 | `volume` | u64 | 8 | Traded quantity, not currency turnover |
+| 104 | `trade_count` | u32 | 4 | Number of trades. `UINT32_MAX` is not valid here |
+| 108 | `bar_flags` | u32 | 4 | Bit 0 empty; other bits zero |
 
-### 8.6 INSTRUMENT_DEF — type 6
+- The interval is half-open, `[start, end)`, with start < end.
+- `ts_event` equals `interval_end_ns`.
+- A nonempty bar requires non-null open, high, low and close, a positive non-null volume, a positive count, `low` ≤ `open` ≤ `high`, `low` ≤ `close` ≤ `high`, and the empty bit clear.
+- An empty bar requires the empty bit, four null prices, zero volume and zero count. An empty bar does not carry prices forward from an earlier bar.
+- Each `(publisher, channel, instrument, start, end)` appears at most once in a container.
+- A bar that can be revised, and a bar built from auctions or quotes, needs a private schema.
+- We recommend describing the aggregation policy in `PROVENANCE`, including the treatment of off-book trades and the cutoff for corrections.
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 8 | i64 | price_increment |
-| 56 | 8 | u64 | quantity_increment |
-| 64 | 8 | i64 | contract_multiplier |
-| 72 | 8 | u64 | expiration_ns |
-| 80 | 8 | u64 | underlying_instrument_id |
-| 88 | 8 | i64 | strike |
-| 96 | 1 | u8 | asset_class |
-| 97 | 7 | bytes | reserved |
-| 104 | 2 | u16 | symbol_bytes |
-| 106 | 2 | u16 | venue_bytes |
-| 108 | 2 | u16 | currency_bytes |
-| 110 | 2 | u16 | quantity_unit_bytes |
-| 112 | variable | bytes | symbol, venue, currency, quantity_unit, then padding |
+### MBO
 
-Asset classes: 0 unspecified, 1 equity, 2 future, 3 option, 4 FX, 5 crypto, 6 index, 7 fixed income. Symbol is 1–255 bytes; venue 0–255; currency 1–16; quantity unit 1–32. Currency and quantity unit are case-sensitive producer-defined codes, for example `USD`, `BTC`, `share`, `contract`, or `base-unit`; interoperating systems MUST agree on them. Non-applicable expiration and strike are null; no underlying is 0. A nonzero underlying refers to the same publisher's namespace but need not have a definition in this container.
+`MBO` (type 4, 88 bytes) reports a change of one order in the book, or a snapshot marker.
 
-Non-null price/quantity increments and multiplier MUST be positive. Null means unavailable. A fixed increment may be null for a venue with a variable tick schedule; this version does not encode that schedule. INSTRUMENT_DEF alone does not carry option rights, exercise style or settlement rules. OPTION_DEF (§8.11) carries them, SECURITY_DEF (§8.21) carries identifiers and listing facts, and CORPORATE_ACTION (§8.22) carries events. A producer that lacks a fact says “unknown”. A consumer MUST NOT infer these facts from the symbol.
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `order_id` | u64 | 8 | Order identifier. 0 only for `CLEAR`, `SNAPSHOT_BEGIN` and `SNAPSHOT_END` |
+| 56 | `price` | i64 | 8 | Order price |
+| 64 | `quantity` | u64 | 8 | Absolute remaining size of the order, not a change |
+| 72 | `priority` | u64 | 8 | Ascending queue rank from the source. Null when unknown |
+| 80 | `action` | u8 | 1 | 1 `ADD`, 2 `MODIFY`, 3 `DELETE`, 4 `CLEAR`, 5 `SNAPSHOT_BEGIN`, 6 `SNAPSHOT_END` |
+| 81 | `side` | u8 | 1 | 0 none, 1 bid, 2 ask |
+| 82 | `mbo_flags` | u16 | 2 | 0 |
+| 84 | `reserved` | u32 | 4 | 0 |
 
-Definition scope is `(publisher, instrument)` across all channels. A definition MUST precede any market record for that instrument in byte order. Market records are types 1–5, 7, 13, 14, 15, 16, 18 and 19. A later definition replaces the current definition for subsequent records, regardless of its timestamp. `ts_event` describes the source definition event, not permission to apply it retroactively. Dataset, economic identity, currency, and quantity unit MUST NOT change for an existing instrument ID. Symbol, increments, multiplier, and other reference attributes may change. Existing book values remain encoded in the same units; definition updates do not rescale stored orders.
+- The identity of a book is `(publisher, channel, instrument)`.
+- `ADD` and `MODIFY` require a nonzero order ID, side 1 or 2, a non-null price and a positive non-null quantity.
+- `MODIFY` replaces the price, quantity and priority and keeps the side. A change of side is a `DELETE` followed by an `ADD`.
+- An order ID is unique among the live orders of a book. It can be reused after `DELETE`.
+- `DELETE` requires the ID of an existing order, side 0, a null price, zero quantity and a null priority. It removes the whole order.
+- `CLEAR`, `SNAPSHOT_BEGIN` and `SNAPSHOT_END` require order ID 0, side 0, a null price, zero quantity and a null priority.
+- `CLEAR` sets the book to a valid empty state.
+- A smaller `priority` is earlier in the queue at the same side and price. When non-null values tie, iterate in ascending order ID so that the result is deterministic. That tie-break is a convention of the consumer, not the priority of the exchange.
+- When the source does not supply priority, arrival order is not definitive queue priority, and a producer does not present it as such.
+- Bids are ordered by descending price and asks by ascending price.
+- A `TRADE` record does not change `MBO` state. An execution arrives as `MODIFY` or `DELETE`.
+- A `MODIFY` or `DELETE` of an unknown order and an `ADD` of a live order ID are semantic errors. A consumer cannot ignore them silently.
+- Snapshot rules are in [MBO snapshot transaction](#mbo-snapshot-transaction).
 
-### 8.7 STATUS — type 7
+### BOOK_SNAPSHOT
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 2 | u16 | status |
-| 50 | 2 | u16 | reason |
-| 52 | 4 | u32 | status_flags: 0 |
-| 56 | 8 | u64 | reserved |
+`BOOK_SNAPSHOT` (type 5, 56 + 48 × `levels` bytes) replaces a ranked aggregate book of at most 1,024 levels on each side. The replacement is atomic and fits in one record.
 
-Status: 0 unknown, 1 pre-open, 2 open, 3 halted, 4 closed, 5 auction. Reason: 0 unspecified, 1 scheduled, 2 volatility, 3 regulatory, 4 technical. STATUS replaces the state for the book scope. It does not clear books or prohibit encoding trades during an auction/halt; reported data and administrative state may not be perfectly synchronized.
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `levels` | u16 | 2 | Number of level elements, 0–1,024 |
+| 50 | `book_flags` | u16 | 2 | Bit 0 depth-limited; other bits zero |
+| 52 | `reserved` | u32 | 4 | 0 |
+| 56 | level elements | array | 48 × `levels` | Paired bid and ask levels, best first |
 
-### 8.8 GAP — type 8
+Each level element is 48 bytes. Offsets are from the start of the element.
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 8 | u64 | first_missing_source_sequence |
-| 56 | 8 | u64 | last_missing_source_sequence |
-| 64 | 4 | u32 | reason |
-| 68 | 4 | u32 | reserved |
-| 72 | 8 | u64 | recovery_id |
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 0 | `bid_price` | i64 | 8 | Bid price. Null when the element has no bid |
+| 8 | `ask_price` | i64 | 8 | Ask price. Null when the element has no ask |
+| 16 | `bid_quantity` | u64 | 8 | Bid size. 0 when absent |
+| 24 | `ask_quantity` | u64 | 8 | Ask size. 0 when absent |
+| 32 | `bid_count` | u32 | 4 | Number of bid orders at the level. 0 when absent |
+| 36 | `ask_count` | u32 | 4 | Number of ask orders at the level. 0 when absent |
+| 40 | `reserved` | u64 | 8 | 0 |
 
-Publisher MUST be nonzero and instrument MUST be 0. GAP applies to every instrument in that publisher/channel. Reason: 1 source packet loss, 2 source reset, 3 producer overflow, 4 unknown discontinuity. Missing source bounds are inclusive; both MUST be null when not known, otherwise both non-null with first <= last. They are advisory source-native values, not NWT output sequence numbers. Sources whose sequence namespace cannot fit or cannot be represented as a single interval MUST use null bounds.
+- The presence rules of each side match [`QUOTE`](#quote).
+- Bid prices are strictly decreasing and ask prices strictly increasing. A duplicate price level is invalid.
+- One side can have fewer levels than the other. The absent elements of a side form a suffix on that side.
+- The last element has at least one present side, unless `levels` = 0.
+- `levels` = 0 is an empty observed book.
+- The depth-limited flag means deeper prices may exist beyond the reported ranks. A consumer cannot infer a full exchange book from it. A snapshot with zero levels can also be depth-limited when the producer cannot attest that the book is complete.
+- The record initializes or replaces aggregate state only. It cannot rebuild individual orders or repair `MBO` state.
 
-`recovery_id` is a nonzero producer-assigned identifier unique among GAP records in this container. It correlates diagnostics; it is not a snapshot identifier. GAP invalidates all book and trading-status state in its scope, including the aggregate book that BOOK_DELTA maintains. Valid QUOTE, BOOK_SNAPSHOT, MBO snapshot/CLEAR, and STATUS restore their respective state independently. Trade/bar completeness remains uncertain for the affected interval even after a book has recovered.
+### INSTRUMENT_DEF
 
-### 8.9 SYSTEM — type 9
+`INSTRUMENT_DEF` (type 6, align8(112 + text) bytes) defines how the records of one instrument are interpreted.
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 2 | u16 | code: 1 heartbeat, 2 info, 3 warning, 4 error |
-| 50 | 2 | u16 | text_bytes: 0–4096 |
-| 52 | 1 | u8 | severity: 0 info, 1 warning, 2 error |
-| 53 | 3 | bytes | reserved |
-| 56 | 8 | u64 | related_recovery_id: 0 or a prior GAP ID |
-| 64 | variable | bytes | UTF-8 text followed by zero padding |
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `price_increment` | i64 | 8 | Fixed price step. Null allowed |
+| 56 | `quantity_increment` | u64 | 8 | Quantity step. Null allowed |
+| 64 | `contract_multiplier` | i64 | 8 | Contract multiplier. Null allowed |
+| 72 | `expiration_ns` | u64 | 8 | Expiration time. Null when it does not apply |
+| 80 | `underlying_instrument_id` | u64 | 8 | Underlying instrument of the same publisher. 0 when there is none |
+| 88 | `strike` | i64 | 8 | Strike price. Null when it does not apply |
+| 96 | `asset_class` | u8 | 1 | 0 unspecified, 1 equity, 2 future, 3 option, 4 FX, 5 crypto, 6 index, 7 fixed income |
+| 97 | `reserved` | bytes | 7 | 0 |
+| 104 | `symbol_bytes` | u16 | 2 | Length of `symbol`, 1–255 |
+| 106 | `venue_bytes` | u16 | 2 | Length of `venue`, 0–255 |
+| 108 | `currency_bytes` | u16 | 2 | Length of `currency`, 1–16 |
+| 110 | `quantity_unit_bytes` | u16 | 2 | Length of `quantity_unit`, 1–32 |
+| 112 | texts | bytes | variable | `symbol`, `venue`, `currency`, `quantity_unit`, then padding |
 
-Instrument MUST be 0. Publisher 0 requires channel 0 and means container scope; a nonzero publisher means its declared publisher/channel scope. Heartbeat/info require severity 0; warning requires 1; error requires 2. A heartbeat requires no text and related ID 0. Diagnostics are descriptive and MUST NOT trigger automatic commands, state repair, or schema changes. SYSTEM error does not terminate a container; END status reports termination.
+**Values.**
 
-### Types 10–22: common rules
+- `currency` and `quantity_unit` are case-sensitive codes defined by the producer, for example `USD`, `BTC`, `share`, `contract` or `base-unit`. Systems that exchange data must agree on them.
+- A non-null price increment, quantity increment and multiplier are positive. Null means unavailable.
+- The price increment can be null for a venue with a variable tick schedule. The format does not encode such a schedule.
+- A nonzero underlying refers to the namespace of the same publisher. It need not have a definition in this container.
+- `INSTRUMENT_DEF` does not carry option rights, exercise style or settlement rules. [`OPTION_DEF`](#option_def) carries them, [`SECURITY_DEF`](#security_def) carries identifiers and listing facts, and [`CORPORATE_ACTION`](#corporate_action) carries events.
+- A producer that lacks a fact says "unknown". A consumer cannot infer these facts from the symbol.
 
-These thirteen types are new in revision 1.1. All integers are little-endian. Prices and quantities use the conventions of §3.3: `i64` or `u64` scaled by 10^-9, with nulls `INT64_MIN` and `UINT64_MAX`; counts use `UINT32_MAX`. Reserved bytes are zero. Text is UTF-8 without NUL. Text lengths count bytes, appear in the record as length fields, and the texts follow in the order of the length fields, then zero padding to a multiple of 8. A length outside the stated limit is invalid, and the limit is checked before a length is written. Unassigned enum values and unassigned flag bits are invalid.
+**Scope and order.**
 
-| Type | Name | Record bytes | `required` | Header scope |
-|---:|---|---:|---|---|
-| 10 | VENUE_DEF | align8(96 + text) | producer choice | publisher ≠ 0, instrument = 0 |
-| 11 | OPTION_DEF | align8(96 + text) | producer choice | publisher ≠ 0, instrument ≠ 0 |
-| 12 | LISTING | align8(72 + text) | producer choice | publisher ≠ 0, instrument ≠ 0 |
-| 13 | STATISTICS | 80 | producer choice | market record |
-| 14 | OPTION_ANALYTICS | 120 | producer choice | market record; the definition's asset class is option |
-| 15 | BOOK_DELTA | 72 | MUST be true | market record |
-| 16 | IMBALANCE | 104 | producer choice | market record |
-| 17 | SYMBOL_MAP | align8(72 + text) | producer choice | publisher ≠ 0, instrument ≠ 0 |
-| 18 | TRADE_QUOTE | 120 | producer choice | market record |
-| 19 | BEST_QUOTE | 112 | producer choice | market record |
-| 20 | FRAME_SUMMARY | 104 | MUST be false | publisher 0, channel 0, instrument 0 |
-| 21 | SECURITY_DEF | align8(216 + text) | producer choice | publisher ≠ 0, instrument ≠ 0 |
-| 22 | CORPORATE_ACTION | align8(184 + text) | producer choice | publisher ≠ 0, instrument ≠ 0 |
+- The scope of a definition is `(publisher, instrument)` across all channels.
+- A definition precedes every market record of the instrument in byte order. The market records are listed in [Scope and required schemas](#scope-and-required-schemas).
+- A later definition replaces the current one for the records that follow it, whatever its timestamp. `ts_event` describes the definition event at the source. It does not permit applying the definition to earlier records.
+- The dataset, the economic identity, the currency and the quantity unit never change for an existing instrument ID. The symbol, the increments, the multiplier and other reference attributes can change.
+- Values already in a book stay encoded in the same units. A definition update does not rescale stored orders.
 
-A **market record** has publisher ≠ 0 and instrument ≠ 0, and needs an INSTRUMENT_DEF for the instrument earlier in byte order, as types 1–5 and 7 do. Types 10–12, 17, 21 and 22 are **reference records**: they need no earlier INSTRUMENT_DEF and do not replace one. A reference record with identity `(publisher, instrument)` replaces an earlier record of the same type and identity; the identity of each type is stated below.
+### STATUS
 
-### 8.10 VENUE_DEF — type 10
+`STATUS` (type 7, 64 bytes) replaces the trading status of a book scope.
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 8 | u64 | created_ns (null allowed) |
-| 56 | 8 | u64 | updated_ns (null allowed) |
-| 64 | 8 | u64 | expiry_ns (null when the venue has no expiry) |
-| 72 | 1 | u8 | kind: 1 operating, 2 segment |
-| 73 | 1 | u8 | status: 1 active, 2 updated, 3 expired |
-| 74 | 2 | u16 | mic_bytes: exactly 4 |
-| 76 | 2 | u16 | operating_mic_bytes: exactly 4 |
-| 78 | 2 | u16 | country_bytes: exactly 2 |
-| 80 | 2 | u16 | category_bytes: 0 or 4 |
-| 82 | 2 | u16 | acronym_bytes: 0–64 |
-| 84 | 2 | u16 | city_bytes: 0–128 |
-| 86 | 2 | u16 | name_bytes: 1–255 |
-| 88 | 2 | u16 | legal_entity_bytes: 0–255 |
-| 90 | 2 | u16 | lei_bytes: 0 or 20 |
-| 92 | 4 | bytes | reserved |
-| 96 | variable | bytes | mic, operating_mic, country, category, acronym, city, name, legal_entity, lei, padding |
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `status` | u16 | 2 | 0 unknown, 1 pre-open, 2 open, 3 halted, 4 closed, 5 auction |
+| 50 | `reason` | u16 | 2 | 0 unspecified, 1 scheduled, 2 volatility, 3 regulatory, 4 technical |
+| 52 | `status_flags` | u32 | 4 | 0 |
+| 56 | `reserved` | u64 | 8 | 0 |
 
-Identity is `(publisher, mic)`; a later record replaces the earlier one. `kind = 1` requires `mic == operating_mic`. MIC and country are uppercase ASCII letters or digits. Dates are midnight UTC of the source date.
+- `STATUS` does not clear books.
+- It does not prohibit trades during an auction or a halt. Reported data and administrative state may not be perfectly synchronized.
 
-### 8.11 OPTION_DEF — type 11
+### GAP
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 8 | u64 | underlying_instrument_id (0 when the underlying has no ID in this namespace) |
-| 56 | 8 | u64 | expiration_ns (non-null) |
-| 64 | 8 | i64 | strike (non-null) |
-| 72 | 8 | i64 | contract_multiplier (null when unknown; otherwise positive) |
-| 80 | 1 | u8 | right: 1 call, 2 put |
-| 81 | 1 | u8 | exercise_style: 0 unknown, 1 American, 2 European |
-| 82 | 1 | u8 | settlement: 0 unknown, 1 physical, 2 cash |
-| 83 | 1 | u8 | closing_type: 0 unknown, 1 normal hours, 2 late hours |
-| 84 | 1 | u8 | option_flags: bit 0 pending, bit 1 adjusted (non-standard deliverable) |
-| 85 | 3 | bytes | reserved |
-| 88 | 2 | u16 | root_bytes: 1–16 |
-| 90 | 2 | u16 | underlying_symbol_bytes: 0–255 |
-| 92 | 2 | u16 | osi_symbol_bytes: 0 or 21 |
-| 94 | 2 | u16 | currency_bytes: 0–16 |
-| 96 | variable | bytes | root, underlying_symbol, osi_symbol, currency, padding |
+`GAP` (type 8, 80 bytes) reports a discontinuity at the source. It applies to every instrument of its publisher and channel.
 
-Identity is `(publisher, instrument)`; a later record replaces the earlier one. `underlying_instrument_id = 0` requires a non-empty `underlying_symbol`. If an INSTRUMENT_DEF exists for the same instrument, its asset class MUST be option and its expiration, strike and underlying MUST equal this record's. A producer that does not know a fact uses "unknown"; it MUST NOT infer exercise style or settlement from the symbol.
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `first_missing_source_sequence` | u64 | 8 | First missing sequence of the source, inclusive. Null when unknown |
+| 56 | `last_missing_source_sequence` | u64 | 8 | Last missing sequence of the source, inclusive. Null when unknown |
+| 64 | `reason` | u32 | 4 | 1 source packet loss, 2 source reset, 3 producer overflow, 4 unknown discontinuity |
+| 68 | `reserved` | u32 | 4 | 0 |
+| 72 | `recovery_id` | u64 | 8 | Nonzero identifier, unique among the `GAP` records of the container |
 
-### 8.12 LISTING — type 12
+- The publisher is nonzero and the instrument is 0.
+- Both bounds are null when they are unknown. Otherwise both are non-null with first ≤ last.
+- The bounds are advisory values in the sequence space of the source. They are not NWT output sequences.
+- A source whose sequence space does not fit, or whose loss is not one interval, uses null bounds.
+- `recovery_id` correlates diagnostics. It is not a snapshot identifier.
+- `GAP` invalidates all book state and trading-status state in its scope, including the aggregate book that `BOOK_DELTA` maintains.
+- A valid `QUOTE`, a `BOOK_SNAPSHOT`, an `MBO` snapshot or `CLEAR`, and a `STATUS` each restore their own state independently.
+- The completeness of trades and bars stays uncertain for the affected interval, even after a book has recovered.
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 4 | u32 | round_lot (count; null allowed) |
-| 52 | 1 | u8 | listing_flags: bit 0 ETF, bit 1 test issue, bit 2 NextShares |
-| 53 | 1 | u8 | market_tier: 0 unspecified, 1 global select, 2 global, 3 capital |
-| 54 | 1 | u8 | financial_flags: bit 0 reported, bit 1 deficient, bit 2 delinquent, bit 3 bankrupt |
-| 55 | 1 | u8 | reserved |
-| 56 | 2 | u16 | symbol_bytes: 1–255 |
-| 58 | 2 | u16 | name_bytes: 0–512 |
-| 60 | 2 | u16 | listing_mic_bytes: 0 or 4 |
-| 62 | 2 | u16 | cqs_symbol_bytes: 0–255 |
-| 64 | 2 | u16 | alt_symbol_bytes: 0–255 |
-| 66 | 6 | bytes | reserved |
-| 72 | variable | bytes | symbol, name, listing_mic, cqs_symbol, alt_symbol, padding |
+### SYSTEM
 
-Identity is `(publisher, instrument)`. `financial_flags` bits 1–3 require bit 0. Value 1 means normal; 0 means the source does not report financial status.
+`SYSTEM` (type 9, align8(64 + text) bytes) carries a heartbeat or a diagnostic message.
 
-### 8.13 STATISTICS — type 13 (80 bytes)
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `code` | u16 | 2 | 1 heartbeat, 2 info, 3 warning, 4 error |
+| 50 | `text_bytes` | u16 | 2 | Length of `text`, 0–4,096 |
+| 52 | `severity` | u8 | 1 | 0 info, 1 warning, 2 error |
+| 53 | `reserved` | bytes | 3 | 0 |
+| 56 | `related_recovery_id` | u64 | 8 | 0, or the `recovery_id` of an earlier `GAP` |
+| 64 | texts | bytes | variable | `text`, then padding |
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 8 | u64 | ts_ref: start of the session or date the value refers to (null allowed) |
-| 56 | 8 | i64 | price |
-| 64 | 8 | u64 | quantity |
-| 72 | 2 | u16 | stat_type |
-| 74 | 1 | u8 | action: 1 SET, 2 DELETE |
-| 75 | 1 | u8 | stat_flags: bit 0 preliminary |
-| 76 | 4 | u32 | reserved |
+- The instrument is 0.
+- Publisher 0 requires channel 0 and means the scope of the container. A nonzero publisher means the scope of that declared publisher and channel.
+- Heartbeat and info require severity 0. Warning requires severity 1. Error requires severity 2.
+- A heartbeat requires an empty text and `related_recovery_id` = 0.
+- Diagnostics are descriptive. They cannot trigger automatic commands, state repair or schema changes.
+- A `SYSTEM` error does not end a container. The `END` frame reports termination.
 
-`stat_type`: 1 open, 2 high, 3 low, 4 close, 5 settlement, 6 VWAP (price types); 7 volume, 8 open interest (quantity types). SET of a price type requires non-null price and null quantity; SET of a quantity type the reverse. DELETE requires both null and flags 0. The latest SET per `(instrument, stat_type, ts_ref)` replaces earlier ones; DELETE withdraws it.
+### VENUE_DEF
 
-### 8.14 OPTION_ANALYTICS — type 14 (120 bytes)
+`VENUE_DEF` (type 10, align8(96 + text) bytes) describes a trading venue or a market segment.
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 8 | i64 | implied_volatility (annualised; 1.0 = 100%) |
-| 56 | 8 | i64 | delta |
-| 64 | 8 | i64 | gamma (per 1.00 move in the underlying) |
-| 72 | 8 | i64 | theta (currency per calendar day) |
-| 80 | 8 | i64 | vega (currency per 0.01 change in volatility) |
-| 88 | 8 | i64 | rho (currency per 0.01 change in rate) |
-| 96 | 8 | i64 | underlying_price |
-| 104 | 8 | i64 | theoretical_price |
-| 112 | 1 | u8 | price_basis: 0 unspecified, 1 mid, 2 last, 3 bid, 4 ask, 5 settlement |
-| 113 | 1 | u8 | model: 0 unspecified, 1 Black-Scholes-Merton, 2 Black-76, 3 binomial, 4 other |
-| 114 | 6 | bytes | reserved |
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `created_ns` | u64 | 8 | Date the venue record was created. Null allowed |
+| 56 | `updated_ns` | u64 | 8 | Date of the last change. Null allowed |
+| 64 | `expiry_ns` | u64 | 8 | Date the venue code expires. Null when the venue has no expiry |
+| 72 | `kind` | u8 | 1 | 1 operating, 2 segment |
+| 73 | `status` | u8 | 1 | 1 active, 2 updated, 3 expired |
+| 74 | `mic_bytes` | u16 | 2 | Length of `mic`, exactly 4 |
+| 76 | `operating_mic_bytes` | u16 | 2 | Length of `operating_mic`, exactly 4 |
+| 78 | `country_bytes` | u16 | 2 | Length of `country`, exactly 2 |
+| 80 | `category_bytes` | u16 | 2 | Length of `category`, 0 or 4 |
+| 82 | `acronym_bytes` | u16 | 2 | Length of `acronym`, 0–64 |
+| 84 | `city_bytes` | u16 | 2 | Length of `city`, 0–128 |
+| 86 | `name_bytes` | u16 | 2 | Length of `name`, 1–255 |
+| 88 | `legal_entity_bytes` | u16 | 2 | Length of `legal_entity`, 0–255 |
+| 90 | `lei_bytes` | u16 | 2 | Length of `lei`, 0 or 20 |
+| 92 | `reserved` | bytes | 4 | 0 |
+| 96 | texts | bytes | variable | `mic`, `operating_mic`, `country`, `category`, `acronym`, `city`, `name`, `legal_entity`, `lei`, then padding |
 
-Every `i64` here is × 10⁻⁹ and independently nullable. Non-null implied volatility and gamma are ≥ 0. Non-null delta is within −1 to +1. At least one of the six analytics MUST be non-null. No floating point on the wire: a producer rounds to nine decimals and the wire value is authoritative. Each record replaces the previous analytics for the instrument.
+- The identity is `(publisher, mic)`. A later record replaces the earlier one.
+- `kind` = 1 requires `mic` equal to `operating_mic`.
+- `mic` and `country` consist of upper-case ASCII letters or digits.
+- Dates are midnight UTC of the source date.
 
-### 8.15 BOOK_DELTA — type 15 (72 bytes)
+### OPTION_DEF
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 8 | i64 | price |
-| 56 | 8 | u64 | quantity: new aggregate size at this price |
-| 64 | 4 | u32 | order_count (null allowed) |
-| 68 | 1 | u8 | action: 1 SET, 2 DELETE, 3 CLEAR |
-| 69 | 1 | u8 | side: 1 bid, 2 ask, 0 both (CLEAR only) |
-| 70 | 1 | u8 | delta_flags: bit 0 LAST_IN_EVENT |
-| 71 | 1 | u8 | reserved |
+`OPTION_DEF` (type 11, align8(96 + text) bytes) carries the terms of an option contract.
 
-BOOK_DELTA mutates the aggregate book that BOOK_SNAPSHOT replaces. Levels are keyed by price, not by rank.
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `underlying_instrument_id` | u64 | 8 | Underlying instrument. 0 when it has no ID in this namespace |
+| 56 | `expiration_ns` | u64 | 8 | Expiration time. Non-null |
+| 64 | `strike` | i64 | 8 | Strike price. Non-null |
+| 72 | `contract_multiplier` | i64 | 8 | Contract multiplier. Null when unknown; otherwise positive |
+| 80 | `right` | u8 | 1 | 1 call, 2 put |
+| 81 | `exercise_style` | u8 | 1 | 0 unknown, 1 American, 2 European |
+| 82 | `settlement` | u8 | 1 | 0 unknown, 1 physical, 2 cash |
+| 83 | `closing_type` | u8 | 1 | 0 unknown, 1 normal hours, 2 late hours |
+| 84 | `option_flags` | u8 | 1 | Bit 0 pending, bit 1 adjusted (non-standard deliverable); other bits zero |
+| 85 | `reserved` | bytes | 3 | 0 |
+| 88 | `root_bytes` | u16 | 2 | Length of `root`, 1–16 |
+| 90 | `underlying_symbol_bytes` | u16 | 2 | Length of `underlying_symbol`, 0–255 |
+| 92 | `osi_symbol_bytes` | u16 | 2 | Length of `osi_symbol`, 0 or 21 |
+| 94 | `currency_bytes` | u16 | 2 | Length of `currency`, 0–16 |
+| 96 | texts | bytes | variable | `root`, `underlying_symbol`, `osi_symbol`, `currency`, then padding |
 
-- SET: non-null price, quantity 1 … `UINT64_MAX − 1`. Adds the level or replaces its size and count.
-- DELETE: non-null price, quantity 0, null count. The level must exist, unless the book is depth-limited.
-- CLEAR: null price, quantity 0, null count. Empties one side, or the whole book when side is 0.
-- The book is valid after a BOOK_SNAPSHOT or a CLEAR with side 0. A delta against an invalid book is a semantic error. GAP invalidates the book.
-- A depth-limited snapshot leaves the book depth-limited until the next non-limited snapshot.
+- The identity is `(publisher, instrument)`. A later record replaces the earlier one.
+- `underlying_instrument_id` = 0 requires a non-empty `underlying_symbol`.
+- If an `INSTRUMENT_DEF` exists for the same instrument, its asset class is option, and its expiration, strike and underlying equal the values of this record.
+- A producer that does not know a fact uses "unknown". It cannot infer the exercise style or the settlement from the symbol.
+
+### LISTING
+
+`LISTING` (type 12, align8(72 + text) bytes) carries the symbol-directory listing of one instrument.
+
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `round_lot` | u32 | 4 | Round-lot size as a count of units, not scaled by 10⁻⁹. Null allowed |
+| 52 | `listing_flags` | u8 | 1 | Bit 0 ETF, bit 1 test issue, bit 2 NextShares; other bits zero |
+| 53 | `market_tier` | u8 | 1 | 0 unspecified, 1 global select, 2 global, 3 capital |
+| 54 | `financial_flags` | u8 | 1 | Bit 0 reported, bit 1 deficient, bit 2 delinquent, bit 3 bankrupt; other bits zero |
+| 55 | `reserved` | u8 | 1 | 0 |
+| 56 | `symbol_bytes` | u16 | 2 | Length of `symbol`, 1–255 |
+| 58 | `name_bytes` | u16 | 2 | Length of `name`, 0–512 |
+| 60 | `listing_mic_bytes` | u16 | 2 | Length of `listing_mic`, 0 or 4 |
+| 62 | `cqs_symbol_bytes` | u16 | 2 | Length of `cqs_symbol`, 0–255 |
+| 64 | `alt_symbol_bytes` | u16 | 2 | Length of `alt_symbol`, 0–255 |
+| 66 | `reserved` | bytes | 6 | 0 |
+| 72 | texts | bytes | variable | `symbol`, `name`, `listing_mic`, `cqs_symbol`, `alt_symbol`, then padding |
+
+- The identity is `(publisher, instrument)`.
+- Bits 1–3 of `financial_flags` require bit 0.
+- `financial_flags` = 1 means a normal financial status. `financial_flags` = 0 means the source does not report a financial status.
+
+### STATISTICS
+
+`STATISTICS` (type 13, 80 bytes) sets or withdraws one statistic of an instrument for a session or a date.
+
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `ts_ref` | u64 | 8 | Start of the session or the date that the value refers to. Null allowed |
+| 56 | `price` | i64 | 8 | Value of a price statistic |
+| 64 | `quantity` | u64 | 8 | Value of a quantity statistic |
+| 72 | `stat_type` | u16 | 2 | 1 open, 2 high, 3 low, 4 close, 5 settlement, 6 VWAP, 7 volume, 8 open interest |
+| 74 | `action` | u8 | 1 | 1 `SET`, 2 `DELETE` |
+| 75 | `stat_flags` | u8 | 1 | Bit 0 preliminary; other bits zero |
+| 76 | `reserved` | u32 | 4 | 0 |
+
+- Statistic types 1–6 are price types. Types 7 and 8 are quantity types.
+- `SET` of a price type requires a non-null price and a null quantity. `SET` of a quantity type requires a non-null quantity and a null price.
+- `DELETE` requires both values null and `stat_flags` = 0.
+- The latest `SET` for `(instrument, stat_type, ts_ref)` replaces the earlier ones. `DELETE` withdraws the value.
+
+### OPTION_ANALYTICS
+
+`OPTION_ANALYTICS` (type 14, 120 bytes) carries the implied volatility and the Greeks of an option.
+
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `implied_volatility` | i64 | 8 | Annualized implied volatility. A value of 1 means 100% |
+| 56 | `delta` | i64 | 8 | Delta |
+| 64 | `gamma` | i64 | 8 | Gamma, per move of 1 in the underlying price |
+| 72 | `theta` | i64 | 8 | Theta, in currency per calendar day |
+| 80 | `vega` | i64 | 8 | Vega, in currency per 0.01 change in volatility |
+| 88 | `rho` | i64 | 8 | Rho, in currency per 0.01 change in the rate |
+| 96 | `underlying_price` | i64 | 8 | Underlying price used for the calculation |
+| 104 | `theoretical_price` | i64 | 8 | Model price of the option |
+| 112 | `price_basis` | u8 | 1 | 0 unspecified, 1 mid, 2 last, 3 bid, 4 ask, 5 settlement |
+| 113 | `model` | u8 | 1 | 0 unspecified, 1 Black-Scholes-Merton, 2 Black-76, 3 binomial, 4 other |
+| 114 | `reserved` | bytes | 6 | 0 |
+
+- The asset class in the `INSTRUMENT_DEF` of the instrument is option.
+- Every `i64` field is scaled by 10⁻⁹ and is nullable on its own, with the null value `INT64_MIN`.
+- A non-null implied volatility and a non-null gamma are ≥ 0. A non-null delta lies within −1 to +1.
+- At least one of the six analytics, from `implied_volatility` through `rho`, is non-null.
+- A producer rounds to nine decimals. The wire value is authoritative.
+- Each record replaces the earlier analytics of the instrument.
+
+### BOOK_DELTA
+
+`BOOK_DELTA` (type 15, 72 bytes) changes the aggregate book that `BOOK_SNAPSHOT` replaces. Levels are keyed by price, not by rank.
+
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `price` | i64 | 8 | Price of the level |
+| 56 | `quantity` | u64 | 8 | New aggregate size at this price |
+| 64 | `order_count` | u32 | 4 | Number of orders at the level. Null allowed |
+| 68 | `action` | u8 | 1 | 1 `SET`, 2 `DELETE`, 3 `CLEAR` |
+| 69 | `side` | u8 | 1 | 1 bid, 2 ask, 0 both. 0 is valid only for `CLEAR` |
+| 70 | `delta_flags` | u8 | 1 | Bit 0 `LAST_IN_EVENT`; other bits zero |
+| 71 | `reserved` | u8 | 1 | 0 |
+
+- `SET` requires a non-null price and a quantity from 1 through `UINT64_MAX` − 1. It adds the level or replaces its size and count.
+- `DELETE` requires a non-null price, quantity 0 and a null count. It applies to an existing level, unless the book is depth-limited.
+- `CLEAR` requires a null price, quantity 0 and a null count. It empties one side, or the whole book when `side` is 0.
+- The book is valid after a `BOOK_SNAPSHOT` or after a `CLEAR` with `side` 0. A delta against an invalid book is a semantic error. `GAP` invalidates the book.
+- A depth-limited snapshot leaves the book depth-limited until the next snapshot that is not depth-limited.
 - `LAST_IN_EVENT` marks the last delta of one source event.
-- A producer MUST NOT grow a side beyond 1024 levels, so the state can always be re-sent as one BOOK_SNAPSHOT.
-- A transiently crossed book is not an encoding error.
+- A producer never grows a side beyond 1,024 levels, so that the state can always be sent again as one `BOOK_SNAPSHOT`.
+- A book that is crossed for a moment is not an encoding error.
 
-### 8.16 IMBALANCE — type 16 (104 bytes)
+### IMBALANCE
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 8 | u64 | auction_ns: scheduled auction time (null allowed) |
-| 56 | 8 | i64 | reference_price (non-null) |
-| 64 | 8 | i64 | near_price: indicative price from auction and continuous interest (null allowed) |
-| 72 | 8 | i64 | far_price: indicative price from auction interest only (null allowed) |
-| 80 | 8 | u64 | paired_quantity (null allowed) |
-| 88 | 8 | u64 | imbalance_quantity (non-null) |
-| 96 | 1 | u8 | imbalance_side: 0 none, 1 buy, 2 sell |
-| 97 | 1 | u8 | auction_type: 0 unspecified, 1 opening, 2 closing, 3 reopening, 4 IPO, 5 intraday |
-| 98 | 6 | bytes | reserved |
+`IMBALANCE` (type 16, 104 bytes) reports the order imbalance of an auction.
 
-`imbalance_side = 0` requires `imbalance_quantity = 0`, and the reverse. The record is informational: it changes no book or status state. Each record replaces the previous imbalance for the instrument.
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `auction_ns` | u64 | 8 | Scheduled auction time. Null allowed |
+| 56 | `reference_price` | i64 | 8 | Reference price of the imbalance. Non-null |
+| 64 | `near_price` | i64 | 8 | Indicative price from auction and continuous interest. Null allowed |
+| 72 | `far_price` | i64 | 8 | Indicative price from auction interest only. Null allowed |
+| 80 | `paired_quantity` | u64 | 8 | Quantity matched at the reference price. Null allowed |
+| 88 | `imbalance_quantity` | u64 | 8 | Unmatched quantity. Non-null |
+| 96 | `imbalance_side` | u8 | 1 | 0 none, 1 buy, 2 sell |
+| 97 | `auction_type` | u8 | 1 | 0 unspecified, 1 opening, 2 closing, 3 reopening, 4 IPO, 5 intraday |
+| 98 | `reserved` | bytes | 6 | 0 |
 
-### 8.17 SYMBOL_MAP — type 17
+- `imbalance_side` = 0 requires `imbalance_quantity` = 0, and `imbalance_quantity` = 0 requires `imbalance_side` = 0.
+- The record is informational. It changes no book state and no status state.
+- Each record replaces the earlier imbalance of the instrument.
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 8 | u64 | valid_from_ns (non-null) |
-| 56 | 8 | u64 | valid_to_ns (null means open-ended; otherwise greater than valid_from_ns) |
-| 64 | 1 | u8 | symbology: 1 native, 2 OSI, 3 ISIN, 4 FIGI, 5 root, 6 continuous |
-| 65 | 1 | u8 | reserved |
-| 66 | 2 | u16 | symbol_bytes: 1–255 |
-| 68 | 4 | bytes | reserved |
-| 72 | variable | bytes | symbol, padding |
+### SYMBOL_MAP
 
-The header instrument is the mapped instrument. The interval is half-open. For symbologies 1–4 and 6, intervals for one `(publisher, symbology, symbol)` MUST NOT overlap: a symbol names one instrument at any time. Symbology 5 (root) is one-to-many. One instrument may have many symbols.
+`SYMBOL_MAP` (type 17, align8(72 + text) bytes) states that a symbol names an instrument over a time interval. The instrument in the record header is the mapped instrument.
 
-### 8.18 TRADE_QUOTE — type 18 (120 bytes)
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `valid_from_ns` | u64 | 8 | Inclusive start of the interval. Non-null |
+| 56 | `valid_to_ns` | u64 | 8 | Exclusive end of the interval. Null means open-ended; otherwise greater than `valid_from_ns` |
+| 64 | `symbology` | u8 | 1 | 1 native, 2 OSI, 3 ISIN, 4 FIGI, 5 root, 6 continuous |
+| 65 | `reserved` | u8 | 1 | 0 |
+| 66 | `symbol_bytes` | u16 | 2 | Length of `symbol`, 1–255 |
+| 68 | `reserved` | bytes | 4 | 0 |
+| 72 | texts | bytes | variable | `symbol`, then padding |
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 8 | i64 | price (non-null) |
-| 56 | 8 | u64 | quantity (positive, non-null) |
-| 64 | 8 | u64 | trade_id (0 when unknown) |
-| 72 | 8 | i64 | bid_price |
-| 80 | 8 | i64 | ask_price |
-| 88 | 8 | u64 | bid_quantity |
-| 96 | 8 | u64 | ask_quantity |
-| 104 | 4 | u32 | bid_order_count |
-| 108 | 4 | u32 | ask_order_count |
-| 112 | 1 | u8 | aggressor: 0 unknown, 1 buyer, 2 seller |
-| 113 | 1 | u8 | reserved |
-| 114 | 2 | u16 | conditions: bit 0 off-book |
-| 116 | 4 | u32 | reserved |
+- The interval is half-open.
+- For symbologies 1–4 and 6, the intervals of one `(publisher, symbology, symbol)` do not overlap: a symbol names one instrument at any time.
+- Symbology 5 (root) is one-to-many.
+- One instrument can have many symbols.
 
-One trade print with the top of book immediately before it. Quote-side presence rules match QUOTE. It is a derived sampling record: it has no correction or cancel lifecycle, and it does not initialise or replace QUOTE state. A producer MUST NOT emit TRADE and TRADE_QUOTE for the same prints on one channel.
+### TRADE_QUOTE
 
-### 8.19 BEST_QUOTE — type 19 (112 bytes)
+`TRADE_QUOTE` (type 18, 120 bytes) carries one trade print together with the top of book immediately before it.
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 8 | i64 | bid_price |
-| 56 | 8 | i64 | ask_price |
-| 64 | 8 | u64 | bid_quantity |
-| 72 | 8 | u64 | ask_quantity |
-| 80 | 4 | u32 | bid_order_count |
-| 84 | 4 | u32 | ask_order_count |
-| 88 | 4 | u32 | quote_flags: bit 0 indicative |
-| 92 | 4 | u32 | bid_publisher_id (0 when the side is absent or the venue is unknown) |
-| 96 | 4 | u32 | ask_publisher_id (same rule) |
-| 100 | 4 | u32 | reserved |
-| 104 | 8 | u64 | interval_ns: 0 event-driven; otherwise a sample taken at the interval end |
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `price` | i64 | 8 | Trade price. Non-null |
+| 56 | `quantity` | u64 | 8 | Trade size. Positive and non-null |
+| 64 | `trade_id` | u64 | 8 | Trade identifier. 0 when unknown |
+| 72 | `bid_price` | i64 | 8 | Bid price. Null when the side is absent |
+| 80 | `ask_price` | i64 | 8 | Ask price. Null when the side is absent |
+| 88 | `bid_quantity` | u64 | 8 | Bid size. 0 when the side is absent |
+| 96 | `ask_quantity` | u64 | 8 | Ask size. 0 when the side is absent |
+| 104 | `bid_order_count` | u32 | 4 | Number of bid orders. 0 when the side is absent |
+| 108 | `ask_order_count` | u32 | 4 | Number of ask orders. 0 when the side is absent |
+| 112 | `aggressor` | u8 | 1 | 0 unknown, 1 buyer, 2 seller |
+| 113 | `reserved` | u8 | 1 | 0 |
+| 114 | `conditions` | u16 | 2 | Bit 0 off-book; other bits zero |
+| 116 | `reserved` | u32 | 4 | 0 |
 
-Best bid and offer with the venue that set each side, and optional interval sampling. Presence rules match QUOTE. Non-zero venue IDs MUST be declared publishers. With `interval_ns > 0`, `ts_event` equals the interval end. BEST_QUOTE keeps its own state and does not replace QUOTE state.
+- The presence rules of the bid and ask sides match [`QUOTE`](#quote).
+- The record is a derived sample. It has no correction or cancel lifecycle, and it does not initialize or replace `QUOTE` state.
+- A producer cannot emit `TRADE` and `TRADE_QUOTE` for the same prints on one channel.
 
-### 8.20 FRAME_SUMMARY — type 20 (104 bytes)
+### BEST_QUOTE
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 8 | u64 | data_frame_seq |
-| 56 | 8 | u64 | data_frame_offset, absolute from container byte 0 |
-| 64 | 4 | u32 | stored_bytes |
-| 68 | 1 | u8 | codec |
-| 69 | 1 | u8 | summary_flags: bit 0 frame has a null ts_event; bit 1 non-null ts_event is non-decreasing within the frame |
-| 70 | 2 | u16 | reserved |
-| 72 | 8 | u64 | type_mask: bit n (1–63) set when standard type n is present; bit 0 set when any other type is present |
-| 80 | 8 | u64 | min_instrument_id over non-zero instrument IDs (0 when none) |
-| 88 | 8 | u64 | max_instrument_id (0 when none) |
-| 96 | 8 | u64 | reserved |
+`BEST_QUOTE` (type 19, 112 bytes) carries the best bid and offer with the venue that set each side. It can also carry a sample taken at a fixed interval.
 
-The richer index, carried as ordinary optional records so that a 1.0 reader skips it.
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `bid_price` | i64 | 8 | Bid price. Null when the side is absent |
+| 56 | `ask_price` | i64 | 8 | Ask price. Null when the side is absent |
+| 64 | `bid_quantity` | u64 | 8 | Bid size. 0 when the side is absent |
+| 72 | `ask_quantity` | u64 | 8 | Ask size. 0 when the side is absent |
+| 80 | `bid_order_count` | u32 | 4 | Number of bid orders. 0 when the side is absent |
+| 84 | `ask_order_count` | u32 | 4 | Number of ask orders. 0 when the side is absent |
+| 88 | `quote_flags` | u32 | 4 | Bit 0 indicative; other bits zero |
+| 92 | `bid_publisher_id` | u32 | 4 | Publisher that set the bid. 0 when the side is absent or the venue is unknown |
+| 96 | `ask_publisher_id` | u32 | 4 | Publisher that set the ask. 0 when the side is absent or the venue is unknown |
+| 100 | `reserved` | u32 | 4 | 0 |
+| 104 | `interval_ns` | u64 | 8 | 0 for an event-driven quote; otherwise the sampling interval in nanoseconds |
 
-- Header: publisher 0, channel 0, instrument 0, both timestamps null. Sequence continues the system scope.
-- If present, FRAME_SUMMARY records fill one or more trailing DATA frames that contain nothing else ("summary frames").
-- Together they describe every non-summary DATA frame exactly once, in ascending frame order, with values equal to the real frames.
-- A reader finds them from END → INDEX → last DATA frame, walking backwards while a frame's first record is type 20.
-- A validator checks every value against a full scan. A summary that disagrees with the file is an error.
+- The presence rules match [`QUOTE`](#quote).
+- A nonzero `bid_publisher_id` or `ask_publisher_id` is a declared publisher.
+- `interval_ns` is a duration, not a timestamp. When it is greater than 0, the record is a sample taken at the end of the interval, and `ts_event` equals the end of the interval.
+- `BEST_QUOTE` keeps its own state. It does not replace `QUOTE` state.
 
-### 8.21 SECURITY_DEF — type 21
+### FRAME_SUMMARY
 
-Security-master record: one listing of one security, with its identifiers. Header: publisher ≠ 0, instrument ≠ 0 (the listing). `ts_event` is when the facts became effective. A reference record; `required` is the producer's choice. Record bytes: align8(216 + text).
+`FRAME_SUMMARY` (type 20, 104 bytes) describes one `DATA` frame: its offset, its stored size, its codec, the record types it holds and its range of instrument IDs. A reader uses the summaries to skip frames without reading them.
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 8 | u64 | listing_group_id (0 none) |
-| 56 | 8 | u64 | security_id (0 none) |
-| 64 | 8 | u64 | issuer_id (0 none) |
-| 72 | 8 | u64 | listing_created_ns (null allowed) |
-| 80 | 8 | u64 | listing_ns (null allowed) |
-| 88 | 8 | u64 | delisting_ns (null allowed) |
-| 96 | 8 | u64 | shares_outstanding: whole shares, not × 10⁻⁹ (null allowed) |
-| 104 | 8 | u64 | shares_outstanding_ns (null allowed) |
-| 112 | 8 | u64 | lot_size (quantity; null allowed) |
-| 120 | 8 | i64 | par_value (price; null allowed) |
-| 128 | 8 | i64 | votes_per_share (× 10⁻⁹; null allowed) |
-| 136 | 8 | u64 | cik (0 none) |
-| 144 | 4 | u32 | sic (0 none) |
-| 148 | 4 | u32 | naics (0 none) |
-| 152 | 1 | u8 | listing_source: 0 unknown, 1 main, 2 secondary |
-| 153 | 1 | u8 | security_flags: bit 0 multi-currency |
-| 154 | 2 | bytes | reserved |
-| 156 | 60 | u16 × 30 | text lengths, in the order below |
-| 216 | variable | bytes | the 30 texts, then padding |
-
-Texts and limits (bytes): issuer_name 0–255, description 0–255, security_type 0–8, structure 0–8, listing_status 0–8, voting 0–8, primary_exchange 0–16, exchange 0–16, operating_mic 0 or 4, segment_mic 0 or 4, segment_name 0–128, symbol 0–255, alt_symbol 0–255, local_code 0–255, isin 0 or 12, cusip 0 or 9, composite_figi 0 or 12, composite_ticker 0–32, figi 0 or 12, figi_ticker 0–32, fisn 0–35, lei 0 or 20, cfi 0 or 6, cic 0–8, gics 0–8, incorporation_country 0 or 2, listing_country 0 or 2, register_country 0 or 2, trading_currency 0–16, par_value_currency 0–16.
-
-`security_type`, `structure`, `listing_status` and `voting` are short producer-defined codes, like currency in INSTRUMENT_DEF; systems exchanging them must agree on the code set. Identity is `(publisher, instrument)`; a later record replaces the earlier one. `shares_outstanding` is a whole count because large issuers exceed the × 10⁻⁹ quantity range.
-
-### 8.22 CORPORATE_ACTION — type 22
-
-One corporate-action event for one listing. Header: publisher ≠ 0, instrument ≠ 0 (the listing). `ts_event` is the event date. A reference record; `required` is the producer's choice. Record bytes: align8(184 + text).
-
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 48 | 8 | u64 | security_id (0 none) |
-| 56 | 8 | u64 | issuer_id (0 none) |
-| 64 | 8 | u64 | created_ns (null allowed) |
-| 72 | 8 | u64 | effective_ns (null allowed) |
-| 80 | 8 | u64 | ex_ns (null allowed) |
-| 88 | 8 | u64 | record_ns (null allowed) |
-| 96 | 8 | u64 | payment_ns (null allowed) |
-| 104 | 8 | u64 | record_date_id (0 none) |
-| 112 | 8 | u64 | outturn_security_id (0 none) |
-| 120 | 8 | i64 | ratio_old (× 10⁻⁹; null allowed) |
-| 128 | 8 | i64 | ratio_new (× 10⁻⁹; null allowed) |
-| 136 | 4 | u32 | option_id (null allowed) |
-| 140 | 4 | u32 | serial_id (null allowed) |
-| 144 | 1 | u8 | action_flags: bit 0 default option |
-| 145 | 3 | bytes | reserved |
-| 148 | 30 | u16 × 15 | text lengths, in the order below |
-| 178 | 6 | bytes | reserved |
-| 184 | variable | bytes | the 15 texts, then padding |
-
-Texts and limits (bytes): event 1–8, subtype 0–16, action 0–8, status 0–8, participation 0–8, payment_type 0–8, fraction 0–8, date_label 0–32, related_event 0–8, related_event_id 0–32, event_id 1–32, unique_id 1–48, rate_currency 0–16, outturn_isin 0 or 12, details 0–65535.
-
-- `event`, `subtype`, `action`, `status`, `participation`, `payment_type` and `fraction` are short producer-defined codes.
-- `details` is empty or one UTF-8 JSON object with sorted keys. It carries event-specific terms that have no fixed field (extra dates, rates, tender limits, further outturn identifiers). A reader MUST NOT need `details` to interpret the fixed fields.
-- Identity is `(publisher, unique_id)`. A later record with the same `unique_id` replaces the earlier one.
-- Listing facts (issuer name, symbols, ISIN and so on) are not repeated here. They are carried by a SECURITY_DEF for the same instrument.
-
-## 9. Ordering, gaps, snapshots, and replay
-
-Byte order is authoritative delivery order. Frame order and record order MUST be preserved. Timestamps can move backward. Channel sequences do not define an exchange-wide total order across channels. A merge tool MUST choose and document its ordering policy and assign new container/record identities.
-
-A market-data consumer begins with unknown books and status. QUOTE initializes top-of-book state. BOOK_SNAPSHOT initializes aggregate state, and BOOK_DELTA (§8.15) then changes it one price level at a time. BEST_QUOTE and TRADE_QUOTE keep their own state and do not replace QUOTE state. MBO must begin with CLEAR or a completed snapshot for each book; ADD alone cannot prove initial completeness.
-
-MBO snapshot transaction:
-
-1. SNAPSHOT_BEGIN starts a private empty working book for that instrument. Nested begins are invalid.
-2. Subsequent MBO records for that book MUST be ADD until SNAPSHOT_END. IDs must be unique in the working book. Other instruments and unrelated schema records may interleave.
-3. SNAPSHOT_END commits the complete working book atomically and marks MBO state valid. Empty snapshots are allowed.
-4. GAP for the channel, EOF, or END while a snapshot is open aborts it. A completed container with any open snapshot is semantically invalid. A GAP discards the working snapshot and marks the book invalid; later stray SNAPSHOT_END is invalid.
-
-Snapshots may cross DATA frames. A reader MUST NOT expose the working snapshot as a complete book. A configured snapshot-size limit may stop decoding with a resource-limit error rather than silently publishing partial state.
-
-After a GAP, MBO changes without CLEAR/SNAPSHOT_BEGIN cannot restore state; semantic consumers MUST report them as unavailable for reliable reconstruction. Producers MUST send CLEAR or a complete snapshot before resuming ordinary MBO changes. A recovery snapshot establishes state at its source snapshot point; it does not recover missing trade history. The producer is responsible for reconciling source updates around that point before outputting the normalized stream.
-
-Framing loss and source loss are distinct. A missing NWT frame or normalized sequence is a damaged/incomplete transfer and MUST fail strict decoding. A well-formed GAP reports source loss within an otherwise intact transfer. No consumer may silently turn damaged bytes into a trusted GAP record.
-
-For byte-identical transport retries, deduplication keys are `(stream_id, frame_seq)` or `(stream_id, publisher, channel, sequence)`. Reusing an identity with different bytes is an integrity/protocol error. Across independently generated containers, these keys do not identify the same market event; applications need source-specific identity to deduplicate.
-
-## 10. Compression and integrity
-
-### 10.1 CRC32C
-
-All CRC fields use CRC-32C/Castagnoli: width 32, polynomial `0x1EDC6F41`, reflected implementation polynomial `0x82F63B78`, initial value `0xFFFFFFFF`, reflected input/output convention, final XOR `0xFFFFFFFF`. Store the result as a little-endian u32. The check value for ASCII `123456789` is `0xE3069283`; empty input yields zero. CRC is error detection, not authentication. [CRC32C reference, RFC 3720 Appendix B.4](https://www.rfc-editor.org/rfc/rfc3720.html#appendix-B.4).
-
-Container and frame header CRCs cover the entire respective 64-byte header with only their own CRC field set to zero. Metadata CRC covers every metadata byte including TLV padding. Payload CRC covers exactly the raw payload, excluding outer frame padding. CRCs are mandatory even if zero happens to be the calculated value. There is no “CRC absent” convention.
-
-### 10.2 Codec 1: Zstandard
-
-The stored payload MUST contain exactly one ordinary Zstandard frame, conforming to RFC 8878, with no dictionary, no skippable frames, no concatenated frame, and no trailing bytes. A content size MUST be present and equal `raw_bytes`; the window size MUST be at most 16,777,216 bytes. Zstd's own content checksum is optional; NWT CRC remains mandatory. The decompressor MUST consume exactly `stored_bytes`. [Zstandard format, RFC 8878](https://www.rfc-editor.org/rfc/rfc8878.html).
-
-The frame header descriptor (RFC 8878, section 3.1.1.1.1) is checked before the library is called. Bits 7–6 select the content-size field and bit 5 the single-segment flag. Bit 3 is reserved and MUST be zero. Bit 2, the content-checksum flag, is allowed; the optional Zstd checksum is not required, and when present it is checked by the library. Bits 1–0 flag a dictionary ID and MUST be zero. The content size MUST be present and equal `raw_bytes`. The window size (or the content size, for a single-segment frame) MUST NOT exceed 16,777,216 bytes. The stored payload MUST be exactly one frame: the size of the first frame found by the library equals `stored_bytes`, so a skippable frame before or after it, a second frame, and trailing bytes are all rejected. Codec 1 is allowed on DATA frames only.
-
-A reader without a Zstd library reads raw frames normally. For a codec-1 frame it fails with an error that says the library is not available. The header check runs first, so a malformed Zstd header is rejected even without the library.
-
-Compression level is an encoder choice and not a decoder requirement. Independent frames cannot depend on earlier dictionary or compression state. Readers MUST enforce output/window limits before and during decompression. A writer stores a frame with codec 1 only when the compressed payload is smaller than the raw payload; otherwise it uses codec 0. Both codecs may appear within one container. Compressed bytes differ between library versions, so two conforming writers need not produce the same bytes; compare decoded records, not compressed bytes.
-
-No compression ratio or latency target is asserted by this specification. Extremely small batches may cost more to compress than they save.
-
-## 11. Index, summaries, store profile and end-of-stream
-
-### 11.1 INDEX payload
-
-An INDEX payload consists of one or more 40-byte entries, without an entry-count prefix. Entry count is `raw_bytes / 40`; the size MUST be a positive multiple of 40. Each entry is:
-
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 0 | 8 | u64 | data_frame_seq |
-| 8 | 8 | u64 | data_frame_offset, absolute from container byte 0 |
-| 16 | 8 | u64 | min_event_ns |
-| 24 | 8 | u64 | max_event_ns |
-| 32 | 4 | u32 | raw_bytes |
-| 36 | 4 | u32 | record_count |
-
-If any INDEX frames exist, their concatenated entries MUST enumerate every DATA frame exactly once in ascending frame sequence order, with values identical to the referenced headers. There may be multiple INDEX frames to respect size limits. No entry may refer to metadata, an INDEX, END, or bytes outside the container. Empty containers MUST NOT contain INDEX frames.
-
-The index accelerates selecting candidate frames; it is not a complete state checkpoint. Timestamp ranges may overlap or go backward. Binary search by timestamp is invalid unless a separate verified monotonicity condition is established, such as a manifest `ordering` of `ts_event` (§5.2) that a validator has checked. A general reader examines all index ranges and reads selected frames in original order. Null-timestamp policies require explicit handling; frame bounds alone cannot identify all null-bearing frames.
-
-Seeking to a trade or quote still requires the applicable earlier instrument definitions. MBO requires an earlier complete snapshot or CLEAR plus all subsequent updates. A consumer seeking without that context MUST label results as raw/partial and MUST NOT claim a reconstructed valid book. This version provides no definition or book-checkpoint index. FRAME_SUMMARY (§11.3) adds per-frame type and instrument ranges, but it does not carry state.
-
-### 11.2 END payload
-
-END has a 32-byte uncompressed payload and therefore a total size of exactly 96 bytes:
-
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 0 | 8 | u64 | first_index_offset, or 0 when absent |
-| 8 | 8 | u64 | total_data_frames |
-| 16 | 8 | u64 | total_records in DATA frames |
-| 24 | 4 | u32 | completion_status: 0 normal; 1 producer-aborted |
-| 28 | 4 | u32 | reserved |
-
-Counts include optional unknown records and MUST match the container. `first_index_offset`, if nonzero, MUST identify the first INDEX frame, and all subsequent frames before END MUST be INDEX frames. END frame sequence equals the number of preceding DATA and INDEX frames.
-
-A seekable reader MAY read the last 96 bytes to discover the index. It MUST validate END and all referenced bounds; this shortcut alone does not validate the file contents or completeness of the index. A strict full validator compares counts, sequences, entries, and payloads against a sequential scan.
-
-Normal END means the producer intentionally completed this container; it does not certify a source without GAPs. Aborted END preserves a structurally complete prefix and explicitly reports unsuccessful completion. No bytes, including another container, may follow END in a single NWT object. Concatenation requires an external bundle format or separate objects.
-
-EOF without END is incomplete, even if it occurs exactly on a frame boundary. Readers may expose a verified prefix only with an explicit incomplete result. An active live connection naturally has no END yet and remains in-progress. A clean transport close alone does not replace END.
-
-### 11.3 FRAME_SUMMARY records
-
-INDEX gives each frame's time range. FRAME_SUMMARY (type 20, §8.20) adds the frame's offset, stored size, codec, the set of record types it holds and its range of instrument IDs. It is carried as ordinary optional records, so a reader that does not know type 20 skips it and the container stays valid for a 1.0 reader.
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `data_frame_seq` | u64 | 8 | `frame_seq` of the `DATA` frame that the record describes |
+| 56 | `data_frame_offset` | u64 | 8 | Offset of that frame header from container byte 0 |
+| 64 | `stored_bytes` | u32 | 4 | `stored_bytes` of that frame |
+| 68 | `codec` | u8 | 1 | Codec of that frame: 0 raw, 1 Zstandard |
+| 69 | `summary_flags` | u8 | 1 | Bit 0: the frame has a record with a null `ts_event`. Bit 1: the non-null `ts_event` values are non-decreasing within the frame. Other bits zero |
+| 70 | `reserved` | u16 | 2 | 0 |
+| 72 | `type_mask` | u64 | 8 | Bit n (1–63) is set when standard record type n is present. Bit 0 is set when any other type is present |
+| 80 | `min_instrument_id` | u64 | 8 | Smallest nonzero instrument ID in the frame. 0 when there is none |
+| 88 | `max_instrument_id` | u64 | 8 | Largest nonzero instrument ID in the frame. 0 when there is none |
+| 96 | `reserved` | u64 | 8 | 0 |
 
 - A summary record has publisher 0, channel 0, instrument 0 and both timestamps null. Its `sequence` continues the sequence of the system scope (publisher 0, channel 0).
-- If a container has FRAME_SUMMARY records, they fill one or more trailing DATA frames, called summary frames, that contain nothing else. Summary frames are DATA frames: INDEX entries and the END counts include them.
-- Together the summary records describe every non-summary DATA frame exactly once, in ascending frame order, with values equal to the real frames.
-- A reader finds them from END to INDEX to the last DATA frame, then walks backwards while the first record of a frame is type 20.
+- The schema is declared with `required` false. A reader that does not know record type 20 skips the records, and the container stays valid for it.
+- If a container has `FRAME_SUMMARY` records, they fill one or more trailing `DATA` frames that contain nothing else. These are the summary frames.
+- Summary frames are `DATA` frames. `INDEX` entries and the counts in `END` include them.
+- Together the summary records describe every `DATA` frame that is not a summary frame exactly once, in ascending frame order, with values equal to the real frames.
+- A reader finds the summaries from `END` to `INDEX` to the last `DATA` frame. It then walks backward while the first record of a frame has record type 20.
 - A validator checks every value against a full scan. A summary that disagrees with the file is an error.
 
-A reader can use the summaries to skip a frame without reading it: when the frame's `type_mask` lacks the wanted type, or when the wanted instrument ID lies outside `[min_instrument_id, max_instrument_id]`, or when the INDEX time range does not overlap the query.
+A reader can skip a frame in three cases: the `type_mask` of the frame lacks the wanted record type, the wanted instrument ID lies outside `[min_instrument_id, max_instrument_id]`, or the time range in `INDEX` does not overlap the query.
 
-### 11.4 Store profile
+### SECURITY_DEF
 
-There is no separate store format. A **store file** is a normal container written with these choices:
+`SECURITY_DEF` (type 21, align8(216 + text) bytes) is a security-master record: one listing of one security, with its identifiers. The instrument in the record header is the listing, and `ts_event` is the time the facts became effective.
+
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `listing_group_id` | u64 | 8 | Identifier that groups the listings of one security. 0 when there is none |
+| 56 | `security_id` | u64 | 8 | Identifier of the security. 0 when there is none |
+| 64 | `issuer_id` | u64 | 8 | Identifier of the issuer. 0 when there is none |
+| 72 | `listing_created_ns` | u64 | 8 | Time the listing record was created at the source. Null allowed |
+| 80 | `listing_ns` | u64 | 8 | Listing date. Null allowed |
+| 88 | `delisting_ns` | u64 | 8 | Delisting date. Null allowed |
+| 96 | `shares_outstanding` | u64 | 8 | Shares outstanding as a whole count, not scaled by 10⁻⁹. Null allowed |
+| 104 | `shares_outstanding_ns` | u64 | 8 | Date that the share count refers to. Null allowed |
+| 112 | `lot_size` | u64 | 8 | Trading lot size, a quantity. Null allowed |
+| 120 | `par_value` | i64 | 8 | Par value, a price in `par_value_currency`. Null allowed |
+| 128 | `votes_per_share` | i64 | 8 | Votes per share, scaled by 10⁻⁹. Null allowed |
+| 136 | `cik` | u64 | 8 | Central index key of the issuer. 0 when there is none |
+| 144 | `sic` | u32 | 4 | Standard industrial classification code. 0 when there is none |
+| 148 | `naics` | u32 | 4 | North American industry classification code. 0 when there is none |
+| 152 | `listing_source` | u8 | 1 | 0 unknown, 1 main, 2 secondary |
+| 153 | `security_flags` | u8 | 1 | Bit 0 multi-currency; other bits zero |
+| 154 | `reserved` | bytes | 2 | 0 |
+| 156 | text lengths | u16 × 30 | 60 | One length field for each text, in the order of the next table |
+| 216 | texts | bytes | variable | The 30 texts, then padding |
+
+The length field of a text is named after the text with the suffix `_bytes`, for example `issuer_name_bytes`.
+
+| Offset | Text | Bytes |
+|---:|---|---|
+| 156 | `issuer_name` | 0–255 |
+| 158 | `description` | 0–255 |
+| 160 | `security_type` | 0–8 |
+| 162 | `structure` | 0–8 |
+| 164 | `listing_status` | 0–8 |
+| 166 | `voting` | 0–8 |
+| 168 | `primary_exchange` | 0–16 |
+| 170 | `exchange` | 0–16 |
+| 172 | `operating_mic` | 0 or 4 |
+| 174 | `segment_mic` | 0 or 4 |
+| 176 | `segment_name` | 0–128 |
+| 178 | `symbol` | 0–255 |
+| 180 | `alt_symbol` | 0–255 |
+| 182 | `local_code` | 0–255 |
+| 184 | `isin` | 0 or 12 |
+| 186 | `cusip` | 0 or 9 |
+| 188 | `composite_figi` | 0 or 12 |
+| 190 | `composite_ticker` | 0–32 |
+| 192 | `figi` | 0 or 12 |
+| 194 | `figi_ticker` | 0–32 |
+| 196 | `fisn` | 0–35 |
+| 198 | `lei` | 0 or 20 |
+| 200 | `cfi` | 0 or 6 |
+| 202 | `cic` | 0–8 |
+| 204 | `gics` | 0–8 |
+| 206 | `incorporation_country` | 0 or 2 |
+| 208 | `listing_country` | 0 or 2 |
+| 210 | `register_country` | 0 or 2 |
+| 212 | `trading_currency` | 0–16 |
+| 214 | `par_value_currency` | 0–16 |
+
+- The identity is `(publisher, instrument)`. A later record replaces the earlier one.
+- `security_type`, `structure`, `listing_status` and `voting` are short codes defined by the producer, like `currency` in `INSTRUMENT_DEF`. Systems that exchange them need the same agreement on the code set.
+- `shares_outstanding` is a whole count because the share counts of large issuers exceed the range of a quantity scaled by 10⁻⁹.
+
+### CORPORATE_ACTION
+
+`CORPORATE_ACTION` (type 22, align8(184 + text) bytes) carries one corporate-action event for one listing. The instrument in the record header is the listing, and `ts_event` is the event date.
+
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 48 | `security_id` | u64 | 8 | Identifier of the security. 0 when there is none |
+| 56 | `issuer_id` | u64 | 8 | Identifier of the issuer. 0 when there is none |
+| 64 | `created_ns` | u64 | 8 | Time the event record was created at the source. Null allowed |
+| 72 | `effective_ns` | u64 | 8 | Effective date. Null allowed |
+| 80 | `ex_ns` | u64 | 8 | Ex-date. Null allowed |
+| 88 | `record_ns` | u64 | 8 | Record date. Null allowed |
+| 96 | `payment_ns` | u64 | 8 | Payment date. Null allowed |
+| 104 | `record_date_id` | u64 | 8 | Identifier of the record-date entry. 0 when there is none |
+| 112 | `outturn_security_id` | u64 | 8 | Identifier of the resulting security. 0 when there is none |
+| 120 | `ratio_old` | i64 | 8 | Old side of the ratio, scaled by 10⁻⁹. For a 4-for-1 split: 1. Null allowed |
+| 128 | `ratio_new` | i64 | 8 | New side of the ratio, scaled by 10⁻⁹. For a 4-for-1 split: 4. Null allowed |
+| 136 | `option_id` | u32 | 4 | Option number within the event. Null allowed |
+| 140 | `serial_id` | u32 | 4 | Serial number within the option. Null allowed |
+| 144 | `action_flags` | u8 | 1 | Bit 0 default option; other bits zero |
+| 145 | `reserved` | bytes | 3 | 0 |
+| 148 | text lengths | u16 × 15 | 30 | One length field for each text, in the order of the next table |
+| 178 | `reserved` | bytes | 6 | 0 |
+| 184 | texts | bytes | variable | The 15 texts, then padding |
+
+The length field of a text is named after the text with the suffix `_bytes`, for example `event_bytes`.
+
+| Offset | Text | Bytes |
+|---:|---|---|
+| 148 | `event` | 1–8 |
+| 150 | `subtype` | 0–16 |
+| 152 | `action` | 0–8 |
+| 154 | `status` | 0–8 |
+| 156 | `participation` | 0–8 |
+| 158 | `payment_type` | 0–8 |
+| 160 | `fraction` | 0–8 |
+| 162 | `date_label` | 0–32 |
+| 164 | `related_event` | 0–8 |
+| 166 | `related_event_id` | 0–32 |
+| 168 | `event_id` | 1–32 |
+| 170 | `unique_id` | 1–48 |
+| 172 | `rate_currency` | 0–16 |
+| 174 | `outturn_isin` | 0 or 12 |
+| 176 | `details` | 0–65,535 |
+
+- The identity is `(publisher, unique_id)`. A later record with the same `unique_id` replaces the earlier one.
+- `event`, `subtype`, `action`, `status`, `participation`, `payment_type` and `fraction` are short codes defined by the producer.
+- `details` is empty or one UTF-8 JSON object with sorted keys. It carries event-specific terms that have no fixed field: extra dates, rates, tender bounds, further outturn identifiers. A reader interprets the fixed fields without `details`.
+- Listing facts such as the issuer name, the symbols and the ISIN are not repeated here. A `SECURITY_DEF` for the same instrument carries them.
+
+## Ordering, gaps, snapshots and replay
+
+### Delivery order
+
+- Byte order is the authoritative delivery order. Frame order and record order are preserved.
+- Timestamps can move backward.
+- The sequences of channels do not define a total order across channels.
+- A merge tool chooses and documents its ordering policy, and it assigns new container and record identities.
+
+### Initial state
+
+A market-data consumer begins with unknown books and unknown status.
+
+- `QUOTE` initializes top-of-book state.
+- `BOOK_SNAPSHOT` initializes aggregate state. [`BOOK_DELTA`](#book_delta) then changes it one price level at a time.
+- `BEST_QUOTE` and `TRADE_QUOTE` keep their own state and do not replace `QUOTE` state.
+- `MBO` state begins with `CLEAR` or a completed snapshot for each book. `ADD` records alone cannot prove that the book is complete.
+
+### MBO snapshot transaction
+
+1. `SNAPSHOT_BEGIN` starts a private, empty working book for the instrument. A nested `SNAPSHOT_BEGIN` is invalid.
+2. Until `SNAPSHOT_END`, every `MBO` record for that book is an `ADD`. Order IDs are unique in the working book. Records of other instruments and of other record types can be interleaved.
+3. `SNAPSHOT_END` commits the complete working book atomically and marks the `MBO` state valid. An empty snapshot is allowed.
+4. A `GAP` for the channel, the end of input or `END` while a snapshot is open aborts it. A completed container with an open snapshot is semantically invalid. A `GAP` discards the working snapshot and marks the book invalid. A stray `SNAPSHOT_END` after that is invalid.
+
+- A snapshot can cross `DATA` frames.
+- A reader never exposes the working snapshot as a complete book.
+- A configured maximum snapshot size can stop decoding with a resource error. Partial state is never published silently.
+
+### Recovery after a gap
+
+- After a `GAP`, `MBO` changes without `CLEAR` or `SNAPSHOT_BEGIN` cannot restore state. A semantic consumer reports such changes as unavailable for reliable reconstruction.
+- A producer sends `CLEAR` or a complete snapshot before it resumes ordinary `MBO` changes.
+- A recovery snapshot establishes state at its snapshot point at the source. It does not recover missing trade history.
+- The producer reconciles source updates around the snapshot point before it emits the normalized stream.
+
+**Lost frames and lost source data.** The two are different. A missing NWT frame or a missing output sequence is a damaged or incomplete transfer, and strict decoding fails on it. A well-formed `GAP` reports a loss at the source within an intact transfer. A consumer cannot turn damaged bytes into a trusted `GAP` record.
+
+### Deduplication
+
+- For retries that are identical byte for byte, the deduplication keys are `(stream_id, frame_seq)` and `(stream_id, publisher, channel, sequence)`.
+- Reuse of an identity with different bytes is an integrity or protocol error.
+- Across containers that were generated independently, these keys do not identify the same market event. An application needs an identity specific to the source to deduplicate.
+
+## Compression and integrity
+
+### CRC-32C
+
+All CRC fields use CRC-32C (Castagnoli).
+
+| Parameter | Value |
+|---|---|
+| Width | 32 bits |
+| Polynomial | `0x1EDC6F41` |
+| Reflected polynomial | `0x82F63B78` |
+| Initial value | `0xFFFFFFFF` |
+| Input and output | Reflected |
+| Final XOR | `0xFFFFFFFF` |
+| Check value for the ASCII text `123456789` | `0xE3069283` |
+| Value for empty input | `0x00000000` |
+
+- The result is stored as a little-endian `u32`.
+- The CRC of a container header and of a frame header covers the whole 64-byte header with only its own CRC field set to zero.
+- The metadata CRC covers every metadata byte, including the padding of TLV elements.
+- The payload CRC covers exactly the raw payload. It excludes the padding after the payload.
+- Every CRC is mandatory, also when the computed value is zero. There is no "CRC absent" convention.
+- A CRC detects errors. It does not authenticate.
+
+The algorithm is specified in [RFC 3720, Appendix B.4](https://www.rfc-editor.org/rfc/rfc3720.html#appendix-B.4).
+
+### Zstandard
+
+Codec 1 stores the payload as one [Zstandard](https://github.com/facebook/zstd) frame that conforms to [RFC 8878](https://www.rfc-editor.org/rfc/rfc8878.html). Codec 1 is allowed on `DATA` frames only.
+
+**Stored payload.**
+
+- The stored payload is exactly one ordinary Zstandard frame: no dictionary, no skippable frame, no second frame and no trailing bytes.
+- The content size is present and equal to `raw_bytes`.
+- The window size is at most 16,777,216 bytes. For a single-segment frame, the content size takes the place of the window size.
+- The content checksum of Zstandard is optional. The CRC-32C of NWT stays mandatory.
+- The decompressor consumes exactly `stored_bytes`.
+
+**Header check.** A reader checks the frame header descriptor byte of the Zstandard frame before it calls the library.
+
+| Bits | Meaning | Rule |
+|---|---|---|
+| 7–6 | Size of the content-size field | The content size is present |
+| 5 | Single-segment flag | Allowed |
+| 3 | Reserved | Zero |
+| 2 | Content-checksum flag | Allowed. When the checksum is present, the library checks it |
+| 1–0 | Dictionary ID flag | Zero |
+
+A reader also checks that the size of the first frame the library finds equals `stored_bytes`. A skippable frame before or after it, a second frame and trailing bytes are therefore rejected.
+
+**Zstandard library.** The reference codecs decode codec 1 with the system `libzstd` (Python, C#, C++) or the [zstd](https://github.com/gyscos/zstd-rs) crate (Rust). Raw frames need no library.
+
+A reader without the library reads raw frames normally. For a codec 1 frame it fails with an error that says the library is not available. The header check runs first, so a malformed Zstandard header is rejected also without the library.
+
+**Writer.**
+
+- The compression level is the choice of the writer. A reader does not depend on it.
+- Frames are independent. A frame cannot depend on a dictionary or on the compression state of an earlier frame.
+- A writer stores a frame with codec 1 only when the compressed payload is smaller than the raw payload. Otherwise it uses codec 0. Both codecs can appear in one container.
+- Compressed bytes differ between versions of the library, so two conforming writers need not produce the same compressed bytes. Compare decoded records, not compressed bytes.
+- A very small batch can cost more to compress than it saves.
+
+A reader enforces the output and window maximums before and during decompression.
+
+## Store profile
+
+A store file is a normal container written with the choices below. There is no separate store format. The [Store profile](STORE.md) document describes the tools that write and query store files.
 
 | Choice | Setting | Reason |
 |---|---|---|
-| Frame size | 1 MiB raw by default, up to the 16 MiB limit | Fewer headers, better compression |
-| Codec | Zstd, with codec 0 for a frame that does not shrink | File size and read speed |
-| INDEX | Always written | Seek by time |
-| FRAME_SUMMARY | Always written | Skip frames by type and instrument without reading them |
-| `ordering` | Declared in the manifest when it is true | Makes binary search by time valid |
+| Frame size | 1,048,576 raw bytes by default, up to 16,777,216 | Fewer headers and better compression |
+| Codec | Zstandard, with codec 0 for a frame that does not shrink | File size and read speed |
+| `INDEX` | Always written | Seek by time |
+| `FRAME_SUMMARY` | Always written | Skip frames by record type and instrument without reading them |
+| `ordering` | Declared in the manifest when it holds | Makes binary search by time valid |
 
-Records are never reordered. Byte order is the delivery order, and definitions, snapshots and trade lifecycles depend on it. A tool that re-frames or recompresses a file keeps the record order and gives the new file a new stream ID. It declares an `ordering` only when the input already has it.
+- Records are never reordered. Byte order is the delivery order, and definitions, snapshots and trade lifecycles depend on it.
+- A tool that re-frames or recompresses a file keeps the record order and gives the new file a new stream ID.
+- Such a tool declares an `ordering` only when the input already has it.
 
-To answer a query from a store file, a reader:
+To answer a query from a store file, a reader takes these steps:
 
-1. reads the last 96 bytes (END) and validates it;
-2. reads the INDEX frames that END points to;
-3. reads the summary frames, found as described in §11.3;
-4. chooses frames by time range, type mask and instrument range;
-5. reads only the chosen frames, in their original order.
+1. Read the last 96 bytes, the `END` frame, and validate it.
+2. Read the `INDEX` frames that `END` points to.
+3. Read the summary frames, found as described in [`FRAME_SUMMARY`](#frame_summary).
+4. Choose frames by time range, type mask and instrument range.
+5. Read only the chosen frames, in their original order.
 
-The reader needs one primitive, “read N bytes at offset X”. The same code therefore works on a local file, on object storage with range requests, and on any other source with that primitive. Results of a seek are partial in the sense of §11.1: earlier definitions and book state may be missing, and the reader MUST label them so.
+The reader needs one primitive: read N bytes at offset X. The same code therefore works on a local file, on object storage with range requests and on any other source with that primitive.
 
-## 12. Transport and recovery
+The result of such a read is partial in the sense of [`INDEX` frames](#index-frames): earlier definitions and book state can be missing, and the reader labels the result as partial.
 
-### 12.1 Reliable byte streams
+## Transport and recovery
 
-For TCP, TLS, or a reliable QUIC stream, send one container header, metadata, then frames. Message boundaries are not provided by the underlying byte stream: a read may contain one byte, part of a header, multiple records, or many frames. The decoder MUST support arbitrary fragmentation and coalescing.
+### Reliable byte streams
 
-Connection establishment, credentials, requested datasets/schemas, and codec capability agreement occur in the hosting service's control plane before NWT bytes begin. this version does not define a socket handshake or subscription message. An API MUST document its authentication, request syntax, quotas, retry policy, and allowed codecs separately. A producer MUST NOT send an unsupported codec after agreeing to a restricted capability set.
+Over TCP, TLS or a reliable QUIC stream, the sender transmits one container header, the metadata and then the frames.
 
-For an HTTP response, use the NWT object as the body and the private media type above when appropriate. Native NWT frame compression SHOULD be used without an additional HTTP compression wrapper when byte offsets/range access matter. Object storage is the same byte representation.
+- The byte stream provides no message boundaries. One read can contain one byte, part of a header, several records or many frames. A reader supports arbitrary fragmentation and coalescing.
+- Connection setup, credentials, the requested datasets and schemas, and the agreement on codecs take place in the control plane of the hosting service, before the NWT bytes begin.
+- An API that serves NWT documents its authentication, request syntax, quotas, retry policy and allowed codecs separately.
+- A producer cannot send a codec that the agreed capability set excludes.
+- In an HTTP response, the NWT object is the body, with the private media type where appropriate.
+- When byte offsets or range access matter, we recommend the frame compression of NWT without an additional HTTP compression wrapper.
+- Object storage holds the same byte representation.
 
-### 12.2 Backpressure and heartbeat
+### Backpressure and heartbeat
 
-Producers SHOULD bound queues and flush on either a configured batch-size or latency threshold. A heartbeat is an ordinary SYSTEM record in a DATA frame; it consumes a record sequence and a frame sequence. Its interval and timeout are service policies, not inferred from NWT.
+- We recommend that producers bound their queues and flush a frame on a configured batch size or on a latency threshold.
+- A heartbeat is an ordinary `SYSTEM` record in a `DATA` frame. It consumes a record sequence and a frame sequence.
+- The heartbeat interval and timeout are policies of the service. They are not derived from NWT.
+- A producer that loses source data through overflow reports a `GAP` before it resumes the affected records, or it terminates abnormally. It cannot hide dropped events behind contiguous output sequences.
+- When backpressure blocks transmission, a heartbeat can be delayed too. Missing heartbeats alone do not show the cause.
 
-A producer that loses source data due to overflow MUST report GAP before resuming affected records, or terminate abnormally. It MUST NOT hide dropped events behind contiguous output sequence numbers. If backpressure blocks transmission, a heartbeat may also be delayed; heartbeat silence alone does not diagnose the cause.
+### Resume and byte ranges
 
-### 12.3 Resume and byte ranges
+- Exact resume is allowed only against an immutable container with the same stream ID and a verified header and metadata.
+- A client records the byte offset and the frame sequence after the last fully verified frame. The service can resume at that frame boundary, with the original bytes and sequences.
+- The resumed suffix continues a transport. It is not a standalone NWT object, and it needs the context that the client has already validated.
+- A standalone export that starts at a later logical time is a new container: a new stream ID, a new manifest, sequences that start at their initial values, and the definitions, snapshots and lifecycle context that its records need.
+- An API that offers semantic resume defines its source cursor and its gap policy separately.
+- Retransmission alone does not give exactly-once side effects in an application. An application must coordinate its processed positions durably with its own state or transactions.
 
-Exact resume is allowed only against an immutable container with the same stream ID and verified header/metadata. A client records the byte offset and frame sequence after the last fully verified frame. The service may resume at that frame boundary and preserve original bytes and sequences. This resumed suffix is a transport continuation, not a standalone NWT object, and requires the client's previously validated context.
+### Damaged archives
 
-A standalone export starting at a later logical time MUST be a new container with a new stream ID, a new manifest, sequences starting at their initial values, and required definitions/snapshots/lifecycle context. An API providing semantic resume MUST define its source cursor and gap policy separately; NWT 1.1 does not standardize that cursor.
+- A strict reader stops at corruption.
+- A separate salvage mode can scan forward for the frame magic, validate candidate headers, bounds, decompression, checksums and record structure, and recover later raw records. A match of the magic alone is insufficient.
+- Salvage output uses a new stream ID and describes the omitted regions. It restores the semantic prerequisites or stays explicitly partial.
+- A frame with a valid CRC cannot rebuild state that was lost before it.
 
-Retransmission does not deliver exactly-once application side effects by itself. Applications must durably coordinate processed positions with their own state/transactions.
+## Schema evolution and registries
 
-### 12.4 Damaged archives
+### Container version
 
-Strict readers stop at corruption. A separate salvage mode MAY scan forward for frame magic, validate candidate headers, bounds, decompression, checksums, and record structure, and recover later raw records. Magic matches alone are insufficient. Salvage output MUST use a new container ID, describe omitted regions, and restore semantic prerequisites or remain explicitly partial. A CRC-valid frame cannot reconstruct state lost before it.
+- A reader rejects an unknown `major` value. A change of `major` permits incompatible changes to the container header and the frame header.
+- A change of `minor` can add TLV types or record schemas. It preserves the 64-byte headers and every existing meaning.
+- A reader that implements a subset of the record types can read a container when every header field has a value it supports and it understands every required TLV element and every required schema. It skips optional records it does not know.
+- A reader that does not implement `BOOK_DELTA` therefore refuses a container that declares it, because `BOOK_DELTA` is always declared as required.
+- A strict reader can reject a `minor` value it does not know with a clear unsupported-version error.
 
-## 13. Schema evolution and registries
+### Schema versions
 
-Container major version changes permit incompatible envelope changes. Readers MUST reject unknown major versions. Minor versions may add TLV allocations or record schemas while preserving the 64-byte headers and all existing meanings. Minor 1 adds types 10–22 and nothing else. A 1.0 reader MAY read a minor 1 container only when every envelope field retains a supported value and every required TLV and schema is understood; it skips optional records it does not know. A container that declares BOOK_DELTA as required is therefore refused by a 1.0 reader, which is the intended effect. A strict implementation MAY instead reject unknown minor versions with a clear unsupported-version error.
+- The layout and the meaning of an existing `(record_type, schema_version)` are immutable.
+- A new field needs a new schema version. A changed meaning needs a new schema version or a new record type.
+- A schema version is a complete contract. It does not promise that a later version keeps the same prefix. A reader cannot assume that an unknown version has the layout of a known one.
+- An extension of an enum needs a new schema version where it affects meaning.
 
-Existing `(record_type, schema_version)` layouts and meanings are immutable. New fields require a new schema version; changed meanings require a new version or new type. Schema versions are complete contracts, not promises of prefix compatibility. Readers MUST NOT guess that an unknown version has the old layout. Enum extensions likewise require a schema revision where they affect meaning.
+### Type registries
 
-Record type allocation: 0 invalid, 1–32767 standard, 32768–65534 private, 65535 invalid. Types 1–22 are assigned here, as in the table of §8. Private types are scoped by their exact manifest URI; applications exchanging them MUST agree on both the URI and layout. A container cannot bind the same `(type,version)` to multiple schemas. Registry governance must assign any future public IDs before release; this draft establishes no external standards authority.
+| Range | Record types | TLV types |
+|---|---|---|
+| 0 | Invalid | Invalid |
+| 1–32,767 | Standard. Types 1–22 are assigned | Standard. Types 1 and 2 are assigned |
+| 32,768–65,534 | Private | Private |
+| 65,535 | Invalid | Invalid |
 
-Unknown optional record types/versions are skipped by `record_bytes` after envelope and manifest validation. Unknown required schemas stop semantic decoding before DATA is consumed. All skipped records still contribute to sequence checking, frame counts, and timestamp bounds. A lossless relay preserves their bytes. Optional schemas MUST NOT redefine existing units, mutate standard books, or otherwise be prerequisites for standard interpretation; such dependencies require `required = true`.
+- A private record type is scoped by its exact `spec_uri` in the manifest. Applications that exchange it need to agree on both the URI and the layout.
+- A container cannot bind one `(type, version)` to more than one schema.
 
-## 14. Decoder and encoder requirements
+### Unknown records
 
-### 14.1 Incremental decoder state machine
+- A reader skips an unknown optional record type or version by `record_bytes`, after it has validated the frame and the manifest.
+- An unknown required schema stops semantic decoding before any `DATA` frame is consumed.
+- Skipped records still count toward sequence checking, frame counts and timestamp bounds. A lossless relay preserves their bytes.
+- An optional schema cannot redefine existing units, change standard books or otherwise be a prerequisite for the interpretation of standard records. A schema with such a dependency is declared with `required` true.
+
+## Reader and writer requirements
+
+### Incremental decoding
+
+A reader that receives bytes incrementally follows this state machine.
 
 ```text
-READ_HEADER -> validate header CRC/version/limits
-READ_METADATA -> validate metadata CRC/TLVs/manifest
-READ_FRAME_HEADER -> validate header CRC/kind/order/limits
-READ_PAYLOAD -> obtain exactly stored_bytes plus outer padding
-DECOMPRESS -> codec-specific bounded decode
-VALIDATE_PAYLOAD -> CRC, records/index/end, semantic prerequisites
-COMMIT_FRAME -> expose validated records, advance expected sequences
-repeat READ_FRAME_HEADER until END
-DONE -> reject trailing bytes
+READ_HEADER        validate header CRC, version, size maximums
+READ_METADATA      validate metadata CRC, TLV elements, manifest
+READ_FRAME_HEADER  validate header CRC, kind, order, size maximums
+READ_PAYLOAD       obtain exactly stored_bytes plus outer padding
+DECOMPRESS         bounded decode for the codec
+VALIDATE_PAYLOAD   CRC, records or index or end, semantic prerequisites
+COMMIT_FRAME       expose validated records, advance expected sequences
+                   repeat from READ_FRAME_HEADER until END
+DONE               reject trailing bytes
 ```
 
-Temporary lack of bytes returns NEED_MORE, not corruption. End-of-input while expecting more bytes returns TRUNCATED. No record from a frame may be presented as integrity-verified before that frame's CRC and structural validation succeed. A semantic consumer SHOULD validate mutations against temporary state and commit only after the complete frame passes semantic checks. Open multi-frame snapshots remain private until SNAPSHOT_END.
+- A temporary lack of bytes returns `NEED_MORE`. It is not corruption.
+- End of input while more bytes are expected returns `TRUNCATED`.
+- A record is not presented as verified before the CRC and the structural validation of its frame succeed.
+- We recommend that a semantic consumer validate changes against temporary state and commit them only after the whole frame passes the semantic checks.
+- A snapshot that spans several frames stays private until `SNAPSHOT_END`.
 
-Record iteration pseudocode:
+### Record iteration
 
 ```text
 offset = 0; parsed = 0
@@ -945,162 +1389,186 @@ while offset < raw_bytes:
 require offset == raw_bytes and parsed == record_count
 ```
 
-This is explanatory pseudocode, not a complete validator; CRCs, scopes, limits, reserved fields, timestamps, and state rules remain mandatory.
+The loop shows record framing only. CRCs, scopes, size maximums, reserved fields, timestamps and state rules apply in addition.
 
-### 14.2 Error classification
+### Error categories
 
-Implementations SHOULD expose stable machine-readable categories: `BAD_MAGIC`, `UNSUPPORTED_VERSION`, `UNSUPPORTED_CODEC`, `UNSUPPORTED_REQUIRED_SCHEMA`, `INVALID_METADATA`, `BAD_HEADER_CRC`, `BAD_PAYLOAD_CRC`, `INVALID_LENGTH`, `NONZERO_RESERVED`, `INVALID_RECORD`, `SEQUENCE_ERROR`, `SEMANTIC_ERROR`, `DECOMPRESSION_ERROR`, `RESOURCE_LIMIT`, `TRUNCATED`, `ABORTED`, and `TRAILING_BYTES`.
+We recommend that implementations expose stable machine-readable error categories.
 
-Errors SHOULD include byte offset, frame sequence, record position, and schema when known. Logs MUST NOT treat untrusted text as format strings or commands. A reader may provide raw inspection despite unsupported semantics, but MUST mark that mode and its limitations explicitly.
+| Category | Condition |
+|---|---|
+| `BAD_MAGIC` | The container magic or a frame magic does not match |
+| `UNSUPPORTED_VERSION` | A version value that the reader does not support |
+| `UNSUPPORTED_CODEC` | A codec that the reader does not support |
+| `UNSUPPORTED_REQUIRED_SCHEMA` | A required schema that the reader does not know |
+| `INVALID_METADATA` | The metadata is not valid: its CRC, a TLV element, the manifest or the provenance |
+| `BAD_HEADER_CRC` | The CRC of a container header or a frame header does not match |
+| `BAD_PAYLOAD_CRC` | The CRC of a frame payload does not match |
+| `INVALID_LENGTH` | A length is too short, too long, misaligned or inconsistent |
+| `NONZERO_RESERVED` | A reserved field or a padding byte is not zero |
+| `INVALID_RECORD` | A record breaks the layout rules of its schema |
+| `SEQUENCE_ERROR` | A frame sequence or a record sequence is not the expected one |
+| `SEMANTIC_ERROR` | A record breaks a state rule, such as a delta against an invalid book |
+| `DECOMPRESSION_ERROR` | A compressed payload cannot be decoded under the rules of the codec |
+| `RESOURCE_LIMIT` | A local maximum of the reader is exceeded |
+| `TRUNCATED` | The input ends while more bytes are expected |
+| `ABORTED` | The `END` frame reports that the producer aborted |
+| `TRAILING_BYTES` | Bytes follow the `END` frame |
 
-### 14.3 Encoder obligations
+- We also recommend that an error include the byte offset, the frame sequence, the record position and the schema, when they are known.
+- Logs never treat untrusted text as a format string or as a command.
+- A reader can offer raw inspection of data whose rules it does not support. It marks that mode and what it does not check.
 
-Writers MUST validate schema constraints before emission, use checked integer arithmetic, zero all reserved bytes, compute exact counts and timestamp bounds, compute raw-payload CRCs before optional compression, and compute header CRCs last. Writers SHOULD prefer deterministic serialization for repeated conversion runs, though fresh stream IDs and creation times naturally differ.
+### Writer obligations
 
-An encoder cannot change the manifest after it has been sent. New publishers or schemas require a new container. It MUST emit definitions and state initialization before dependent data. A writer that cannot finish SHOULD emit an aborted END if possible; otherwise readers will classify the prefix as incomplete. Published files SHOULD be written to a temporary path, completed and flushed, then atomically renamed according to the host filesystem's guarantees.
+A writer does all of the following:
 
-## 15. Security and operational limits
+- validates the constraints of a schema before it emits a record;
+- uses checked integer arithmetic;
+- sets all reserved bytes to zero;
+- computes exact counts and timestamp bounds;
+- computes the CRC of the raw payload before optional compression, and the header CRC last;
+- emits definitions and state initialization before the data that depends on them.
 
-NWT has no built-in encryption, digital signature, entitlement enforcement, or tamper-resistant authentication. Use authenticated encrypted transport and appropriate object access controls. If stored-object authenticity is required, sign or authenticate the complete immutable object externally. CRCs do not protect against intentional modification.
+A writer cannot change the manifest after it has been sent. A new publisher or schema needs a new container.
 
-Hard format limits are 1 MiB metadata, 16 MiB stored/raw frame payload, 1 MiB record, 1024 aggregate book levels per side (for BOOK_SNAPSHOT, and for the book that BOOK_DELTA maintains), and the individual text/array limits specified above, including 65535 bytes for the `details` text of CORPORATE_ACTION. These are ceilings, not suggested allocation sizes. Readers MAY enforce lower documented local limits and return RESOURCE_LIMIT. They MUST NOT silently drop data to stay within a limit.
+We recommend three practices for a writer:
 
-Total container length, number of frames, instruments, channels, live orders, and correction histories are not globally bounded by the format. Stateful consumers MUST apply configurable quotas, bounded buffering, disk-backed state, or explicit resource failures. Never allocate from an unchecked product or addition. Enforce decompressor window/output limits before materializing output. Do not dereference URI metadata or load executable schema plugins automatically.
+- Deterministic serialization, so that repeated conversion runs give the same records. Fresh stream IDs and creation times still differ.
+- An aborted `END` from a writer that cannot finish, when it can still emit one. Without it, readers classify the prefix as incomplete.
+- A published file that is written to a temporary path, completed, flushed and then renamed atomically, within the guarantees of the file system.
 
-CRC validation does not establish business-data correctness. Negative prices, crossed books, stale timestamps, and unusual but permitted values may be legitimate. Validation must distinguish malformed encoding from a source-quality alert.
+## Security and resource use
 
-## 16. Interoperability and conversion
+### Security
 
-Data in another format needs an explicit converter. Broad concepts such as instrument identity, event time, receive time, prices and message types can be mapped, but sizes, type IDs, flags, sequence meanings, metadata and framing MUST NOT be copied by assumption. The converter's author reads the source format's own definition for every field they map.
+- NWT has no encryption, no digital signature, no entitlement enforcement and no tamper-resistant authentication.
+- Use an authenticated, encrypted transport and access controls on stored objects.
+- Where the authenticity of a stored object is required, sign or authenticate the complete immutable object externally.
+- A CRC does not protect against intentional modification.
+- A reader does not dereference URI metadata and does not load executable schema plug-ins automatically.
+
+### Maximum sizes
+
+| Item | Maximum |
+|---|---|
+| Metadata, `metadata_bytes` | 1,048,576 bytes |
+| Frame payload, `stored_bytes` and `raw_bytes` | 16,777,216 bytes each |
+| Record, `record_bytes` | 1,048,576 bytes |
+| Zstandard window | 16,777,216 bytes |
+| Levels on each side of the aggregate book, in `BOOK_SNAPSHOT` and in the book that `BOOK_DELTA` maintains | 1,024 |
+| JSON nesting in `MANIFEST` and `PROVENANCE` | 16 levels |
+| Entries in `publishers` and in `schemas` | 4,096 each |
+| String property of `PROVENANCE` | 4,096 bytes |
+| `text` of `SYSTEM` | 4,096 bytes |
+| `details` of `CORPORATE_ACTION` | 65,535 bytes |
+| Other texts and arrays | Stated with each field |
+
+- These values are ceilings, not suggested allocation sizes.
+- A reader can enforce lower, documented local maximums and return `RESOURCE_LIMIT`. It cannot drop data silently to stay within one.
+
+### Unbounded quantities
+
+The format does not bound the total length of a container or the number of frames, instruments, channels, live orders and corrections.
+
+- A stateful consumer therefore needs configurable quotas, bounded buffering, disk-backed state or explicit resource failures.
+- Never allocate from an unchecked product or sum.
+- Enforce the window and output maximums of the decompressor before the output is materialized.
+
+### Data quality
+
+A valid CRC does not establish that the business data is correct. Negative prices, crossed books, stale timestamps and unusual but permitted values can be legitimate. A validator distinguishes a malformed encoding from a quality alert about the source.
+
+## Conversion from other formats
+
+Data in another format needs an explicit converter. Broad concepts such as instrument identity, event time, receive time, prices and message types can be mapped. Sizes, type IDs, flags, sequence meanings, metadata and framing cannot be copied by assumption. The author of a converter reads the definition of the source format for every field they map.
 
 | Input concept | NWT treatment |
 |---|---|
-| Publisher/instrument identity | Allocate stable IDs; keep the mapping in converter metadata or reference data. Where the source has numeric IDs, keep their numbers |
-| Event and receive timestamps | Convert clock semantics; map source nulls to NWT nulls |
-| Fixed-point or decimal price | Parse with integer arithmetic and rescale with checked arithmetic and exactness checks |
-| Integer/fractional size | Convert to quantity × 10^9 in an explicitly defined unit |
-| Exchange-native sequence | Do not copy into the NWT output sequence; retain in a private schema or in `details` if needed |
-| Feed action and flags | Map only when the meaning matches; otherwise reject, or count the loss in provenance |
-| Order-level feed | Track each order and emit ADD, MODIFY or DELETE with the remaining size |
-| Multi-level book update | Rebuild an aggregate snapshot, or emit BOOK_DELTA (§8.15) |
-| Native instrument definition | Populate the available fields; keep other necessary fields in a private schema |
-| Symbol directory or security master | Use LISTING, SYMBOL_MAP, SECURITY_DEF and VENUE_DEF; do not guess a field the source lacks |
-| Late correction outside the export range | Include the original lifecycle context, or reject the standard TRADE conversion |
+| Publisher and instrument identity | Allocate stable IDs. Keep the mapping in converter metadata or in reference data. Where the source has numeric IDs, keep their numbers |
+| Event and receive timestamps | Convert the clock semantics. Map source nulls to NWT nulls |
+| Fixed-point or decimal price | Parse with integer arithmetic. Rescale with checked arithmetic and exactness checks |
+| Integer or fractional size | Convert to a quantity × 10⁹ in an explicitly defined unit |
+| Sequence of the exchange | Do not copy it into the NWT output sequence. Keep it in a private schema or in `details` if it is needed |
+| Feed action and flags | Map only when the meaning matches. Otherwise reject, or count the loss in `PROVENANCE` |
+| Order-level feed | Track each order and emit `ADD`, `MODIFY` or `DELETE` with the remaining size |
+| Book update with several levels | Rebuild an aggregate snapshot, or emit [`BOOK_DELTA`](#book_delta) |
+| Instrument definition of the source | Fill the available fields. Keep other necessary fields in a private schema |
+| Symbol directory or security master | Use `LISTING`, `SYMBOL_MAP`, `SECURITY_DEF` and `VENUE_DEF`. Do not guess a field that the source lacks |
+| Late correction outside the export range | Include the original lifecycle context, or reject the conversion to standard `TRADE` records |
 
-A converter MUST NOT claim lossless conversion unless every required source field and semantic distinction is retained. It fails, and does not guess, on an unknown source code. It fails, and does not truncate, on a text that exceeds a limit. It never reorders records. It parses and prints decimals with integer arithmetic; no floating-point value enters a conversion. When it rounds, it reports the loss to the caller and records the policy and the count in provenance. Provenance records the chosen policy; it cannot make a lossy conversion lossless.
+A converter follows these rules:
 
-Source codes that the converter keeps as text, for example status and action letters, stay text codes. A schema does not turn them into enums until the code set is defined. Facts that the source does not have stay “unknown”; they are not filled in from other fields.
+- It claims a lossless conversion only when it retains every required source field and every semantic distinction.
+- It fails on an unknown source code. It does not guess.
+- It fails on a text that exceeds a maximum length. It does not truncate.
+- It never reorders records.
+- It parses and prints decimals with integer arithmetic. No floating-point value enters a conversion.
+- When it rounds, it reports the loss to the caller and records the policy and the count in `PROVENANCE`. Recording the policy does not make a lossy conversion lossless.
+- Source codes that it keeps as text, such as status and action letters, stay text codes. A schema does not turn them into enums until the code set is defined.
+- Facts that the source does not have stay "unknown". They are not filled in from other fields.
 
-CSV/JSON exports SHOULD render timestamps as integer decimal strings or unambiguous time strings, and prices/quantities as exact decimal strings. JavaScript numbers cannot represent all u64/i64 values exactly; implementations SHOULD use BigInt or a lossless integer library. A reverse converter MUST validate ranges and nulls, not round via floating-point intermediates. The kit's own text output formats are defined in `fixtures/v1.1/FORMAT-NOTES.md`.
+**Text exports.**
 
-## 17. Examples and binary test vectors
+- In CSV and JSON exports, the recommended rendering is an integer decimal string or an unambiguous time string for a timestamp, and an exact decimal string for a price or a quantity.
+- JavaScript numbers cannot represent every `u64` and `i64` value exactly. We recommend `BigInt` or a lossless integer library.
+- A reverse converter validates ranges and nulls. It never rounds through floating-point intermediates.
+- A text rendering of records, including the decimal strings that the reference codecs print, is a view. It is not an alternative wire format, and it does not change the number rules of `MANIFEST`.
 
-The accompanying fixture package provides one complete uncompressed market-data container, byte-level hex dumps, a values/offsets manifest, and a small executable vector generator/checker. It contains a definition followed by a trade, an index, and a normal END. The fixture is an interoperability aid for this draft, not a production SDK or comprehensive semantic validator.
+## Conformance files and examples
 
-Revision 1.1 adds two kinds of file. The synthetic conformance vectors (`fixtures/catalog-v1.1.json` and `fixtures/v1.1/`) cover every field of all 22 types, so the four codecs can be compared byte for byte. The real-data fixtures (`fixtures/real/`, `fixtures/real-market/`, `fixtures/real-reference/`) are converted from public and licensed source files and show what real records look like. The cookbook uses real records where one exists.
+### Conformance files
 
-TRADE example values:
+The four reference codecs (Python, Rust, C#, C++) read and write every record type and produce byte-identical output for the conformance files.
 
-| Field | Value |
+| File | Content |
 |---|---|
-| publisher/channel/instrument | 1 / 0 / 1001 |
-| sequence | 2, following an instrument definition at sequence 1 |
-| ts_event | 1700000000000000000 |
-| ts_recv | 1700000000000000100 |
-| price | 123450000000 = 123.45 USD |
-| quantity | 10000000000 = 10 shares |
-| trade_id / original_sequence | 42 / 0 |
-| action / aggressor | NEW / buyer |
+| [all-records.nwt](files/samples/all-records.nwt) | Conformance file: one container with 47 records of 21 record types (every type except `FRAME_SUMMARY`), raw frames |
+| [all-records.zst.nwt](files/samples/all-records.zst.nwt) | The same records in Zstandard frames |
+| [records.json](files/records.json) | Machine-readable schema of all 22 record types |
+| [nwt-binary-format-kit.zip](files/nwt-binary-format-kit.zip) | The whole kit: documents, schema, reference codecs, tools and fixtures |
+| [SHA256SUMS.txt](files/SHA256SUMS.txt) | Checksums of every hosted file |
 
-The 48-byte common record header can be expressed in Python's explicit little-endian syntax as `struct.Struct('<IHBBIIQQQQ')`. This is a serialization description, not permission to use native structure layout without checking it. The full TRADE payload suffix is `'<qQQQBBHI'`. The fixture checker asserts the exact 48/40/88-byte sizes and CRC check value.
+In the kit, the conformance files are in `fixtures/golden/`, and the conformance vectors are listed in `fixtures/catalog-golden.json`. The conformance vectors cover every field of all 22 record types, so that implementations can be compared byte for byte.
 
-For language interoperability, a C/C++ implementation SHOULD read with explicit little-endian accessors or copy into validated aligned storage. A Rust implementation MUST account for unaligned input and byte order rather than casting arbitrary byte slices to references. A Python implementation can use `struct.unpack_from` after bounds validation.
+The samples in `fixtures/real/`, `fixtures/real-market/` and `fixtures/real-reference/` show records converted from source files. See [Reference data samples](REAL-DATA.md) and [Market data samples](REAL-DATA-MARKET.md). Every hosted file is listed in [Downloads](DOWNLOADS.md).
 
-## 18. Conformance test plan
+### Minimal example file
 
-Before describing an implementation as production-ready, run independent encoder/decoder round trips and the following cases. The accompanying checker covers a subset of envelope/vector checks; this matrix is a release requirement, not a claim that all tests already exist.
+The minimal example file, `fixtures/basic/example.nwt`, is one uncompressed market-data container of 920 bytes. It has three frames (`DATA`, `INDEX`, `END`) and two records: an `INSTRUMENT_DEF` followed by a `TRADE`. The `END` frame reports normal completion.
 
-| Area | Required cases and expected result |
-|---|---|
-| Golden vectors | Decode fixture values; reproduce exact fixture bytes with its fixed ID/time |
-| Fragmentation | Every split of header and short fixture, single-byte reads, many frames/read; identical events |
-| Primitive values | Negative/zero prices, epoch/null times, maximum legal integers; exact values |
-| CRC | Known check vector; altered header/metadata/raw payload rejected |
-| Lengths | Too short/long, overflow, misalignment, count mismatch, trailing bytes rejected |
-| Padding | Nonzero TLV, record, or frame padding rejected |
-| Metadata | Duplicate keys/types, unknown required TLV/schema, undeclared publisher/type rejected |
-| Evolution | Unknown optional record skipped and counted; unknown required version rejected |
-| Compression | Raw/Zstd/mixed; dictionary, excess window, concatenation, extra bytes, wrong output size rejected |
-| Index | Bad offset, missing/duplicate entry, mismatch, illegal ordering rejected |
-| Completion | Normal/aborted END distinguished; missing/truncated END reported incomplete |
-| Sequencing | Cross-frame continuity; duplicate/gap/wrap rejected; channel independence maintained |
-| Trades | New/correct/cancel lifecycle; missing originals and updates after cancel rejected |
-| Quotes/books | Empty/crossed quotes accepted; invalid absence encoding/rank duplicates rejected |
-| MBO | Clear/add/modify/delete; multi-frame snapshot atomicity; nested/unfinished snapshot rejected |
-| Source gaps | Each state invalidated; recovery restores only corresponding schema state |
-| Definitions | Before-use rule, updates, immutable unit identity, private fields preserved |
-| Resource limits | Declared oversized values rejected before allocation; bounded decompression/state |
-| New types (10–22) | Every field, enum, flag mask and reserved field; text limits counted in bytes (a 255-byte limit accepts 127 two-byte characters plus one ASCII byte and rejects one more); exact fixed sizes; wrong text lengths rejected |
-| Container minor | `minor` 1 with types 10–22 declared; `minor` 0 otherwise; a mismatch in either direction rejected, including a file that declares only types 1–9, 21 and 22 |
-| Zstd header | Frame with content checksum accepted; dictionary, skippable frame, trailing bytes, wrong content size and oversized window rejected; missing library reported without affecting raw frames |
-| Summaries and ordering | A FRAME_SUMMARY that disagrees with a full scan rejected; a false `ordering` claim rejected; a query answered from summaries equals a full scan with the same filter |
-| Book deltas | Delta on an invalid book, delete of a missing level, growth past 1024 levels, and GAP invalidation |
-| Reference and market extras | STATISTICS null rules, IMBALANCE side/quantity, overlapping SYMBOL_MAP intervals, OPTION_DEF against INSTRUMENT_DEF, replacement by identity for types 10–12, 21 and 22 |
-| Text output | CSV and JSON escaping of a text with `,`, `"`, a line feed and a control byte, identical in every language |
-| Fuzzing | Truncated/random/mutated inputs cannot crash, hang, read out of bounds, or allocate without bounds |
-
-Interoperability sign-off SHOULD include two independently developed implementations, preferably in different languages, using both positive and deliberately malformed fixtures. Re-encoding with another compressor need not produce identical compressed bytes; decoded raw records and metadata semantics must agree. Byte-identical retries, however, must retain original compressed bytes.
-
-## 19. Performance and implementation guidance
-
-Uncompressed TRADE is 88 bytes; QUOTE is 96; BAR is 112; MBO is 88. A raw frame of 1000 trades is 88,064 bytes, excluding container metadata and index. Frame-header overhead is 64/88,000, approximately 0.073%. A single-trade frame is 152 bytes, approximately 72.7% envelope overhead relative to its 88-byte record. These are layout calculations, not benchmarks.
-
-Batch sizes of 64 KiB–1 MiB raw are reasonable starting experiments for bulk transfer; live systems should tune a latency-triggered flush policy. Measure rather than assume the best compression level or batch size. Metadata JSON is parsed once per container; the hot record path uses fixed binary layouts.
-
-Uncompressed buffers can support views without copying payload fields when ownership, lifetime, alignment, and endianness are safe. Compressed frames require decompression storage. CRC and validation still cost CPU. “Zero-copy” does not mean zero validation, zero memory use, or zero buffering.
-
-Benchmark records/second, bytes/second, CPU time, peak memory, compression ratio, and end-to-end p50/p95/p99 latency. Report hardware, compiler/runtime, codec version/level, batch policy, schema mix, checksum policy, and whether semantic book reconstruction is enabled. Include incompressible and adversarially large inputs. A comparison with any other format must use equivalent data, fidelity, and processing work. This specification states no measured speed or size. Measurements made for the developer kit are reported in [VERIFICATION.md](VERIFICATION.md) with their hardware and settings.
-
-## 20. Release acceptance and future work
-
-This document is a complete proposed v1.1 wire contract for the stated scope, but production adoption still requires implementation and interoperability review. Freeze an immutable specification revision and fixture checksums before shipping a public SDK. Resolve any discovered ambiguity by publishing an explicit draft revision; never silently change already-released wire meanings.
-
-Suggested implementation order: envelope and CRC; metadata and raw records; standard schema semantics; index/END; bounded Zstd; incremental streaming and resume integration; fuzzing and independent interoperability tests. Public APIs should expose raw record access alongside typed decoding and clearly distinguish a valid container from complete source-market history.
-
-Future versions may define authenticated containers, dictionary compression, source-cursor replay, book-state checkpoints, cross-container corrections, datagram transport, alternative decimal scales, and dynamically extensible metadata. None of those features is implicitly supported by this draft.
-
-## 21. References
-
-The RFC references were consulted on 23 September 2026.
-
-1. [RFC 8878 — Zstandard Compression](https://www.rfc-editor.org/rfc/rfc8878.html).
-2. [RFC 3720 Appendix B.4 — CRC32C](https://www.rfc-editor.org/rfc/rfc3720.html#appendix-B.4).
-
-Standards named by the schemas, listed by name only; this specification does not reproduce them and they were not consulted for this revision: ISO 10383 (market identifier codes), ISO 6166 (ISIN), ISO 17442 (LEI), ISO 10962 (CFI), ISO 3166 (country codes) and ISO 4217 (currency codes). FIGI and CUSIP identifiers are defined by their issuing bodies.
-
-## Appendix A. Frozen example vector
-
-The generated example is **920 bytes**, with three frames and two records. Its SHA-256 is:
-
+<!-- nwt-title: SHA-256 of example.nwt -->
 ```text
-9283afa10b2686953e8c9708bd8fd04a3fe020e351ad39f6d5655b00b9f15029
+7bd77cec1d742d752942b41ff1dbcec82b625e50c4ea8b0ca9cf4fe81216fa85
 ```
-
-Offsets are absolute from the beginning of `example.nwt`:
 
 | Component | Offset |
 |---|---:|
-| header | 0 |
-| metadata | 64 |
-| data_frame | 432 |
-| definition | 496 |
-| trade | 632 |
-| index_frame | 720 |
-| end_frame | 824 |
+| Container header | 0 |
+| Metadata | 64 |
+| `DATA` frame header | 432 |
+| `INSTRUMENT_DEF` record | 496 |
+| `TRADE` record | 632 |
+| `INDEX` frame header | 720 |
+| `END` frame header | 824 |
 
-The complete 88-byte TRADE record is shown below; offsets in this dump are record-relative.
+The `TRADE` record has these values:
 
-```text
+| Field | Value |
+|---|---|
+| `publisher_id`, `channel_id`, `instrument_id` | 1, 0, 1001 |
+| `sequence` | 2. The `INSTRUMENT_DEF` has sequence 1 |
+| `ts_event` | `1700000000000000000` |
+| `ts_recv` | `1700000000000000100` |
+| `price` | `123450000000`, which is 123.45 USD |
+| `quantity` | `10000000000`, which is 10 shares |
+| `trade_id`, `original_sequence` | 42, 0 |
+| `action`, `aggressor` | `NEW`, buyer |
+
+The complete 88-byte record follows. Offsets in the dump are from the start of the record.
+
+<!-- nwt-title: TRADE record -->
+```hex
 00000000  58 00 00 00 01 00 01 00 01 00 00 00 00 00 00 00
 00000010  e9 03 00 00 00 00 00 00 00 00 2a 36 fe 9c 97 17
 00000020  64 00 2a 36 fe 9c 97 17 02 00 00 00 00 00 00 00
@@ -1109,25 +1577,87 @@ The complete 88-byte TRADE record is shown below; offsets in this dump are recor
 00000050  01 01 00 00 00 00 00 00
 ```
 
-The supplied raw-envelope checker passed CRC check vectors, structure-size assertions, the complete example, and eight malformed-input checks (header, metadata, and payload corruption; missing/truncated END; trailing data; mismatched count; frame-sequence gap). Compression and full market-data semantics are not implemented by that checker.
+In the explicit little-endian syntax of the Python `struct` module, the 48-byte record header is `<IHBBIIQQQQ` and the body of `TRADE` is `<qQQQBBHI`. The record header is 48 bytes, an `INDEX` entry is 40 bytes and a `TRADE` record is 88 bytes. These strings describe the serialization. They do not permit the use of a native structure layout without a check.
 
-## 22. Developer kit and clarified implementation boundaries
+### Conformance tests
 
-The developer kit supplies all 22 standard record schemas in Python, C# and C++, and in Rust. The Python, C# and C++ programs are built and compared by the kit's tests. The Rust program is written to the same contract but was not compiled or run in this release, because no Rust toolchain was available; treat it as unverified. Zstd (codec 1) is supported in all four languages through the system `libzstd`. Without that library, codec 1 fails with a clear error and raw files keep working.
+An implementation is tested with round trips between independent writers and readers and with the cases below.
 
-The kit includes examples for every field, every defined enum, null and empty cases, UTF-8 strings, variable depth and source-gap recovery. The original two-record fixture in Appendix A remains under `fixtures/legacy/`; the draft.2 49-record fixture is `fixtures/all-records.nwt`; the 22-type conformance vector is `fixtures/v1.1/all-records.nwt`.
+| Area | Required cases and expected result |
+|---|---|
+| Conformance files | Decode the values of the conformance files. Reproduce their exact bytes with the fixed stream ID and creation time |
+| Fragmentation | Every split point of the header and of a short file, single-byte reads, many frames in one read. The events are identical |
+| Primitive values | Negative and zero prices, epoch and null times, maximum legal integers. The values are exact |
+| CRC | The known check value. An altered header, altered metadata and an altered raw payload are rejected |
+| Lengths | Too short, too long, overflow, misalignment, count mismatch and trailing bytes are rejected |
+| Padding | Nonzero padding of a TLV element, a record or a frame is rejected |
+| Metadata | Duplicate keys, duplicate TLV types, an unknown required TLV or schema, an undeclared publisher or type are rejected |
+| Evolution | An unknown optional record is skipped and counted. An unknown required version is rejected |
+| Compression | Raw, Zstandard and mixed containers. A dictionary, an excess window, concatenation, extra bytes and a wrong output size are rejected |
+| Zstandard header | A frame with a content checksum is accepted. A dictionary, a skippable frame, trailing bytes, a wrong content size and an oversized window are rejected. A missing library is reported and does not affect raw frames |
+| Index | A bad offset, a missing or duplicate entry, a mismatch and an illegal frame order are rejected |
+| Completion | Normal and aborted `END` are distinguished. A missing or truncated `END` is reported as incomplete |
+| Sequencing | Continuity across frames. A duplicate, a gap and a wrap are rejected. Channels are independent |
+| Container `minor` | `minor` 1 when a record type 10–22 is declared, `minor` 0 otherwise. A mismatch in either direction is rejected, including `minor` 0 in a file whose only such types are 21 and 22 |
+| Trades | The lifecycle of new, correct and cancel. A missing original and an update after a cancel are rejected |
+| Quotes and books | Empty and crossed quotes are accepted. An invalid encoding of an absent side and duplicate price levels are rejected |
+| `MBO` | Clear, add, modify and delete. A snapshot across frames is atomic. A nested and an unfinished snapshot are rejected |
+| Book deltas | A delta on an invalid book, a delete of a missing level, growth past 1,024 levels and invalidation by `GAP` |
+| Source gaps | Each kind of state is invalidated. Recovery restores only the state of the corresponding record type |
+| Definitions | The before-use rule, updates, immutable units and identity, preserved private fields |
+| Fields and texts | Every field, enum, flag mask and reserved field. Text maximums are counted in bytes: a 255-byte text accepts 127 two-byte characters plus one ASCII byte and rejects one byte more. Exact fixed sizes. Wrong text lengths are rejected |
+| Reference and market records | The null rules of `STATISTICS`, the side and quantity rule of `IMBALANCE`, overlapping `SYMBOL_MAP` intervals, `OPTION_DEF` against `INSTRUMENT_DEF`, replacement by identity for `VENUE_DEF`, `OPTION_DEF`, `LISTING`, `SECURITY_DEF` and `CORPORATE_ACTION` |
+| Summaries and ordering | A `FRAME_SUMMARY` that disagrees with a full scan is rejected. A false `ordering` claim is rejected. A query answered from summaries equals a full scan with the same filter |
+| Text output | CSV and JSON escaping of a text with a comma, a double quote, a line feed and a control byte is identical in every language |
+| Resource maximums | Declared oversized values are rejected before allocation. Decompression and state are bounded |
+| Fuzzing | Truncated, random and mutated inputs cannot crash, hang, read out of bounds or allocate without bound |
 
-The normative requirements in this specification apply independently of what an example program implements. The bundled programs are intentionally not advertised as production-conformant NWT SDKs. See the implementation guide's capability matrix for what each language does and does not implement. The store features (`repack`, `query`, `validate`), the converters and the semantic state checks are in Python only.
+- For interoperability testing, we recommend two independently developed implementations, preferably in different languages, with both valid and deliberately malformed files.
+- Re-encoding with another compressor need not give identical compressed bytes. The decoded raw records and the meaning of the metadata agree.
+- A retry that claims to be byte-identical keeps the original compressed bytes.
 
-Clarifications that apply to the whole 1.x line:
+## Implementation notes
 
-1. Feed type means a standard record schema; DATA, INDEX, and END are frame kinds, not exchange feed schemas.
-2. Text lengths are UTF-8 octet lengths. Every definition/system text and every book-level field has an explicit worked example in the field reference.
-3. Stored frame length excludes its outer padding. Record length includes its internal padding. Index offsets refer to frame headers, never record starts.
-4. A decoder that only checks binary shape does not necessarily enforce trade/book business rules. Semantic conformance requires those rules and definition/state prerequisites too.
-5. A snapshot being refreshed privately must not expose its partial working book. GAP invalidates committed and working state; a fresh snapshot or CLEAR is required for MBO recovery.
-6. Deterministic fixture writers may use a fixed ID to reproduce the exact same object. Modified bytes require a new stream ID in ordinary applications, including any re-framed/recompressed output.
-7. The fixture's dictionary-of-decimal-strings representation is an example API convention, not an alternative wire format or a change to the MANIFEST JSON number constraints.
-8. The synthetic conformance vectors exist to compare implementations. They are not market data.
+### Record and frame sizes
 
-See [CHANGELOG.md](CHANGELOG.md) for the revision summary and [VERIFICATION.md](VERIFICATION.md) for actual test coverage.
+- An uncompressed `TRADE` is 88 bytes, a `QUOTE` is 96, a `BAR` is 112 and an `MBO` is 88.
+- A raw frame of 1,000 trades is 88,064 bytes, without the container metadata and the index. The frame header is 64 of 88,000 payload bytes, about 0.073%.
+- A frame with a single trade is 152 bytes. The 64-byte frame header is about 72.7% of the 88-byte record.
+- For bulk transfer, start with frames of 65,536 to 1,048,576 raw bytes and measure. A live system tunes a flush policy triggered by latency.
+- The manifest JSON is parsed once per container. The record path uses fixed binary layouts.
+
+### Byte access
+
+- An uncompressed buffer can be read through views without copying payload fields, when ownership, lifetime, alignment and byte order are safe. A compressed frame needs storage for the decompressed bytes.
+- CRC and validation still cost CPU time. Reading without copies does not remove validation, memory use or buffering.
+- For a C or C++ implementation, we recommend explicit little-endian accessors, or a copy into validated aligned storage.
+- A Rust implementation accounts for unaligned input and byte order. It does not cast arbitrary byte slices to references.
+- A Python implementation can use `struct.unpack_from` after it has validated the bounds.
+
+### Order of work
+
+A practical order for a new implementation:
+
+1. Container header, frame header and CRC.
+2. Metadata and raw records.
+3. The rules of the standard schemas.
+4. `INDEX` and `END`.
+5. Bounded Zstandard.
+6. Incremental streaming and resume.
+7. Fuzzing and independent interoperability tests.
+
+For a public API, we recommend raw record access next to typed decoding, and a clear distinction between a valid container and a complete history of the source market.
+
+### Measurements
+
+- Measure records per second, bytes per second, CPU time, peak memory, compression ratio and end-to-end latency at the 50th, 95th and 99th percentiles.
+- Report the hardware, the compiler or runtime, the codec version and level, the batch policy, the mix of record types, the checksum policy and whether book reconstruction is enabled.
+- Include incompressible inputs and adversarially large inputs.
+- A comparison with another format is valid only on equivalent data, fidelity and processing work.
+
+## References
+
+1. [RFC 8878, Zstandard Compression and the application/zstd Media Type](https://www.rfc-editor.org/rfc/rfc8878.html).
+2. [RFC 3720, Appendix B.4, CRC-32C](https://www.rfc-editor.org/rfc/rfc3720.html#appendix-B.4).
+
+The schemas name these standards without reproducing them: ISO 10383 (market identifier codes), ISO 6166 (ISIN), ISO 17442 (LEI), ISO 10962 (CFI), ISO 3166 (country codes) and ISO 4217 (currency codes). FIGI and CUSIP identifiers are defined by their issuing bodies.

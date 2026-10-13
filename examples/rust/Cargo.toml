@@ -3,8 +3,6 @@ name = "nwt-example"
 version = "0.1.0"
 edition = "2021"
 
-# The Zstd codec (codec 1) is on by default. Build with --no-default-features to leave it out:
-# codec 1 then fails with "Zstd library not available" and raw files keep working.
 [features]
 default = ["zstd"]
 zstd = ["dep:zstd"]

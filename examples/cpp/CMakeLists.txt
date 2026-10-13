@@ -5,7 +5,6 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 add_executable(nwt-example main.cpp)
 target_compile_features(nwt-example PRIVATE cxx_std_20)
-# Zstd is optional. Without it codec 1 fails with "Zstd library not available"; raw files still work.
 find_path(NWT_ZSTD_INCLUDE zstd.h HINTS /opt/homebrew/include /usr/local/include)
 find_library(NWT_ZSTD_LIB NAMES zstd HINTS /opt/homebrew/lib /usr/local/lib)
 if(NWT_ZSTD_INCLUDE AND NWT_ZSTD_LIB)

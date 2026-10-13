@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 118" role="img" aria-labelledby="nwtd-overview-w-title nwtd-overview-w-desc" class="nwt-diagram" font-family="inherit" fill="none">
+<title id="nwtd-overview-w-title">From sources to readers</title>
+<desc id="nwtd-overview-w-desc">Source files are converted and written into one NWT container, which the nwt command, the reference codecs and selective readers then read.</desc>
+<defs><marker id="nwtd-overview-w-a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1L7 4L1 7z" fill="var(--fg-3, #6b6a65)"/></marker></defs>
+<text x="0" y="14" font-size="13" font-weight="600" fill="var(--fg-3, #6b6a65)">Sources</text>
+<rect x="0.5" y="26.5" width="159" height="91" rx="3" fill="var(--c5-bg, #eceef1)" stroke="var(--c5, #5f6b7a)"/>
+<text x="12" y="51" font-size="14" font-weight="600" fill="var(--fg, #37352f)">Source files</text>
+<text x="12" y="75" font-size="13" fill="var(--fg-2, #63625d)">exchange exports,</text>
+<text x="12" y="95" font-size="13" fill="var(--fg-2, #63625d)">reference files</text>
+<path d="M164.5 71.5 L195.5 71.5" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-overview-w-a)"/>
+<text x="200" y="14" font-size="13" font-weight="600" fill="var(--fg-3, #6b6a65)">Convert and write</text>
+<rect x="200.5" y="26.5" width="159" height="91" rx="3" fill="var(--c2-bg, #e3f3f1)" stroke="var(--c2, #2a8c82)"/>
+<text x="212" y="51" font-size="14" font-weight="600" fill="var(--fg, #37352f)">Converter, writer</text>
+<text x="212" y="75" font-size="13" fill="var(--fg-2, #63625d)">map source rows</text>
+<text x="212" y="95" font-size="13" fill="var(--fg-2, #63625d)">to the 22 types</text>
+<path d="M364.5 71.5 L395.5 71.5" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-overview-w-a)"/>
+<text x="400" y="14" font-size="13" font-weight="600" fill="var(--fg-3, #6b6a65)">NWT file</text>
+<rect x="400.5" y="26.5" width="159" height="91" rx="3" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
+<text x="412" y="51" font-size="14" font-weight="600" fill="var(--fg, #37352f)">Container</text>
+<text x="412" y="75" font-size="13" fill="var(--fg-2, #63625d)">header, DATA frames,</text>
+<text x="412" y="95" font-size="13" fill="var(--fg-2, #63625d)">records, INDEX</text>
+<path d="M564.5 71.5 L595.5 71.5" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-overview-w-a)"/>
+<text x="600" y="14" font-size="13" font-weight="600" fill="var(--fg-3, #6b6a65)">Read</text>
+<rect x="600.5" y="26.5" width="159" height="91" rx="3" fill="var(--c4-bg, #ece9f7)" stroke="var(--c4, #6b5bb5)"/>
+<text x="612" y="51" font-size="14" font-weight="600" fill="var(--fg, #37352f)">Readers</text>
+<text x="612" y="75" font-size="13" fill="var(--fg-2, #63625d)">nwt command, codecs,</text>
+<text x="612" y="95" font-size="13" fill="var(--fg-2, #63625d)">selective reads</text>
+</svg>

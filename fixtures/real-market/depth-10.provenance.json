@@ -1,0 +1,23 @@
+{
+  "conversion_policy": "Prices, sizes and timestamps are exact; nothing is rounded. Source publisher and instrument IDs are kept; the channel is the source channel_id, or 0 when the file has none. NWT sequences restart at 1 per (publisher, channel); the source sequence number is not carried. Source flags are not carried. Every row -> BOOK_SNAPSHOT with the row's 10 levels and the depth-limited flag set. Trailing levels that are empty on both sides are dropped. A row with an empty level above a filled one, or with bid or ask prices out of order, stops the conversion. Trade rows restate the book; the trade print itself is not carried by this kind. Each instrument's definition comes from the venue's definition file and is written before its first record.",
+  "converter": "tools/nwt_convert_market.py csv-mbp10",
+  "definitions_sha256": "f8068c859c766ae60880b76e96168261e14d601769d9a95a420b1d63da15e526",
+  "license_reference": "Licensed market data; see the Licenses document.",
+  "notes": {},
+  "output": "main",
+  "policy_options": {
+    "currency": "USX",
+    "quantity_unit": "contract"
+  },
+  "records_written": {
+    "BOOK_SNAPSHOT": 500,
+    "INSTRUMENT_DEF": 199,
+    "OPTION_DEF": 187
+  },
+  "rows_skipped": {},
+  "source_format": "exchange market-data export (CSV)",
+  "source_rows": 500,
+  "source_schema": "mbp-10",
+  "source_sha256": "8f5501333e26b4fb1925bf03d021c1609b078455db60273b099eb8b6777c0b64",
+  "values_rounded": 0
+}

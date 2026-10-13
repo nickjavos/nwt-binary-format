@@ -1,0 +1,179 @@
+{
+ "kind": "bar",
+ "title": {
+  "en": "Bytes per record without compression",
+  "ru": "Байт на запись без сжатия"
+ },
+ "unit": {
+  "en": "bytes per record",
+  "ru": "байт на запись"
+ },
+ "note": {
+  "en": "File bytes divided by the number of records, for six samples of the kit. CSV and JSON Lines are the output of the reference codec's to-csv and to-json commands, one CSV file per record type. Each command has a plain and a --pretty output; the smaller one is counted. NWT is the sample file as it is, with its header, manifest and INDEX. Machine: Apple M5, 10 cores, 16 GB of memory.",
+  "ru": "Размер файла, делённый на число записей, для шести образцов комплекта. CSV и JSON Lines — вывод команд to-csv и to-json эталонного кодека, по одному файлу CSV на тип записи. У каждой команды два вида вывода, обычный и --pretty; учитывается меньший. NWT — файл образца целиком, с заголовком, манифестом и INDEX. Машина: Apple M5, 10 ядер, 16 ГБ памяти."
+ },
+ "series": [
+  {
+   "label": {
+    "en": "CSV",
+    "ru": "CSV"
+   },
+   "value": 127,
+   "group": "equity-quotes",
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "JSON Lines",
+    "ru": "JSON Lines"
+   },
+   "value": 428,
+   "group": "equity-quotes",
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "NWT, raw frames",
+    "ru": "NWT, кадры без сжатия"
+   },
+   "value": 102,
+   "group": "equity-quotes",
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "CSV",
+    "ru": "CSV"
+   },
+   "value": 121,
+   "group": "equity-orders",
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "JSON Lines",
+    "ru": "JSON Lines"
+   },
+   "value": 375,
+   "group": "equity-orders",
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "NWT, raw frames",
+    "ru": "NWT, кадры без сжатия"
+   },
+   "value": 89.3,
+   "group": "equity-orders",
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "CSV",
+    "ru": "CSV"
+   },
+   "value": 177,
+   "group": "equity-bars",
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "JSON Lines",
+    "ru": "JSON Lines"
+   },
+   "value": 465,
+   "group": "equity-bars",
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "NWT, raw frames",
+    "ru": "NWT, кадры без сжатия"
+   },
+   "value": 114,
+   "group": "equity-bars",
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "CSV",
+    "ru": "CSV"
+   },
+   "value": 171,
+   "group": "option-best-quotes",
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "JSON Lines",
+    "ru": "JSON Lines"
+   },
+   "value": 567,
+   "group": "option-best-quotes",
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "NWT, raw frames",
+    "ru": "NWT, кадры без сжатия"
+   },
+   "value": 124,
+   "group": "option-best-quotes",
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "CSV",
+    "ru": "CSV"
+   },
+   "value": 161,
+   "group": "statistics",
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "JSON Lines",
+    "ru": "JSON Lines"
+   },
+   "value": 517,
+   "group": "statistics",
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "NWT, raw frames",
+    "ru": "NWT, кадры без сжатия"
+   },
+   "value": 120,
+   "group": "statistics",
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "CSV",
+    "ru": "CSV"
+   },
+   "value": 578,
+   "group": "corporate-actions-us",
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "JSON Lines",
+    "ru": "JSON Lines"
+   },
+   "value": 1800,
+   "group": "corporate-actions-us",
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "NWT, raw frames",
+    "ru": "NWT, кадры без сжатия"
+   },
+   "value": 487,
+   "group": "corporate-actions-us",
+   "highlight": true
+  }
+ ]
+}

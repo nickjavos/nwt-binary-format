@@ -1,0 +1,41 @@
+{
+ "kind": "bar",
+ "title": {
+  "en": "1,000,000 records in three encodings",
+  "ru": "1 000 000 записей в трёх кодировках"
+ },
+ "unit": {
+  "en": "MB",
+  "ru": "МБ"
+ },
+ "note": {
+  "en": "Measured on a file of 1,000,000 records: the 2,476 data records of the equity-quotes sample repeated, with timestamps and sequence numbers that advance. 1 MB is 1,048,576 bytes. CSV and JSON Lines are the output of the reference codec's to-csv and to-json commands, one CSV file per record type. Each command has a plain and a --pretty output; the smaller one is counted. NWT is the whole file with raw frames of 1,048,576 bytes. Machine: Apple M5, 10 cores, 16 GB of memory.",
+  "ru": "Измерен файл из 1 000 000 записей: 2 476 записей данных образца equity-quotes повторены, метки времени и порядковые номера возрастают. 1 МБ — это 1 048 576 байт. CSV и JSON Lines — вывод команд to-csv и to-json эталонного кодека, по одному файлу CSV на тип записи. У каждой команды два вида вывода, обычный и --pretty; учитывается меньший. NWT — файл целиком, кадры без сжатия по 1 048 576 байт. Машина: Apple M5, 10 ядер, 16 ГБ памяти."
+ },
+ "series": [
+  {
+   "label": {
+    "en": "CSV",
+    "ru": "CSV"
+   },
+   "value": 123,
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "JSON Lines",
+    "ru": "JSON Lines"
+   },
+   "value": 410,
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "NWT, raw frames",
+    "ru": "NWT, кадры без сжатия"
+   },
+   "value": 96,
+   "highlight": true
+  }
+ ]
+}

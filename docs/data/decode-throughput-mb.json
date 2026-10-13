@@ -1,0 +1,89 @@
+{
+ "kind": "bar",
+ "title": {
+  "en": "Decode throughput of the reference codecs",
+  "ru": "Скорость декодирования эталонных кодеков"
+ },
+ "unit": {
+  "en": "MB per second",
+  "ru": "МБ в секунду"
+ },
+ "note": {
+  "en": "Median of 9 runs of each reference codec's bench command on a file of 1,000,000 records: the 2,476 data records of the equity-quotes sample repeated, with timestamps and sequence numbers that advance. The timer starts after the file is in memory, so process start and disk reads are not counted. Decoding walks the container, checks the CRC-32C of every frame, decompresses Zstandard frames and decodes every record. The Zstandard file is the store file written by nwt repack. 1 MB is 1,048,576 bytes of records. Machine: Apple M5, 10 cores, 16 GB of memory.",
+  "ru": "Медиана 9 запусков команды bench каждого эталонного кодека. Данные — файл из 1 000 000 записей: 2 476 записей данных образца equity-quotes повторены, метки времени и порядковые номера возрастают. Отсчёт времени начинается, когда файл уже в памяти: запуск процесса и чтение с диска не учитываются. Декодирование проходит контейнер, проверяет CRC-32C каждого кадра, распаковывает кадры Zstandard и декодирует каждую запись. Файл Zstandard — файл хранилища, записанный командой nwt repack. 1 МБ — это 1 048 576 байт записей. Машина: Apple M5, 10 ядер, 16 ГБ памяти."
+ },
+ "series": [
+  {
+   "label": {
+    "en": "Raw frames",
+    "ru": "Кадры без сжатия"
+   },
+   "value": 13.6,
+   "group": "Python",
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "Zstandard frames",
+    "ru": "Кадры Zstandard"
+   },
+   "value": 13,
+   "group": "Python",
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "Raw frames",
+    "ru": "Кадры без сжатия"
+   },
+   "value": 514,
+   "group": "Rust",
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "Zstandard frames",
+    "ru": "Кадры Zstandard"
+   },
+   "value": 557,
+   "group": "Rust",
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "Raw frames",
+    "ru": "Кадры без сжатия"
+   },
+   "value": 363,
+   "group": "C#",
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "Zstandard frames",
+    "ru": "Кадры Zstandard"
+   },
+   "value": 346,
+   "group": "C#",
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "Raw frames",
+    "ru": "Кадры без сжатия"
+   },
+   "value": 1060,
+   "group": "C++",
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "Zstandard frames",
+    "ru": "Кадры Zstandard"
+   },
+   "value": 710,
+   "group": "C++",
+   "highlight": true
+  }
+ ]
+}

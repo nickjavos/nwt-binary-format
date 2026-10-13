@@ -1,0 +1,125 @@
+{
+ "kind": "bar",
+ "title": {
+  "en": "Bytes per record with Zstandard",
+  "ru": "Байт на запись со сжатием Zstandard"
+ },
+ "unit": {
+  "en": "bytes per record",
+  "ru": "байт на запись"
+ },
+ "note": {
+  "en": "File bytes divided by the number of records, for the same six samples. CSV is each CSV file compressed as a whole with Zstandard level 3; the smaller of the plain and the --pretty output is counted. NWT is the store file written by nwt repack: Zstandard level 3 in every frame, with header, manifest, INDEX and FRAME_SUMMARY records. Machine: Apple M5, 10 cores, 16 GB of memory.",
+  "ru": "Размер файла, делённый на число записей, для тех же шести образцов. CSV — каждый файл CSV, сжатый целиком Zstandard уровня 3; учитывается меньший из двух видов вывода, обычного и --pretty. NWT — файл хранилища, записанный командой nwt repack: Zstandard уровня 3 в каждом кадре, с заголовком, манифестом, INDEX и записями FRAME_SUMMARY. Машина: Apple M5, 10 ядер, 16 ГБ памяти."
+ },
+ "series": [
+  {
+   "label": {
+    "en": "CSV, Zstandard",
+    "ru": "CSV, Zstandard"
+   },
+   "value": 19.6,
+   "group": "equity-quotes",
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "NWT, Zstandard frames",
+    "ru": "NWT, кадры Zstandard"
+   },
+   "value": 14.8,
+   "group": "equity-quotes",
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "CSV, Zstandard",
+    "ru": "CSV, Zstandard"
+   },
+   "value": 23.5,
+   "group": "equity-orders",
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "NWT, Zstandard frames",
+    "ru": "NWT, кадры Zstandard"
+   },
+   "value": 20.4,
+   "group": "equity-orders",
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "CSV, Zstandard",
+    "ru": "CSV, Zstandard"
+   },
+   "value": 25.3,
+   "group": "equity-bars",
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "NWT, Zstandard frames",
+    "ru": "NWT, кадры Zstandard"
+   },
+   "value": 30.1,
+   "group": "equity-bars",
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "CSV, Zstandard",
+    "ru": "CSV, Zstandard"
+   },
+   "value": 27.6,
+   "group": "option-best-quotes",
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "NWT, Zstandard frames",
+    "ru": "NWT, кадры Zstandard"
+   },
+   "value": 22.8,
+   "group": "option-best-quotes",
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "CSV, Zstandard",
+    "ru": "CSV, Zstandard"
+   },
+   "value": 23.3,
+   "group": "statistics",
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "NWT, Zstandard frames",
+    "ru": "NWT, кадры Zstandard"
+   },
+   "value": 21.2,
+   "group": "statistics",
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "CSV, Zstandard",
+    "ru": "CSV, Zstandard"
+   },
+   "value": 69.4,
+   "group": "corporate-actions-us",
+   "highlight": false
+  },
+  {
+   "label": {
+    "en": "NWT, Zstandard frames",
+    "ru": "NWT, кадры Zstandard"
+   },
+   "value": 69.6,
+   "group": "corporate-actions-us",
+   "highlight": true
+  }
+ ]
+}

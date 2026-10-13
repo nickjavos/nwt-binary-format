@@ -1,23 +1,4 @@
 #!/usr/bin/env python3
-"""Reference-data converters: security master, corporate actions, symbol directories, option series, MIC list.
-
-    python3 tools/nwt_convert_reference.py KIND SRC OUT [--dataset NAME] [--retrieved YYYY-MM-DD]
-    python3 tools/nwt_convert.py KIND SRC OUT [--dataset NAME] [--retrieved YYYY-MM-DD]
-
-    KIND                    SRC                                  records written
-    csv-secmaster           security-master CSV export           SECURITY_DEF per row
-    csv-corporate-actions   corporate-actions CSV export         SECURITY_DEF when a listing is new or its facts
-                                                                 changed, then CORPORATE_ACTION per row
-    nasdaqlisted            Nasdaq-listed symbol directory       LISTING and SYMBOL_MAP per row
-    otherlisted             other-exchange symbol directory      LISTING and SYMBOL_MAP per row
-    options                 option series directory              OPTION_DEF per row
-    mic                     ISO 10383 market identifier list     VENUE_DEF per row
-
-The column mapping, the code tables and the policies are described in docs/REAL-DATA.md.
-Every converter fails, with the source line, on an unknown code, an over-long text or a
-value it cannot carry; nothing is truncated, trimmed or guessed, and rows keep their order.
-The same source bytes always give the same container bytes.
-"""
 
 import argparse
 import ast
@@ -40,8 +21,8 @@ import nwt_ids
 from nwt_parse import days_from_civil, parse_date_ns, parse_decimal, parse_decimal_rounded, parse_timestamp_ns, strip_id
 
 NULL, NULL_I64, NULL_U32 = nwt.NULL, nwt.NULL_I64, nwt.NULL_U32
-CREATED_NS = parse_date_ns("2026-10-13")  # fixed, so a rebuild from the same source gives identical bytes
-PRODUCER = "nwt-developer-kit/1.1-draft.1"
+CREATED_NS = parse_date_ns("2026-10-13")
+PRODUCER = "nwt-binary-format-kit"
 ERRORS = (ValueError, KeyError, OverflowError, UnicodeError, OSError)
 DATES = "POSIX nanoseconds. A source date becomes midnight UTC of that date."
 
@@ -51,24 +32,21 @@ def need(ok, why):
         raise ValueError(why)
 
 
-# ------------------------------------------------------------ shared pieces
 
 
 class Batch:
-    """Encoded records in source order, with output sequences for publisher 1, channel 0."""
 
     def __init__(self):
         self.raws, self.counts, self.sequencer = [], {}, nwt.Sequencer()
 
     def add(self, typ, **values):
         record = nwt.make_record(typ, sequence=self.sequencer.next(1, 0), **values)
-        self.raws.append(nwt.encode_record(record))  # refuses a text outside its limits
+        self.raws.append(nwt.encode_record(record))
         name = nwt.S[typ]["name"]
         self.counts[name] = self.counts.get(name, 0) + 1
 
 
 class Ids:
-    """Instrument IDs for keys. A repeated key, or two keys that give one ID, fails the conversion."""
 
     def __init__(self):
         self.by_id, self.keys = {}, set()
@@ -84,7 +62,6 @@ class Ids:
 
 
 def each(rows, convert_row):
-    """Run convert_row(line, row) for every row. A failure is reported with its source line. Returns the row count."""
     count = 0
     for line, row in rows:
         try:
@@ -96,9 +73,6 @@ def each(rows, convert_row):
 
 
 def finish(out_path, source, dataset, publisher, types, batch, provenance, args):
-    """Write the container and return its provenance. Nothing is written unless every row converted."""
-    # shortcut: all records are held in memory (the provenance counts must be written before the first frame);
-    # convert in two passes instead when a source is larger than a few hundred megabytes.
     digest = hashlib.sha256(source)
     provenance = {**provenance, "converter": PRODUCER, "source_sha256": digest.hexdigest(), "records": batch.counts}
     retrieved = getattr(args, "retrieved", None)
@@ -117,11 +91,6 @@ def finish(out_path, source, dataset, publisher, types, batch, provenance, args)
 
 
 def csv_rows(source, required, allowed=None):
-    """(line, {column: text}) per data row of a CSV file.
-
-    Fails on a missing required column and, when `allowed` is given, on a column outside it:
-    a format with no place for unknown columns must not drop one silently.
-    """
     reader = csv.reader(io.StringIO(source.decode("utf-8"), newline=""))
     header = next(reader, None)
     need(header, "missing header row")
@@ -136,7 +105,6 @@ def csv_rows(source, required, allowed=None):
 
 
 def number(row, column, parse, empty):
-    """parse(text) for a filled column; `empty` for an empty or absent one. A failure names the column."""
     text = row.get(column, "")
     if text == "":
         return empty
@@ -147,7 +115,6 @@ def number(row, column, parse, empty):
 
 
 def code(row, column, table):
-    """The table entry for a source code. A code outside the table fails; it is never guessed."""
     text = row.get(column, "")
     need(text in table, f"column {column}: unknown code {text!r}")
     return table[text]
@@ -158,7 +125,6 @@ def ident(prefix):
 
 
 def whole(bits):
-    """Parser for a count in an unsigned field of `bits` bits, below its null value. "7370.0" is 7370."""
 
     def parse(text):
         value = parse_decimal(text, 0)
@@ -169,7 +135,6 @@ def whole(bits):
 
 
 def scaled(row, column, noted, empty):
-    """A decimal column times 10^9, rounded half to even. A source text that needed rounding is kept in `noted`."""
 
     def parse(text):
         value, dropped = parse_decimal_rounded(text)
@@ -181,12 +146,11 @@ def scaled(row, column, noted, empty):
 
 
 def date(row, column, noted):
-    """A YYYY-MM-DD column as midnight UTC. A date before 1970 has no NWT value: the field is null and the text is kept in `noted`."""
 
     def parse(text):
         m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", text, re.ASCII)
         if m and int(m[1]) < 1970:
-            days_from_civil(int(m[1]), int(m[2]), int(m[3]))  # it must still be a real date
+            days_from_civil(int(m[1]), int(m[2]), int(m[3]))
             noted["source_dates"][column] = text
             return NULL
         return parse_date_ns(text)
@@ -194,11 +158,10 @@ def date(row, column, noted):
     return number(row, column, parse, NULL)
 
 
-# ------------------------------------------- security master, corporate actions
 
 TRUTH = {"": 0, "False": 0, "True": 1}
-LISTING_SOURCE = {"": 0, "M": 1, "S": 2}  # main, secondary
-SECURITY_TEXTS = {  # NWT text -> source column
+LISTING_SOURCE = {"": 0, "M": 1, "S": 2}
+SECURITY_TEXTS = {
     "issuer_name": "issuer_name", "description": "security_description", "security_type": "security_type",
     "structure": "structure", "listing_status": "listing_status", "voting": "voting",
     "primary_exchange": "primary_exchange", "exchange": "exchange", "operating_mic": "operating_mic",
@@ -209,30 +172,29 @@ SECURITY_TEXTS = {  # NWT text -> source column
     "incorporation_country": "incorporation_country", "listing_country": "listing_country",
     "register_country": "register_country", "trading_currency": "trading_currency",
     "par_value_currency": "par_value_currency",
-}  # fmt: skip
+}
 SECURITY_COLUMNS = set(SECURITY_TEXTS.values()) | {
     "listing_id", "listing_group_id", "security_id", "issuer_id", "listing_source", "listing_created_date",
     "listing_date", "delisting_date", "sic", "cik", "naics", "multi_currency", "lot_size", "par_value",
     "vote_per_sec", "shares_outstanding", "shares_outstanding_date",
-}  # fmt: skip
-# Listing columns that a corporate-actions row does not have; its SECURITY_DEF leaves them empty, zero or null.
+}
 SECMASTER_ONLY = {
     "listing_created_date", "fisn", "lei", "sic", "cik", "gics", "naics", "cic", "cfi", "incorporation_country",
     "structure", "voting", "vote_per_sec", "shares_outstanding", "shares_outstanding_date",
-}  # fmt: skip
-ACTION_TEXTS = {  # NWT text -> source column
+}
+ACTION_TEXTS = {
     "event": "event", "subtype": "event_subtype", "action": "event_action", "status": "global_status",
     "participation": "mand_volu_flag", "payment_type": "payment_type", "fraction": "fraction",
     "date_label": "event_date_label", "related_event": "related_event", "related_event_id": "related_event_id",
     "event_id": "event_id", "unique_id": "event_unique_id", "rate_currency": "rate_currency",
     "outturn_isin": "outturn_isin",
-}  # fmt: skip
+}
 ACTION_COLUMNS = set(ACTION_TEXTS.values()) | {
     "event_date", "ts_record", "listing_id", "security_id", "issuer_id", "event_created_date", "effective_date",
     "ex_date", "record_date", "payment_date", "record_date_id", "outturn_security_id", "ratio_old", "ratio_new",
     "option_id", "serial_id", "default_option_flag",
-}  # fmt: skip
-DICT_COLUMNS = ("date_info", "rate_info", "event_info")  # Python-style dictionary literals
+}
+DICT_COLUMNS = ("date_info", "rate_info", "event_info")
 REFERENCE_PUBLISHER = {"id": 1, "name": "reference-data", "venue": ""}
 REFERENCE_POLICY = (
     "Source identifiers keep their number (L- listing becomes the instrument ID; LG-, S-, I- and D- fill their "
@@ -240,11 +202,10 @@ REFERENCE_POLICY = (
     "are rounded half to even and counted in rounded_decimals. A date before 1970 cannot be stored: its field is "
     "null and it is counted in dates_before_1970. Output sequences start at 1. "
 )
-LICENCE = "Licensed vendor export. Check the licence before redistributing."
+LICENCE = "Licensed reference data; see the Licenses document."
 
 
 def notes():
-    """Per row: {column: source text} of the values that could not be stored exactly, by reason."""
     return {"source_decimals": {}, "source_dates": {}}
 
 
@@ -253,7 +214,6 @@ def inexact_counts(provenance, counts):
 
 
 def security_def(row, ts_event, noted):
-    """make_record values for a SECURITY_DEF, from a security-master row or the listing columns of a corporate-actions row."""
     instrument = number(row, "listing_id", ident("L-"), 0)
     need(instrument, "column listing_id: empty or zero")
     return dict(
@@ -281,7 +241,6 @@ def security_def(row, ts_event, noted):
 
 
 def literal_json(node, text):
-    """A parsed literal as JSON data. A number becomes a string of its source digits, so no float value is used."""
     if isinstance(node, ast.Dict):
         out = {}
         for key, value in zip(node.keys, node.values):
@@ -304,7 +263,6 @@ def literal_json(node, text):
 
 
 def literal_dict(column, text):
-    """A Python-style dictionary literal ({'a': None, 'b': 0.07}) as JSON data. The text is parsed, never run."""
     try:
         need(isinstance(ast.literal_eval(text), dict), "not a dictionary")
         return literal_json(ast.parse(text, mode="eval").body, text)
@@ -313,7 +271,6 @@ def literal_dict(column, text):
 
 
 def corporate_action(row, ts_event, noted):
-    """make_record values for a CORPORATE_ACTION. `noted` already holds what the row's listing columns needed."""
     values = dict(
         instrument_id=number(row, "listing_id", ident("L-"), 0),
         ts_event=ts_event,
@@ -333,7 +290,6 @@ def corporate_action(row, ts_event, noted):
         serial_id=number(row, "serial_id", whole(32), NULL_U32),
         action_flags=code(row, "default_option_flag", TRUTH),
     )
-    # Every filled column without a field or text of its own goes into details, so no source value is dropped.
     details = {}
     for column, text in row.items():
         if text != "" and column not in SECURITY_COLUMNS and column not in ACTION_COLUMNS:
@@ -355,13 +311,12 @@ def convert_secmaster(src_path, out_path, args):
     def one(line, row):
         noted = notes()
         batch.add(21, **security_def(row, number(row, "ts_effective", parse_timestamp_ns, NULL), noted))
-        # SECURITY_DEF has no free text, so a value that could not be stored exactly is listed in the provenance.
         for reason, originals in noted.items():
             counts[reason] += len(originals)
             kept.extend({"line": line, "column": column, "source": text} for column, text in originals.items())
 
     provenance = {
-        "source_format": "vendor CSV export",
+        "source_format": "reference-data export (CSV)",
         "source_kind": "csv-secmaster",
         "source_rows": each(csv_rows(source, sorted(known), known), one),
         "conversion_policy": REFERENCE_POLICY
@@ -387,7 +342,7 @@ def convert_corporate_actions(src_path, out_path, args):
         security = security_def(row, ts_event, noted)
         action = corporate_action(row, ts_event, noted)
         key = tuple(row.get(column, "") for column in listing_columns)
-        if facts.get(security["instrument_id"]) != key:  # a new listing, or its facts changed
+        if facts.get(security["instrument_id"]) != key:
             facts[security["instrument_id"]] = key
             batch.add(21, **security)
         batch.add(22, **action)
@@ -395,7 +350,7 @@ def convert_corporate_actions(src_path, out_path, args):
             counts[reason] += len(originals)
 
     provenance = {
-        "source_format": "vendor CSV export",
+        "source_format": "reference-data export (CSV)",
         "source_kind": "csv-corporate-actions",
         "source_rows": each(csv_rows(source, sorted(ACTION_COLUMNS | SECURITY_COLUMNS - SECMASTER_ONLY)), one),
         "conversion_policy": REFERENCE_POLICY
@@ -412,31 +367,27 @@ def convert_corporate_actions(src_path, out_path, args):
     return finish(out_path, source, "REAL.CORPACT", REFERENCE_PUBLISHER, [21, 22], batch, provenance, args)
 
 
-# --------------------------------------------------------------- public files
 
-# Code tables. The letters and their meanings are the publisher's (docs/REAL-DATA.md names the page);
-# a letter that is not listed there is not listed here, and fails the conversion.
 YES = {"Y": 1, "N": 0}
-MARKET_TIER = {"Q": 1, "G": 2, "S": 3}  # Global Select, Global, Capital
-# financial_flags: bit 0 reported, bit 1 deficient, bit 2 delinquent, bit 3 bankrupt
+MARKET_TIER = {"Q": 1, "G": 2, "S": 3}
 FINANCIAL = {"N": 1, "D": 3, "E": 5, "Q": 9, "G": 11, "H": 7, "J": 13, "K": 15}
 EXCHANGE_MIC = {"A": "XASE", "N": "XNYS", "P": "ARCX", "Z": "BATS", "V": "IEXG"}
-CLOSING_TYPE = {"N": 1, "L": 2}  # normal hours, late hours
+CLOSING_TYPE = {"N": 1, "L": 2}
 OPTION_RIGHT = {"C": 1, "P": 2}
 VENUE_KIND = {"OPRT": 1, "SGMT": 2}
 VENUE_STATUS = {"ACTIVE": 1, "UPDATED": 2, "EXPIRED": 3}
 
 NASDAQ_HEADER = ["Symbol", "Security Name", "Market Category", "Test Issue", "Financial Status", "Round Lot Size",
-                 "ETF", "NextShares"]  # fmt: skip
+                 "ETF", "NextShares"]
 OTHER_HEADER = ["ACT Symbol", "Security Name", "Exchange", "CQS Symbol", "ETF", "Round Lot Size", "Test Issue",
-                "NASDAQ Symbol"]  # fmt: skip
+                "NASDAQ Symbol"]
 OPTIONS_HEADER = ["Root Symbol", "Options Closing Type", "Options Type", "Expiration Date", "Explicit Strike Price",
-                  "Underlying Symbol", "Underlying Issue Name", "Pending"]  # fmt: skip
-VENUE_TEXTS = {  # NWT text -> source column
+                  "Underlying Symbol", "Underlying Issue Name", "Pending"]
+VENUE_TEXTS = {
     "mic": "MIC", "operating_mic": "OPERATING MIC", "country": "ISO COUNTRY CODE (ISO 3166)",
     "category": "MARKET CATEGORY CODE", "acronym": "ACRONYM", "city": "CITY",
     "name": "MARKET NAME-INSTITUTION DESCRIPTION", "legal_entity": "LEGAL ENTITY NAME", "lei": "LEI",
-}  # fmt: skip
+}
 MIC_NOT_CARRIED = ["WEBSITE", "LAST VALIDATION DATE", "COMMENTS"]
 MIC_COLUMNS = set(VENUE_TEXTS.values()) | set(MIC_NOT_CARRIED) | {
     "OPRT/SGMT", "STATUS", "CREATION DATE", "LAST UPDATE DATE", "EXPIRY DATE"
@@ -444,7 +395,7 @@ MIC_COLUMNS = set(VENUE_TEXTS.values()) | set(MIC_NOT_CARRIED) | {
 SYMDIR = "https://www.nasdaqtrader.com/dynamic/SymDir/"
 TRAILER = "File Creation Time: "
 DIRECTORY_POLICY = (
-    "Code letters are mapped by the tables in docs/REAL-DATA.md; a letter outside them fails the conversion. "
+    "Code letters are mapped by the tables in the Reference data samples document; a letter outside them fails the conversion. "
     "Instrument IDs are the first 63 bits of SHA-256(namespace, NUL, key), checked for collisions. "
     "Text is carried unchanged. Output sequences start at 1. "
 )
@@ -452,7 +403,6 @@ DIRECTORY_CLOCK = DATES + " The file creation time is read as US Eastern time; t
 
 
 def creation_ns(text):
-    """The file creation time "mmddyyyyhh:mm", publisher's local time (US Eastern), as POSIX nanoseconds."""
     m = re.fullmatch(r"(\d{2})(\d{2})(\d{4})(\d{2}):(\d{2})", text, re.ASCII)
     need(m, f"bad file creation time: {text!r}")
     month, day, year, hour, minute = (int(part) for part in m.groups())
@@ -462,10 +412,6 @@ def creation_ns(text):
 
 
 def directory(source, header):
-    """([(line, {column: text})], creation time) of a pipe-separated symbol directory file.
-
-    The creation time is None when the last row does not carry it, as in a file cut short.
-    """
     lines = source.decode("utf-8").split("\n")
     if lines[-1] == "":
         lines.pop()
@@ -483,7 +429,6 @@ def directory(source, header):
 
 
 def nasdaq_listing(row):
-    """(ID namespace, symbol, LISTING values) for a Nasdaq-listed row."""
     flags = code(row, "ETF", YES) | code(row, "Test Issue", YES) << 1 | code(row, "NextShares", YES) << 2
     texts = dict(symbol=row["Symbol"], name=row["Security Name"], listing_mic="XNAS", cqs_symbol="", alt_symbol="")
     return "XNAS", row["Symbol"], dict(
@@ -496,10 +441,9 @@ def nasdaq_listing(row):
 
 
 def other_listing(row):
-    """(ID namespace, symbol, LISTING values) for an other-exchange row. The file has no tier or financial status."""
     mic = code(row, "Exchange", EXCHANGE_MIC)
     texts = dict(symbol=row["ACT Symbol"], name=row["Security Name"], listing_mic=mic,
-                 cqs_symbol=row["CQS Symbol"], alt_symbol=row["NASDAQ Symbol"])  # fmt: skip
+                 cqs_symbol=row["CQS Symbol"], alt_symbol=row["NASDAQ Symbol"])
     return mic, row["ACT Symbol"], dict(
         round_lot=number(row, "Round Lot Size", whole(32), NULL_U32),
         listing_flags=code(row, "ETF", YES) | code(row, "Test Issue", YES) << 1,
@@ -510,7 +454,6 @@ def other_listing(row):
 
 
 def listings(kind, header, listing, venue, dataset):
-    """The converter for one of the two listed-securities files."""
 
     def convert(src_path, out_path, args):
         source = Path(src_path).read_bytes()
@@ -523,7 +466,7 @@ def listings(kind, header, listing, venue, dataset):
             instrument = ids.claim(namespace, symbol)
             batch.add(12, instrument_id=instrument, ts_event=created, **values)
             batch.add(17, instrument_id=instrument, ts_event=created, valid_from_ns=created, valid_to_ns=NULL,
-                      symbology=1, texts={"symbol": symbol})  # fmt: skip
+                      symbology=1, texts={"symbol": symbol})
 
         provenance = {
             "source_format": "public symbol directory file (pipe-separated text)",
@@ -559,7 +502,7 @@ def convert_options(src_path, out_path, args):
             11,
             instrument_id=ids.claim("XNDQ", key),
             ts_event=NULL if created is None else created,
-            underlying_instrument_id=0,  # the file gives the underlying as a symbol only
+            underlying_instrument_id=0,
             expiration_ns=parse_date_ns(day),
             strike=strike,
             contract_multiplier=NULL_I64,
@@ -629,7 +572,6 @@ def convert_mic(src_path, out_path, args):
     return finish(out_path, source, "REAL.ISO10383.MIC", publisher, [10], batch, provenance, args)
 
 
-# ------------------------------------------------------------------ commands
 
 
 def add_kinds(registry):

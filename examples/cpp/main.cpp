@@ -1,8 +1,3 @@
-// C++20 NWT 1.1 codec. Every record layout, enum, flag mask and text limit comes from
-// schemas/records.json (embedded as schema_json); nothing here is written per record type.
-// No floating point, and wire data is read with explicit byte shifts or memcpy, never cast.
-// Build: c++ -std=c++20 -O2 -DNWT_ZSTD -I/opt/homebrew/include -L/opt/homebrew/lib main.cpp -lzstd
-// Without -DNWT_ZSTD, codec 1 fails with "Zstd library not available" and raw files still work.
 #include "example_data.hpp"
 #include "vendor/json.hpp"
 #include <algorithm>
@@ -33,7 +28,6 @@
 #ifdef NWT_ZSTD
 #include <zstd.h>
 #endif
-// Hardware CRC32C where the compiler targets an instruction for it; the table is the fallback.
 #if defined(__ARM_FEATURE_CRC32)
 #include <arm_acle.h>
 #define NWT_HW_CRC 1
@@ -48,13 +42,13 @@ using U = std::uint64_t;
 using U128 = unsigned __int128;
 constexpr U NIL = std::numeric_limits<U>::max();
 constexpr std::int64_t NIL_I = std::numeric_limits<std::int64_t>::min();
-constexpr U LIMIT = 16777216; // largest frame payload and largest Zstd window
+constexpr U LIMIT = 16777216;
 constexpr std::size_t MAXREC = 1048576;
-constexpr std::size_t MAXF = 128; // most fields (header + body) one schema may have
+constexpr std::size_t MAXF = 128;
 constexpr bool LE = std::endian::native == std::endian::little;
 const J SS = J::parse(schema_json);
 const char *USAGE =
-    "usage: nwt-example write FILE | write-v11 FILE [--zstd] | read FILE [REENCODED_FILE] | "
+    "usage: nwt-example write FILE | write-golden FILE [--zstd] | read FILE [REENCODED_FILE] | "
     "record TYPE FILE | decode-record FILE | to-json FILE [--pretty] | to-csv FILE TYPE [--pretty] | bench FILE";
 
 void need(bool ok, const char *message) {
@@ -77,7 +71,6 @@ std::int64_t parse_i(const std::string &s) {
   return v;
 }
 
-// ------------------------------------------------------------ bytes and CRC
 
 constexpr std::array<std::uint32_t, 256> make_crc_table() {
   std::array<std::uint32_t, 256> t{};
@@ -121,7 +114,6 @@ std::uint32_t crc_hw(const std::uint8_t *p, std::size_t n) {
   return c ^ 0xffffffffu;
 }
 #endif
-// The hardware path is used only when it reproduces the standard check value.
 const bool USE_HW = [] {
 #ifdef NWT_HW_CRC
   const std::uint8_t s[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
@@ -173,7 +165,6 @@ bool zero(View b) {
 bool magic(View b, const std::string &s) {
   return b.size() >= s.size() && std::equal(s.begin(), s.end(), b.begin());
 }
-// Strict UTF-8 (no overlong forms, no surrogates, nothing above U+10FFFF) and no NUL.
 bool text_ok(const char *c, std::size_t n) {
   auto s = reinterpret_cast<const std::uint8_t *>(c);
   auto cont = [&](std::size_t i, int lo = 0x80, int hi = 0xbf) { return i < n && s[i] >= lo && s[i] <= hi; };
@@ -204,17 +195,15 @@ bool text_ok(const char *c, std::size_t n) {
   return true;
 }
 bool valid_utf8(const std::string &s) {
-  // text_ok also refuses NUL, which is not allowed in any NWT text or JSON value either.
   return text_ok(s.data(), s.size());
 }
 
-// ----------------------------------------------------------------- schemas
 
 struct Fld {
   std::string name;
   std::size_t bytes = 0;
   bool sgn = false, rsv = false;
-  int kind = 0; // 0 none, 1 price, 2 quantity, 3 time
+  int kind = 0;
 };
 struct Sch {
   struct TL {
@@ -229,22 +218,22 @@ struct Sch {
   };
   U type = 0;
   std::string name;
-  std::vector<Fld> fl;           // header fields, then body fields: the positional layout of Rec::f
-  std::vector<std::size_t> off;  // byte offset of each field inside the record
+  std::vector<Fld> fl;
+  std::vector<std::size_t> off;
   std::size_t nh = 0, fixed = 0, lvpos = 0;
   std::vector<std::string> texts;
-  std::vector<std::size_t> tlen; // position of each text's length field
+  std::vector<std::size_t> tlen;
   bool levels = false, typed = false;
   std::vector<std::pair<std::size_t, std::vector<U>>> enums;
   std::vector<std::pair<std::size_t, U>> masks;
   std::vector<TL> tl;
   std::vector<TE> te;
 };
-std::vector<Fld> HF, LF; // header and level fields
+std::vector<Fld> HF, LF;
 std::size_t HDRB = 0, LVB = 0;
 std::vector<Sch> SCH;
-std::vector<const Sch *> BY; // by record type
-bool TYPED_HDR = false;     // the header matches the packed WireHeader below
+std::vector<const Sch *> BY;
+bool TYPED_HDR = false;
 
 Fld mkfld(const J &f) {
   Fld x;
@@ -268,7 +257,7 @@ void init_registry() {
   }
   need(HDRB == 48 && !LF.empty(), "schema header");
   BY.assign(65536, nullptr);
-  SCH.reserve(SS.at("schemas").size()); // pointers into SCH stay valid
+  SCH.reserve(SS.at("schemas").size());
   for (const auto &sj : SS.at("schemas")) {
     Sch s;
     s.type = sj.at("type").get<U>();
@@ -332,7 +321,6 @@ const Sch &schema_of(U t) {
   need(t < 65536 && BY[t], "unknown schema");
   return *BY[t];
 }
-// Data-driven rules shared by encode and decode: enums, flag masks and text byte lengths.
 void check_schema(const Sch &s, const U *f) {
   for (const auto &e : s.enums)
     if (std::find(e.second.begin(), e.second.end(), f[e.first]) == e.second.end())
@@ -348,10 +336,7 @@ void check_schema(const Sch &s, const U *f) {
       fail(t.name + " text length");
 }
 
-// ------------------------------------------------------------------ records
 
-// One record. f holds every header and body field in schema order (signed values as two's
-// complement in 64 bits); lv holds the level fields flat; tx holds the texts in schema order.
 struct Rec {
   U type = 0;
   std::vector<U> f;
@@ -407,8 +392,6 @@ U ldv(const std::uint8_t *p, std::size_t w, bool sgn) {
     x |= ~U(0) << (8 * w);
   return x;
 }
-// Encode one record from positional values. Derived values (record_bytes, text lengths, level
-// count) are computed here; the supplied ones are ignored.
 void encode_into(Bytes &out, const Sch &s, const U *fin, const U *lv, std::size_t nlv, const std::string *tx) {
   U f[MAXF];
   std::copy(fin, fin + s.fl.size(), f);
@@ -495,15 +478,11 @@ Rec decode_record(View b) {
     r.tx.push_back(std::move(text));
     p += std::size_t(n);
   }
-  // A fixed type must have its exact size; a variable type its exact padded size.
   need(((p + 7) & ~std::size_t(7)) == b.size() && zero(b.subspan(p)), "padding/record length");
   check_schema(s, r.f.data());
   return r;
 }
 
-// Typed fast path. The 48-byte header is read as one packed struct through memcpy (never through
-// a pointer cast), so alignment cannot matter. Body fields use the schema's offsets and widths;
-// no strings are built. Used for fixed-size types (no texts, no levels).
 #pragma pack(push, 1)
 struct WireHeader {
   std::uint32_t record_bytes;
@@ -548,7 +527,6 @@ void decode_typed(View b, const Sch &s, U *f) {
   check_schema(s, f);
 }
 
-// A record from a catalog entry (field values are decimal strings).
 Rec rec_from_json(const J &e) {
   Rec r;
   r.type = e.at("type").get<U>();
@@ -584,12 +562,10 @@ Rec rec_from_json(const J &e) {
   return r;
 }
 
-// -------------------------------------------------------------- text output
 
 std::string dec(const Fld &d, U x) {
   return d.sgn ? std::to_string(std::bit_cast<std::int64_t>(x)) : std::to_string(x);
 }
-// Field report: one line per schema field (reserved included), levels, then texts, raw.
 void report_into(std::string &o, std::size_t i, const Rec &r) {
   const Sch &s = schema_of(r.type);
   std::string pre = std::to_string(i) + ".";
@@ -630,7 +606,6 @@ struct Val {
   std::string v;
   bool null = false;
 };
-// A value for --pretty: null for a null price, quantity or time; fields without a kind unchanged.
 Val fval(const Fld &d, U x, bool pretty) {
   Val r;
   if (!pretty || !d.kind) {
@@ -667,7 +642,6 @@ void jval(std::string &o, const Val &v) {
   else
     jstr(o, v.v);
 }
-// True for the fields that appear in JSON and CSV: no reserved, and no level count for type 5.
 bool listed(const Sch &s, std::size_t k) {
   return !s.fl[k].rsv && !(s.levels && k == s.lvpos);
 }
@@ -759,9 +733,7 @@ void emit(const std::string &s) {
   std::cout.write(s.data(), std::streamsize(s.size()));
 }
 
-// ---------------------------------------------------------------- metadata
 
-// Strict JSON: no duplicate object keys at any depth and no non-integer numbers.
 J strict_json(const std::string &text) {
   std::vector<std::set<std::string>> keys;
   bool dup = false, flt = false;
@@ -802,12 +774,11 @@ bool is_int(const J *v, std::int64_t lo, std::int64_t hi) {
   return x >= lo && x <= hi;
 }
 struct Manifest {
-  std::set<std::pair<U, U>> types; // (type, version)
+  std::set<std::pair<U, U>> types;
   std::set<U> pubs;
   std::string ordering = "none";
   bool minor1 = false;
 };
-// Parse and validate a MANIFEST value. Unknown properties are ignored.
 Manifest parse_manifest(const std::string &text) {
   need(valid_utf8(text), "manifest is not valid UTF-8");
   J m = strict_json(text);
@@ -843,7 +814,6 @@ Manifest parse_manifest(const std::string &text) {
          "manifest schema name/spec_uri");
     U t = s.at("type").get<U>();
     need(out.types.insert({t, s.at("version").get<U>()}).second, "manifest duplicate schema");
-    // minor is 1 exactly when the manifest declares a standard type added in 1.1 (10 and up, in the registry).
     if (t >= 10 && BY[t])
       out.minor1 = true;
   }
@@ -862,7 +832,6 @@ struct Meta {
   bool has_prov = false;
   std::string prov;
 };
-// Split metadata into elements. Unknown optional elements are bounds-checked and skipped.
 Meta parse_metadata(View meta) {
   std::map<U, std::pair<U, std::string>> out;
   std::size_t p = 0;
@@ -892,11 +861,7 @@ Meta parse_metadata(View meta) {
   return m;
 }
 
-// -------------------------------------------------------------------- Zstd
 
-// Spec 10.2, checked by hand on the Zstd frame header before any library call (RFC 8878:
-// bit 3 of the descriptor is reserved, bit 2 is the content checksum and is allowed,
-// bits 0-1 flag a dictionary ID).
 void zstd_check(View st, U raw_bytes) {
   need(st.size() >= 6 && st[0] == 0x28 && st[1] == 0xb5 && st[2] == 0x2f && st[3] == 0xfd, "Zstd magic");
   unsigned d = st[4], fcs = d >> 6, single = (d >> 5) & 1;
@@ -935,7 +900,6 @@ Bytes zstd_compress(View b, int level) {
 Bytes zstd_decompress(View st, U raw_bytes) {
   zstd_check(st, raw_bytes);
 #ifdef NWT_ZSTD
-  // Exactly one frame: no concatenated or skippable frame and no trailing bytes.
   need(ZSTD_findFrameCompressedSize(st.data(), st.size()) == st.size(), "Zstd frame must fill stored_bytes exactly");
   Bytes out(std::max<U>(raw_bytes, 1));
   std::size_t n = ZSTD_decompress(out.data(), std::size_t(raw_bytes), st.data(), st.size());
@@ -947,7 +911,6 @@ Bytes zstd_decompress(View st, U raw_bytes) {
 #endif
 }
 
-// --------------------------------------------------------------- container
 
 struct FrameInfo {
   U seq = 0, offset = 0, kind = 0, codec = 0, stored = 0, raw = 0, count = 0, lo = NIL, hi = NIL, crc = 0;
@@ -1011,7 +974,6 @@ std::vector<View> split_records(View payload, U count) {
   return raws;
 }
 
-// Checks that need only a record's 48-byte header: declared type, declared publisher, sequence.
 struct Scope {
   const Manifest *m;
   std::map<std::pair<U, U>, U> seq;
@@ -1032,14 +994,13 @@ struct Scope {
   }
 };
 
-// Streaming writer: header and metadata first, DATA frames as they fill, INDEX and END on close.
 struct Writer {
   std::ostream &out;
   Manifest man;
   Scope scope;
   U position = 0, seq = 0, records = 0;
-  U frame_bytes, frame_records; // frame_records 0: close frames by size
-  int zstd_level;               // 0: raw frames only
+  U frame_bytes, frame_records;
+  int zstd_level;
   Bytes pending;
   U pcount = 0, plo = NIL, phi = NIL;
   std::vector<FrameInfo> frames;
@@ -1096,7 +1057,6 @@ struct Writer {
     Bytes packed;
     if (zstd_level) {
       packed = zstd_compress(pending, zstd_level);
-      // Codec 1 only when it is strictly smaller than the raw payload.
       if (packed.size() < pending.size()) {
         zstd_check(packed, pending.size());
         codec = 1;
@@ -1123,7 +1083,7 @@ struct Writer {
   void close(U status = 0) {
     flush();
     U first_index = frames.empty() ? 0 : position;
-    const std::size_t per_frame = LIMIT / 40; // an INDEX payload is bounded like any other frame
+    const std::size_t per_frame = LIMIT / 40;
     for (std::size_t s0 = 0; s0 < frames.size(); s0 += per_frame) {
       Bytes chunk;
       for (std::size_t i = s0; i < std::min(frames.size(), s0 + per_frame); i++)
@@ -1141,7 +1101,6 @@ struct Writer {
   }
 };
 
-// Bytes of a file or of memory, read at an offset.
 struct Source {
   View mem;
   std::ifstream f;
@@ -1177,7 +1136,6 @@ struct Source {
 struct End {
   U first_index = 0, frames = 0, total = 0, status = 0;
 };
-// Streaming reader: one frame at a time, validating everything as it goes.
 struct Reader {
   Source src;
   Bytes metadata;
@@ -1232,7 +1190,6 @@ struct Reader {
     i.crc = get(h, 48, 4);
     need(i.kind >= 1 && i.kind <= 3, "frame sequence/kind");
     need(i.stored <= LIMIT && i.raw <= LIMIT, "frame size");
-    // Raw frames store the payload as is; only DATA frames may be compressed.
     need(i.codec == 0 ? i.stored == i.raw : i.kind == 1, "frame size/codec");
     return i;
   }
@@ -1244,8 +1201,6 @@ struct Reader {
     need(crc(raw) == i.crc, "payload CRC");
     return raw;
   }
-  // Full sequential validation. cb(FrameInfo, raw records, decoded records) runs once per frame,
-  // after the frame has passed every check. INDEX and END frames carry empty lists.
   template <class F> void scan(bool decode, F &&cb) {
     ended = false;
     Scope scope(&man);
@@ -1300,11 +1255,10 @@ struct Reader {
   }
 };
 
-// -------------------------------------------------------------- benchmark
 
 std::string rate_line(const char *label, U records, U size, U ns) {
   ns = std::max<U>(ns, 1);
-  U128 mb = U128(size) * 1000000000000ULL / (U128(ns) * 1048576); // thousandths of a MiB per second
+  U128 mb = U128(size) * 1000000000000ULL / (U128(ns) * 1048576);
   U128 rps = U128(records) * 1000000000ULL / ns;
   char buf[256];
   std::snprintf(buf, sizeof buf, "%s records=%llu seconds=%llu.%06llu records_per_second=%llu mb_per_second=%llu.%03llu\n",
@@ -1318,7 +1272,6 @@ Bytes read_file(const char *path) {
   need(bool(in), "open input");
   return Bytes(std::istreambuf_iterator<char>(in), {});
 }
-// Time a full decode (frames, CRC, decompression, typed records) and a re-encode of every record.
 std::string bench(const char *path) {
   using Clock = std::chrono::steady_clock;
   auto ns_since = [](Clock::time_point a, Clock::time_point b) {
@@ -1326,7 +1279,7 @@ std::string bench(const char *path) {
   };
   Bytes data = read_file(path);
   auto t0 = Clock::now();
-  std::vector<std::pair<const Sch *, std::size_t>> typed; // schema, offset in pool
+  std::vector<std::pair<const Sch *, std::size_t>> typed;
   std::vector<U> pool;
   std::vector<Rec> general;
   U size = 0;
@@ -1360,17 +1313,16 @@ std::string bench(const char *path) {
     sink += out.size() + out.back();
   }
   auto t2 = Clock::now();
-  volatile U keep = sink; // keep the encoding work observable
+  volatile U keep = sink;
   (void)keep;
   U count = typed.size() + general.size();
   return rate_line("decode", count, size, ns_since(t0, t1)) + rate_line("encode", count, size, ns_since(t1, t2));
 }
 
-// ------------------------------------------------------------ command line
 
-const std::array<std::uint8_t, 16> LEGACY_ID{0x10, 0x21, 0x32, 0x43, 0x54, 0x65, 0x76, 0x87,
+const std::array<std::uint8_t, 16> CATALOG_ID{0x10, 0x21, 0x32, 0x43, 0x54, 0x65, 0x76, 0x87,
                                              0x98, 0xa9, 0xba, 0xcb, 0xdc, 0xed, 0xfe, 0x0f};
-const std::array<std::uint8_t, 16> V11_ID{0xa1, 0xb2, 0xc3, 0xd4, 0xe5, 0xf6, 0x07, 0x18,
+const std::array<std::uint8_t, 16> GOLDEN_ID{0xa1, 0xb2, 0xc3, 0xd4, 0xe5, 0xf6, 0x07, 0x18,
                                           0x29, 0x3a, 0x4b, 0x5c, 0x6d, 0x7e, 0x8f, 0x90};
 void write_file(const char *path, const Bytes &b) {
   std::ofstream out(path, std::ios::binary);
@@ -1411,13 +1363,13 @@ int main(int argc, char **argv) {
     need(args.size() >= 2, USAGE);
     const std::string &cmd = args[0];
     if (cmd == "write") {
-      write_catalog(args[1], catalog_json, manifest_json, LEGACY_ID, 1700000000000000000ULL, 0);
-    } else if (cmd == "write-v11") {
-      write_catalog(args[1], catalog_v11_json, manifest_v11_json, V11_ID, 1760000000000000000ULL, zst ? 3 : 0);
+      write_catalog(args[1], catalog_json, manifest_json, CATALOG_ID, 1700000000000000000ULL, 0);
+    } else if (cmd == "write-golden") {
+      write_catalog(args[1], catalog_golden_json, manifest_golden_json, GOLDEN_ID, 1760000000000000000ULL, zst ? 3 : 0);
     } else if (cmd == "record") {
       need(args.size() == 3, USAGE);
       U typ = parse_u(args[1]);
-      J catalog = J::parse(typ <= 9 ? catalog_json : catalog_v11_json);
+      J catalog = J::parse(typ <= 9 ? catalog_json : catalog_golden_json);
       auto it = std::find_if(catalog.begin(), catalog.end(), [&](const J &r) { return r.at("type").get<U>() == typ; });
       need(it != catalog.end(), "no example for this record type");
       write_file(args[2].c_str(), encode_record(rec_from_json(*it)));
@@ -1440,7 +1392,6 @@ int main(int argc, char **argv) {
       if (again) {
         out.open(*again, std::ios::binary);
         need(bool(out), "open output");
-        // The re-encode keeps the input's identity and metadata bytes; only the framing is rewritten.
         w.emplace(out, rd.metadata, rd.stream_id, rd.created_ns, 1 << 20, 3, 0);
       }
       std::size_t n = 0;

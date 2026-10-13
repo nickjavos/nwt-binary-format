@@ -1,6 +1,3 @@
-// NWT .NET 10 codec for all 22 record types. Integers are exact; the general path has no native-structure
-// marshaling. Raw and Zstd frames, streaming reader and writer, typed fast path (span casts) for benchmarks.
-// Validation and output are driven by schemas/records.json; see fixtures/v1.1/FORMAT-NOTES.md.
 using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Globalization;
@@ -47,7 +44,6 @@ sealed class Record
     public List<V> levels { get; set; } = [];
 }
 
-// ---- Typed fast path: packed structs read with MemoryMarshal.Cast. Sizes are checked against the schema at run time.
 [StructLayout(LayoutKind.Sequential, Pack = 1)] struct Hdr { public uint Bytes; public ushort Type; public byte Version, Flags; public uint Publisher, Channel; public ulong Instrument, TsEvent, TsRecv, Sequence; }
 [StructLayout(LayoutKind.Sequential, Pack = 1)] struct P1 { public byte A; }
 [StructLayout(LayoutKind.Sequential, Pack = 1)] struct P2 { public ushort A; }
@@ -86,7 +82,6 @@ sealed class Typed<T> : ITyped where T : unmanaged
     }
 }
 
-// ---- Zstd: P/Invoke into the system libzstd, bound by Program.ZstdLoad through SetDllImportResolver.
 static class Zs
 {
     [DllImport("zstd")] public static extern nuint ZSTD_compressBound(nuint n);
@@ -99,8 +94,8 @@ static class Zs
 static class Program
 {
     const ulong NIL = ulong.MaxValue;
-    const int LIMIT = 16777216; // largest frame payload and largest Zstd window
-    const string Usage = "usage: NwtExample write FILE | write-v11 FILE [--zstd] | read FILE [REENCODED_FILE] | record TYPE FILE | decode-record FILE | to-json FILE [--pretty] | to-csv FILE TYPE [--pretty] | bench FILE";
+    const int LIMIT = 16777216;
+    const string Usage = "usage: NwtExample write FILE | write-golden FILE [--zstd] | read FILE [REENCODED_FILE] | record TYPE FILE | decode-record FILE | to-json FILE [--pretty] | to-csv FILE TYPE [--pretty] | bench FILE";
     static readonly UTF8Encoding Utf8 = new(false, true);
     static readonly uint[] Tab = MakeTab();
     static string Resource(string name)
@@ -112,12 +107,12 @@ static class Program
     static readonly Schemas SS = JsonSerializer.Deserialize<Schemas>(Resource("schemas"))!;
     static readonly Dictionary<int, Schema> ByType = SS.schemas.ToDictionary(x => x.type);
     static readonly int MaxType = SS.schemas.Max(x => x.type);
-    static readonly byte[] LegacyId = Convert.FromHexString("102132435465768798a9bacbdcedfe0f");
-    static readonly byte[] V11Id = Convert.FromHexString("a1b2c3d4e5f60718293a4b5c6d7e8f90");
+    static readonly byte[] CatalogId = Convert.FromHexString("102132435465768798a9bacbdcedfe0f");
+    static readonly byte[] GoldenId = Convert.FromHexString("a1b2c3d4e5f60718293a4b5c6d7e8f90");
     static readonly char[] CsvSpecial = [',', '"', '\r', '\n'];
     static readonly StreamWriter Out = new(Console.OpenStandardOutput(), new UTF8Encoding(false), 1 << 16);
     static readonly StringBuilder Sb = new();
-    static readonly bool FastCrc = CheckFastCrc(); // keep after Tab: it uses both CRC routines
+    static readonly bool FastCrc = CheckFastCrc();
 
     static void Need(bool ok, string why)
     {
@@ -129,7 +124,6 @@ static class Program
     static Schema GetSchema(int t) => ByType.TryGetValue(t, out var s) ? s : throw new InvalidDataException("unknown schema");
     static List<Record> Catalog(string resource) => JsonSerializer.Deserialize<List<Record>>(Resource(resource))!;
 
-    // ------------------------------------------------------------ bytes and CRC
 
     static uint[] MakeTab()
     {
@@ -220,7 +214,6 @@ static class Program
         return true;
     }
 
-    // ------------------------------------------------------------------ records
 
     static byte[] TextBytes(string s)
     {
@@ -268,7 +261,6 @@ static class Program
         }
         return v;
     }
-    // Data-driven rules shared by encode and decode: enums, flag masks and text byte lengths.
     static void CheckSchema(Schema s, V f)
     {
         foreach (var (name, allowed) in s.enums)
@@ -295,7 +287,6 @@ static class Program
             Need(r.levels.Count <= 1024, "levels limit");
             f["levels"] = Dec((ulong)r.levels.Count);
         }
-        // The length of each text is checked against its limit before any length field is written.
         var texts = s.texts.Select(name => TextBytes(r.texts[name])).ToList();
         for (int i = 0; i < texts.Count; i++)
             f[s.texts[i] + "_bytes"] = Dec((ulong)texts[i].Length);
@@ -344,15 +335,12 @@ static class Program
             texts[name] = text;
             p += (int)n;
         }
-        // A fixed type must have its exact size; a variable type its exact padded size.
         Need(((p + 7) & ~7) == b.Length && Zero(b[p..]), "padding/record length");
         CheckSchema(s, f);
         return new() { type = t, fields = f, texts = texts, levels = levels };
     }
 
-    // ------------------------------------------------------------- text output
 
-    // The field report: one line per schema field (reserved included), level fields, then the texts.
     static void ReportLines(StringBuilder b, int i, Record r)
     {
         var s = GetSchema(r.type);
@@ -372,7 +360,6 @@ static class Program
     }
     static string Scaled(bool negative, ulong abs) =>
         (negative ? "-" : "") + (abs / 1000000000UL).ToString(CultureInfo.InvariantCulture) + "." + (abs % 1000000000UL).ToString("D9", CultureInfo.InvariantCulture);
-    // POSIX nanoseconds as YYYY-MM-DDTHH:MM:SS.nnnnnnnnnZ, integer arithmetic only.
     static string PrettyTime(ulong ns)
     {
         long sec = (long)(ns / 1000000000UL), fr = (long)(ns % 1000000000UL);
@@ -386,7 +373,6 @@ static class Program
         long year = yoe + era * 400 + (month <= 2 ? 1 : 0);
         return FormattableString.Invariant($"{year:D4}-{month:D2}-{day:D2}T{rest / 3600:D2}:{rest % 3600 / 60:D2}:{rest % 60:D2}.{fr:D9}Z");
     }
-    // A field value for --pretty: null for a null price, quantity or time; fields without a kind unchanged.
     static string? PrettyValue(Field f, string text)
     {
         if (f.kind == null)
@@ -416,7 +402,6 @@ static class Program
                 items.Add((f.name, pretty ? PrettyValue(f, values[f.name]) : values[f.name]));
         return items;
     }
-    // (name, value) in output order: header fields, body fields, texts. No reserved, no level count.
     static List<(string Name, string? Value)> RecordItems(Record r, bool pretty)
     {
         var s = GetSchema(r.type);
@@ -464,7 +449,7 @@ static class Program
         JsonObject(Sb, items);
         if (s.has_levels)
         {
-            Sb.Length--; // reopen the object: levels is its last key
+            Sb.Length--;
             Sb.Append(",\"levels\":[");
             for (int j = 0; j < r.levels.Count; j++)
             {
@@ -493,9 +478,7 @@ static class Program
         Out.Write(Sb);
     }
 
-    // ---------------------------------------------------------------- metadata
 
-    // Strict JSON: no duplicate keys at any depth, no non-integer numbers, valid UTF-8.
     static JsonDocument StrictJson(byte[] bytes)
     {
         Utf8.GetString(bytes);
@@ -535,9 +518,8 @@ static class Program
     {
         public readonly HashSet<(int, int)> Declared = new();
         public readonly HashSet<ulong> Publishers = new();
-        public int Minor; // 1 exactly when the manifest declares one of the 1.1 standard types (10 up to the highest in the schema)
+        public int Minor;
     }
-    // Parse and validate a MANIFEST value. Unknown properties are ignored.
     static Manifest ParseManifest(byte[] text)
     {
         using var doc = StrictJson(text);
@@ -581,7 +563,6 @@ static class Program
         Put(b, 4, 4, (ulong)value.Length);
         return Pad([.. b, .. value]);
     }
-    // Split metadata into {type: (flags, value)}. Unknown optional elements are bounds-checked and skipped.
     static Dictionary<int, (int Flags, byte[] Value)> ParseMetadata(byte[] meta)
     {
         Dictionary<int, (int Flags, byte[] Value)> o = new();
@@ -612,11 +593,9 @@ static class Program
         Need(doc.RootElement.ValueKind == JsonValueKind.Object, "PROVENANCE must be a JSON object");
     }
 
-    // -------------------------------------------------------------------- Zstd
 
     static IntPtr zh;
-    static int zstate; // 0 not tried, 1 loaded, 2 not available
-    // NWT_ZSTD_LIB, when set, is the only library tried.
+    static int zstate;
     static void ZstdLoad()
     {
         if (zstate == 0)
@@ -637,7 +616,6 @@ static class Program
         }
         Need(zstate == 1, "Zstd library not available");
     }
-    // Spec 10.2 checked by hand on the Zstd frame header, before any library call (FORMAT-NOTES section 7).
     static void ZstdCheck(byte[] s, int raw)
     {
         Need(s.Length >= 6 && s[0] == 0x28 && s[1] == 0xb5 && s[2] == 0x2f && s[3] == 0xfd, "Zstd magic");
@@ -673,7 +651,6 @@ static class Program
     {
         ZstdCheck(stored, raw);
         ZstdLoad();
-        // Exactly one frame: no concatenated or skippable frame and no trailing bytes.
         Need((ulong)Zs.ZSTD_findFrameCompressedSize(ref MemoryMarshal.GetArrayDataReference(stored), (nuint)stored.Length) == (ulong)stored.Length, "Zstd frame must fill stored_bytes exactly");
         byte[] o = new byte[Math.Max(raw, 1)];
         nuint n = Zs.ZSTD_decompress(ref MemoryMarshal.GetArrayDataReference(o), (nuint)raw, ref MemoryMarshal.GetArrayDataReference(stored), (nuint)stored.Length);
@@ -681,7 +658,6 @@ static class Program
         return o.Length == raw ? o : o[..raw];
     }
 
-    // --------------------------------------------------------------- container
 
     static byte[] FrameBytes(byte kind, ulong seq, byte[] payload, ulong count = 0, ulong lo = NIL, ulong hi = NIL, byte codec = 0, byte[]? stored = null)
     {
@@ -712,7 +688,6 @@ static class Program
         Put(b, 36, 4, count);
         return b;
     }
-    // (min, max) of the non-null ts_event values of raw records; (NIL, NIL) when there are none.
     static (ulong, ulong) Bounds(List<byte[]> raws)
     {
         ulong lo = NIL, hi = NIL;
@@ -744,7 +719,6 @@ static class Program
         return raws;
     }
 
-    // Checks that need only a record's 48-byte header: declared type, declared publisher, sequence.
     sealed class Scope
     {
         readonly Manifest man;
@@ -770,7 +744,6 @@ static class Program
         public uint PayloadCrc;
     }
 
-    // Streaming writer: header and metadata first, DATA frames as they fill, INDEX and END on Close.
     sealed class Writer
     {
         readonly Stream o;
@@ -783,7 +756,6 @@ static class Program
         long position;
         ulong seq, records;
 
-        // metadata: the TLV bytes, written as given. level: Zstd level, or null for raw frames.
         public Writer(Stream o, byte[] metadata, byte[] streamId, ulong createdNs, int? frameRecords = null, int? level = null, int frameBytes = 1 << 20)
         {
             var tlvs = ParseMetadata(metadata);
@@ -825,7 +797,6 @@ static class Program
             pending.Add(b);
             pendingBytes += b.Length;
         }
-        // (codec, stored bytes) for one DATA payload: raw when Zstd is off or does not make it smaller.
         (byte, byte[]) Store(byte[] payload)
         {
             if (level == null)
@@ -861,7 +832,7 @@ static class Program
         {
             Flush();
             ulong firstIndex = frames.Count > 0 ? (ulong)position : 0;
-            int perFrame = LIMIT / 40; // an INDEX payload is bounded like any other frame
+            int perFrame = LIMIT / 40;
             for (int start = 0; start < frames.Count; start += perFrame)
             {
                 List<byte> chunk = [];
@@ -882,7 +853,6 @@ static class Program
         }
     }
 
-    // Streaming reader over readAt(offset, n): one frame is held at a time, whatever the file size.
     sealed class Reader
     {
         readonly Func<long, int, byte[]> readAt;
@@ -935,7 +905,6 @@ static class Program
             };
             Need(i.Kind >= 1 && i.Kind <= 3, "frame sequence/kind");
             Need(stored <= LIMIT && raw <= LIMIT, "frame size");
-            // Raw frames store the payload as is; only DATA frames may be compressed.
             Need(i.Codec == 0 ? stored == raw : i.Kind == 1, "frame size/codec");
             i.Stored = (int)stored;
             i.Raw = (int)raw;
@@ -950,8 +919,6 @@ static class Program
             Need(Crc(raw) == i.PayloadCrc, "payload CRC");
             return raw;
         }
-        // Full sequential validation, one frame at a time. Yields once per frame, after the frame has passed all checks.
-        // A file that ends early raises "incomplete"; the caller sees the earlier frames first.
         public IEnumerable<(FInfo Info, List<byte[]> Raws, List<Record> Decoded)> Scan(bool decode = true)
         {
             Ended = false;
@@ -1012,7 +979,6 @@ static class Program
         }
     }
 
-    // Decoded records of a normally completed container; an aborted END is an error after the last record.
     static IEnumerable<Record> Records(Reader reader)
     {
         foreach (var frame in reader.Scan())
@@ -1031,7 +997,6 @@ static class Program
     static string Resolved(string path) => new FileInfo(path).ResolveLinkTarget(true)?.FullName ?? Path.GetFullPath(path);
     static bool Same(string a, string b) => Path.GetFullPath(a) == Path.GetFullPath(b) || (File.Exists(a) && File.Exists(b) && Resolved(a) == Resolved(b));
 
-    // -------------------------------------------------------------- typed path
 
     static Dictionary<int, ITyped> MakeTyped()
     {
@@ -1050,12 +1015,11 @@ static class Program
     static string RateLine(string label, int records, ulong size, long ticks)
     {
         UInt128 ns = (UInt128)(ulong)Math.Max(ticks * 100, 1L);
-        ulong mb = (ulong)((UInt128)size * 1000000000000UL / (ns * 1048576UL)); // thousandths of a MiB per second
+        ulong mb = (ulong)((UInt128)size * 1000000000000UL / (ns * 1048576UL));
         ulong rps = (ulong)((UInt128)(ulong)records * 1000000000UL / ns);
         ulong n = (ulong)ns;
         return FormattableString.Invariant($"{label} records={records} seconds={n / 1000000000UL}.{n % 1000000000UL / 1000:D6} records_per_second={rps} mb_per_second={mb / 1000}.{mb % 1000:D3}\n");
     }
-    // Time a full decode (frames, CRC, decompression, typed records) of a file held in memory, then a re-encode.
     static string Bench(string path)
     {
         byte[] data = File.ReadAllBytes(path);
@@ -1086,21 +1050,20 @@ static class Program
         return RateLine("decode", count, size, Stopwatch.GetElapsedTime(t0, t1).Ticks) + RateLine("encode", count, size, Stopwatch.GetElapsedTime(t1, t2).Ticks);
     }
 
-    // ------------------------------------------------------------ command line
 
     static void Flush()
     {
         try { Out.Flush(); } catch (IOException) { }
     }
-    static void CmdWrite(string file, bool v11, bool zstd)
+    static void CmdWrite(string file, bool golden, bool zstd)
     {
         using var ms = new MemoryStream();
-        byte[] metadata = Tlv(1, 1, Utf8.GetBytes(Resource(v11 ? "manifest11" : "manifest").Trim()));
-        int? level = v11 && zstd ? 3 : null;
-        var w = v11
-            ? new Writer(ms, metadata, V11Id, 1760000000000000000UL, 3, level)
-            : new Writer(ms, metadata, LegacyId, 1700000000000000000UL, 3, level);
-        foreach (var r in Catalog(v11 ? "catalog11" : "catalog").Where(r => !r.standalone))
+        byte[] metadata = Tlv(1, 1, Utf8.GetBytes(Resource(golden ? "manifest-golden" : "manifest").Trim()));
+        int? level = golden && zstd ? 3 : null;
+        var w = golden
+            ? new Writer(ms, metadata, GoldenId, 1760000000000000000UL, 3, level)
+            : new Writer(ms, metadata, CatalogId, 1700000000000000000UL, 3, level);
+        foreach (var r in Catalog(golden ? "catalog-golden" : "catalog").Where(r => !r.standalone))
             w.Write(r);
         w.Close();
         File.WriteAllBytes(file, ms.ToArray());
@@ -1109,19 +1072,17 @@ static class Program
     {
         Need(args.Length == 3, Usage);
         int typ = int.Parse(args[1], NumberStyles.None, CultureInfo.InvariantCulture);
-        var r = Catalog(typ <= 9 ? "catalog" : "catalog11").FirstOrDefault(x => x.type == typ);
+        var r = Catalog(typ <= 9 ? "catalog" : "catalog-golden").FirstOrDefault(x => x.type == typ);
         Need(r != null, "no example for this record type");
         File.WriteAllBytes(args[2], EncodeRecord(r!));
     }
     static void CmdRead(string[] args)
     {
         string? again = args.Length > 2 ? args[2] : null;
-        // The output is opened for writing while the input is still being read.
         Need(again == null || !Same(args[1], again), "REENCODED_FILE must differ from FILE");
         using var input = OpenRead(args[1]);
         var reader = OpenReader(input);
         using var output = again == null ? null : new FileStream(again, FileMode.Create, FileAccess.Write, FileShare.None, 1 << 16);
-        // The re-encode keeps the input's identity and metadata bytes; only the framing is rewritten.
         Writer? w = output == null ? null : new Writer(output, reader.Metadata, reader.StreamId, reader.CreatedNs, 3);
         int i = 0;
         foreach (var r in Records(reader))
@@ -1155,7 +1116,7 @@ static class Program
             switch (args[0])
             {
                 case "write": CmdWrite(args[1], false, false); break;
-                case "write-v11": CmdWrite(args[1], true, zstd); break;
+                case "write-golden": CmdWrite(args[1], true, zstd); break;
                 case "record": CmdRecord(args); break;
                 case "decode-record":
                     Need(new FileInfo(args[1]).Length <= 1048576, "record limit");

@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""Contract tests for the NWT 1.1 Python reference codec.
-
-Run: python3 tests/test_contract.py
-Plain functions and asserts; every test_* function is called and one summary
-line is printed. Exit status is non-zero when any test fails.
-"""
 
 import copy
 import hashlib
@@ -22,15 +16,15 @@ from pathlib import Path
 
 KIT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(KIT / "examples/python"))
+import market_state
 import nwt_example as nwt
 
 EXAMPLE = [sys.executable, str(KIT / "examples/python/nwt_example.py")]
-GOLDEN = KIT / "fixtures/v1.1"
-LEGACY_SHA = "5b15390e0afd23ee0f8ab4490fd0980a61a0ede8c05d963f29b51fbb3ecf9b59"
-V11_ID = bytes.fromhex("a1b2c3d4e5f60718293a4b5c6d7e8f90")
-V11_CREATED = 1760000000000000000
+GOLDEN = KIT / "fixtures/golden"
+CATALOG_SHA = "1afadc28908a7c41c4f1a7c3a306ad762aa5c5fc48f74dd41b5c6d4a0dc23ce8"
+GOLDEN_ID = bytes.fromhex("a1b2c3d4e5f60718293a4b5c6d7e8f90")
+GOLDEN_CREATED = 1760000000000000000
 
-# Spec section 3, transcribed independently of schemas/records.json: name:offset:bytes.
 LAYOUT = {
     10: "created_ns:48:8 updated_ns:56:8 expiry_ns:64:8 kind:72:1 status:73:1 mic_bytes:74:2 "
     "operating_mic_bytes:76:2 country_bytes:78:2 category_bytes:80:2 acronym_bytes:82:2 "
@@ -62,7 +56,7 @@ NAMES = {
     10: "VENUE_DEF", 11: "OPTION_DEF", 12: "LISTING", 13: "STATISTICS", 14: "OPTION_ANALYTICS",
     15: "BOOK_DELTA", 16: "IMBALANCE", 17: "SYMBOL_MAP", 18: "TRADE_QUOTE", 19: "BEST_QUOTE",
     20: "FRAME_SUMMARY",
-}  # fmt: skip
+}
 TEXTS = {
     10: "mic operating_mic country category acronym city name legal_entity lei",
     11: "root underlying_symbol osi_symbol currency",
@@ -78,7 +72,6 @@ SIGNED = {
     18: "price bid_price ask_price",
     19: "bid_price ask_price",
 }
-# Brief step 4, verbatim.
 RULES = {
     10: {"enums": {"kind": [1, 2], "status": [1, 2, 3]},
          "text_limits": {"mic": [4, 4], "operating_mic": [4, 4], "country": [2, 2], "acronym": [0, 64],
@@ -116,9 +109,8 @@ RULES = {
          "text_exact": {"outturn_isin": [0, 12]}},
     6: {"text_limits": {"symbol": [1, 255], "venue": [0, 255], "currency": [1, 16], "quantity_unit": [1, 32]}},
     9: {"text_limits": {"text": [0, 4096]}},
-}  # fmt: skip
+}
 RULE_KEYS = ("enums", "masks", "text_limits", "text_exact")
-# Brief step 5: label, type, instrument.
 SCENARIOS = [
     ("def-equity", 6, 2001), ("def-option", 6, 2002), ("venue-operating", 10, 0),
     ("venue-segment-unicode", 10, 0), ("venue-expired", 10, 0), ("listing-normal", 12, 2001),
@@ -136,11 +128,10 @@ SCENARIOS = [
     ("best-quote-sampled", 19, 2001), ("gap", 8, 0), ("system-heartbeat", 9, 0),
     ("security-def-full", 21, 3001), ("security-def-minimal", 21, 3002), ("corporate-action-dividend", 22, 3001),
     ("corporate-action-split", 22, 3001), ("corporate-action-minimal", 22, 3002), ("frame-summary", 20, 0),
-]  # fmt: skip
+]
 AWKWARD = 'Awkward, "Quoted" \\ Name\nLine two\x01 café'
 
 
-# ---------------------------------------------------------------- helpers
 
 
 def raises(fn, *args, contains="", **kwargs):
@@ -157,15 +148,15 @@ def plain(record):
 
 
 def file_records():
-    return [r for r in nwt.CATALOG_V11 if not r.get("standalone")]
+    return [r for r in nwt.CATALOG_GOLDEN if not r.get("standalone")]
 
 
 def scenario(label):
-    return copy.deepcopy(next(r for r in nwt.CATALOG_V11 if r["label"] == label))
+    return copy.deepcopy(next(r for r in nwt.CATALOG_GOLDEN if r["label"] == label))
 
 
 def example(typ):
-    catalog = nwt.CATALOG if typ <= 9 else nwt.CATALOG_V11
+    catalog = nwt.CATALOG if typ <= 9 else nwt.CATALOG_GOLDEN
     return copy.deepcopy(next(r for r in catalog if r["type"] == typ))
 
 
@@ -182,7 +173,6 @@ def body_offsets(typ):
 
 
 def raw_encode(record):
-    """Unchecked encoder, written separately from nwt.encode_record, for building invalid records."""
     schema = nwt.S[record["type"]]
     values = dict(record["fields"])
     for name in schema["texts"]:
@@ -210,7 +200,6 @@ def set_text(record, name, text):
 
 
 def renumber(records):
-    """Copies with fresh consecutive sequences per (publisher, channel)."""
     sequencer = nwt.Sequencer()
     out = []
     for record in records:
@@ -225,12 +214,11 @@ def reader_for(data):
     return nwt.Reader(lambda offset, n: data[offset : offset + n], len(data))
 
 
-def v11_bytes(**options):
-    return nwt.write_container(file_records(), nwt.MANIFEST_V11, V11_ID, V11_CREATED, **options)
+def golden_bytes(**options):
+    return nwt.write_container(file_records(), nwt.MANIFEST_GOLDEN, GOLDEN_ID, GOLDEN_CREATED, **options)
 
 
 def frame_table(data):
-    """(offset, kind, codec, stored, raw) for every frame, read without the codec under test."""
     out = []
     at = 64 + int.from_bytes(data[16:20], "little")
     while at < len(data):
@@ -242,7 +230,6 @@ def frame_table(data):
 
 
 def replace_metadata_text(data, old, new):
-    """Swap equal-length manifest text and repair the metadata and header CRCs."""
     assert len(old) == len(new)
     size = int.from_bytes(data[16:20], "little")
     meta = data[64 : 64 + size]
@@ -254,7 +241,6 @@ def replace_metadata_text(data, old, new):
 
 
 def with_metadata(metadata):
-    """An empty legacy-version container (metadata then END) around arbitrary metadata bytes."""
     head = bytearray(nwt.write_container([])[:64])
     nwt.put(head, 16, 4, len(metadata))
     nwt.put(head, 20, 4, nwt.crc(metadata))
@@ -269,31 +255,30 @@ def run(*arguments, env=None):
     return subprocess.run(EXAMPLE + [str(a) for a in arguments], capture_output=True, timeout=120, env=env)
 
 
-# ------------------------------------------------------------------ tests
 
 
-def test_legacy_sha():
+def test_catalog_sha():
     data = nwt.write_container(nwt.CATALOG)
-    assert hashlib.sha256(data).hexdigest() == LEGACY_SHA
+    assert hashlib.sha256(data).hexdigest() == CATALOG_SHA
     assert data == (KIT / "fixtures/all-records.nwt").read_bytes()
     assert data[10:12] == b"\0\0"
     decoded = nwt.read_container(data)
     assert [plain(r) for r in decoded] == [plain(r) for r in nwt.CATALOG]
     assert nwt.report(decoded) == (KIT / "fixtures/all-fields.txt").read_text()
     publishers = [{"id": 1, "name": "Example Feed", "venue": "EXAMPLE"}]
-    assert nwt.build_manifest("EXAMPLE.ALL", "nwt-developer-kit/1.0-draft.2", publishers, range(1, 10)) == nwt.MANIFEST
+    base = json.loads(nwt.MANIFEST)
+    assert nwt.build_manifest(base["dataset"], base["producer"], publishers, range(1, 10)) == nwt.MANIFEST
 
 
 def test_crc_vectors():
     assert nwt.crc(b"123456789") == 0xE3069283
     assert nwt.crc(b"") == 0
-    assert nwt.crc(bytes(32)) == 0x8A9136AA  # RFC 3720 B.4
+    assert nwt.crc(bytes(32)) == 0x8A9136AA
     assert nwt.crc(bytes([255] * 32)) == 0x62A8AB43
     assert nwt.crc(bytes(range(32))) == 0x46DD794E
 
 
 def test_sizes():
-    assert nwt.SCHEMA["revision"] == "1.1-draft.1"
     assert sorted(nwt.S) == list(range(1, 23))
     for typ, text in LAYOUT.items():
         schema = nwt.S[typ]
@@ -323,10 +308,10 @@ def test_sizes():
                 assert kind == "quantity", (typ, name)
     assert all(f.get("kind") == "price" for f in nwt.S[14]["fields"][:8])
 
-    assert [(r["label"], r["type"], int(r["fields"]["instrument_id"])) for r in nwt.CATALOG_V11] == SCENARIOS
-    assert [r["label"] for r in nwt.CATALOG_V11 if r.get("standalone")] == ["frame-summary"]
+    assert [(r["label"], r["type"], int(r["fields"]["instrument_id"])) for r in nwt.CATALOG_GOLDEN] == SCENARIOS
+    assert [r["label"] for r in nwt.CATALOG_GOLDEN if r.get("standalone")] == ["frame-summary"]
     scopes = {}
-    for record in nwt.CATALOG_V11:
+    for record in nwt.CATALOG_GOLDEN:
         f = record["fields"]
         typ = record["type"]
         encoded = nwt.encode_record(record)
@@ -340,20 +325,19 @@ def test_sizes():
         assert int(f["sequence"]) == scopes.get(scope, 0) + 1, record["label"]
         scopes[scope] = int(f["sequence"])
         assert scope == (("0", "0") if record["label"] in ("system-heartbeat", "frame-summary") else ("1", "0"))
-    assert set(r["type"] for r in nwt.CATALOG_V11) == set(range(1, 23))
-    # Decision recorded in fixtures/v1.1/FORMAT-NOTES.md: STATISTICS ts_ref is a timestamp.
+    assert set(r["type"] for r in nwt.CATALOG_GOLDEN) == set(range(1, 23))
     assert nwt.S[13]["fields"][0]["name"] == "ts_ref" and nwt.S[13]["fields"][0]["kind"] == "time"
-    assert "kind" not in nwt.S[19]["fields"][-1] and "kind" not in nwt.S[12]["fields"][0]  # interval_ns, round_lot
+    assert "kind" not in nwt.S[19]["fields"][-1] and "kind" not in nwt.S[12]["fields"][0]
 
 
-def test_round_trip_v11():
-    for record in nwt.CATALOG_V11:
+def test_round_trip_golden():
+    for record in nwt.CATALOG_GOLDEN:
         encoded = nwt.encode_record(record)
         assert encoded == raw_encode(record), record["label"]
         decoded = nwt.decode_record(encoded)
         assert decoded == plain(record), record["label"]
         assert nwt.encode_record(decoded) == encoded
-    data = v11_bytes()
+    data = golden_bytes()
     assert [plain(r) for r in nwt.read_container(data)] == [plain(r) for r in file_records()]
 
 
@@ -393,7 +377,7 @@ def test_enum_mask_rejects():
                 raises(nwt.decode_record, bytes(patched), contains=name)
                 checked += 1
     assert checked > 100
-    for typ in range(1, 10):  # legacy types gained no enum or mask checks
+    for typ in range(1, 10):
         assert "enums" not in nwt.S[typ] and "masks" not in nwt.S[typ]
 
 
@@ -405,7 +389,6 @@ def test_text_limits_bytes():
     too_long = set_text(copy.deepcopy(venue), "name", name + "Y")
     raises(nwt.encode_record, too_long, contains="name")
     raises(nwt.decode_record, raw_encode(too_long), contains="name")
-    # 128 two-byte characters are 256 bytes: over the limit although under 255 characters.
     raises(nwt.encode_record, set_text(copy.deepcopy(venue), "name", "é" * 128), contains="name")
 
     for typ, schema in nwt.S.items():
@@ -422,15 +405,14 @@ def test_text_limits_bytes():
                     continue
                 record = set_text(example(typ), name, "A" * size)
                 raises(nwt.encode_record, record, contains=name)
-                if size <= 65535:  # a longer text has no wire form: its u16 length field cannot hold it
+                if size <= 65535:
                     raises(nwt.decode_record, raw_encode(record), contains=name)
-    # NUL and malformed UTF-8 stay rejected.
     raises(nwt.encode_record, set_text(example(17), "symbol", "A\0B"))
     encoded = bytearray(nwt.encode_record(example(17)))
     encoded[72] = 0xFF
     try:
         nwt.decode_record(bytes(encoded))
-    except ValueError:  # UnicodeDecodeError is a ValueError
+    except ValueError:
         pass
     else:
         raise AssertionError("invalid UTF-8 accepted")
@@ -443,7 +425,7 @@ def test_reserved_rejects():
         encoded = nwt.encode_record(good)
         reserved = [(o, w) for name, o, w in body_offsets(typ) if name == "reserved"]
         for offset, width in reserved:
-            for byte in range(width):  # every byte of every reserved field
+            for byte in range(width):
                 patched = bytearray(encoded)
                 patched[offset + byte] = 1
                 raises(nwt.decode_record, bytes(patched), contains="reserved")
@@ -456,7 +438,7 @@ def test_reserved_rejects():
     book = example(5)
     assert book["levels"]
     encoded = bytearray(nwt.encode_record(book))
-    encoded[56 + 40] = 1  # first level's reserved
+    encoded[56 + 40] = 1
     raises(nwt.decode_record, bytes(encoded), contains="reserved")
     book["levels"][0]["reserved"] = "1"
     raises(nwt.encode_record, book, contains="reserved")
@@ -464,23 +446,21 @@ def test_reserved_rejects():
 
 
 def test_minor_rule():
-    legacy = nwt.write_container(nwt.CATALOG)
-    current = v11_bytes()
-    assert legacy[10:12] == b"\0\0" and current[10:12] == b"\1\0"
-    assert reader_for(legacy).header["minor"] == 0 and reader_for(current).header["minor"] == 1
-    for data, minor in ((legacy, 1), (current, 0), (current, 2)):
+    minor0 = nwt.write_container(nwt.CATALOG)
+    minor1 = golden_bytes()
+    assert minor0[10:12] == b"\0\0" and minor1[10:12] == b"\1\0"
+    assert reader_for(minor0).header["minor"] == 0 and reader_for(minor1).header["minor"] == 1
+    for data, minor in ((minor0, 1), (minor1, 0), (minor1, 2)):
         head = bytearray(data[:64])
         nwt.put(head, 10, 2, minor)
         raises(nwt.read_container, nwt.hcrc(head, 56) + data[64:], contains="minor")
-    # A manifest that declares type 10 or above makes minor 1 even when no such record is written.
-    only_legacy = nwt.write_container(nwt.CATALOG, nwt.MANIFEST_V11)
-    assert only_legacy[10:12] == b"\1\0"
-    assert len(nwt.read_container(only_legacy)) == len(nwt.CATALOG)
+    nine_types = nwt.write_container(nwt.CATALOG, nwt.MANIFEST_GOLDEN)
+    assert nine_types[10:12] == b"\1\0"
+    assert len(nwt.read_container(nine_types)) == len(nwt.CATALOG)
 
 
 def test_manifest_checks():
-    manifest = nwt.parse_manifest(nwt.MANIFEST_V11)
-    assert manifest["dataset"] == "EXAMPLE.V11" and manifest["producer"] == "nwt-developer-kit/1.1-draft.1"
+    manifest = nwt.parse_manifest(nwt.MANIFEST_GOLDEN)
     assert manifest["publishers"] == [
         {"id": 1, "name": "Example Feed", "venue": "EXAMPLE"},
         {"id": 2, "name": "Second Venue", "venue": "EXAMPLE2"},
@@ -491,10 +471,10 @@ def test_manifest_checks():
         assert s["required"] is (typ <= 9 or typ == 15) and s["version"] == 1
         assert s["name"] == nwt.S[typ]["name"]
         assert s["spec_uri"] == ("urn:nwt:spec:1.0" if typ <= 9 else "urn:nwt:spec:1.1")
-    assert nwt.build_manifest(manifest["dataset"], manifest["producer"], manifest["publishers"], range(1, 23)) == nwt.MANIFEST_V11
-    assert nwt.MANIFEST_V11 == (KIT / "fixtures/manifest-v1.1.json").read_text().strip()
+    assert nwt.build_manifest(manifest["dataset"], manifest["producer"], manifest["publishers"], range(1, 23)) == nwt.MANIFEST_GOLDEN
+    assert nwt.MANIFEST_GOLDEN == (KIT / "fixtures/manifest-golden.json").read_text().strip()
 
-    base = json.loads(nwt.MANIFEST_V11)
+    base = json.loads(nwt.MANIFEST_GOLDEN)
 
     def text(change):
         m = copy.deepcopy(base)
@@ -509,7 +489,7 @@ def test_manifest_checks():
     raises(nwt.parse_manifest, text(lambda m: m["schemas"].append(dict(m["schemas"][0]))), contains="duplicate")
     raises(nwt.parse_manifest, text(lambda m: m["publishers"].append(dict(m["publishers"][0]))), contains="publisher")
     raises(nwt.parse_manifest, text(lambda m: m.update(schemas=[])), contains="schemas")
-    raises(nwt.parse_manifest, nwt.MANIFEST_V11[:-1] + ',"dataset":"again"}', contains="duplicate")
+    raises(nwt.parse_manifest, nwt.MANIFEST_GOLDEN[:-1] + ',"dataset":"again"}', contains="duplicate")
     raises(nwt.parse_manifest, "[]")
     raises(nwt.parse_manifest, "{")
     for ordering in ("none", "ts_event", "instrument,ts_event"):
@@ -517,24 +497,21 @@ def test_manifest_checks():
         built = nwt.build_manifest("D", "P", base["publishers"], [1, 6], ordering=ordering)
         assert nwt.parse_manifest(built)["ordering"] == ordering
     assert "ordering" not in nwt.parse_manifest(nwt.build_manifest("D", "P", [], [9]))
-    assert nwt.parse_manifest(text(lambda m: m.update(future_property={"x": 1})))["dataset"] == "EXAMPLE.V11"
+    assert nwt.parse_manifest(text(lambda m: m.update(future_property={"x": 1})))["dataset"] == base["dataset"]
     generic = nwt.parse_manifest(nwt.build_manifest("D", "P", [], [8, 9, 20], profile="generic-events"))
     assert generic["profile"] == "generic-events"
 
-    # Undeclared type and publisher: refused by the writer and by the reader.
     records = file_records()
     without_13 = nwt.build_manifest("D", "P", base["publishers"], [t for t in range(1, 23) if t != 13])
-    raises(nwt.write_container, records, without_13, V11_ID, contains="undeclared record type")
+    raises(nwt.write_container, records, without_13, GOLDEN_ID, contains="undeclared record type")
     without_pub = nwt.build_manifest("D", "P", base["publishers"][1:], range(1, 23))
-    raises(nwt.write_container, records, without_pub, V11_ID, contains="undeclared publisher")
-    data = v11_bytes()
+    raises(nwt.write_container, records, without_pub, GOLDEN_ID, contains="undeclared publisher")
+    data = golden_bytes()
     raises(nwt.read_container, replace_metadata_text(data, b'"type":13,', b'"type":99,'), contains="undeclared record type")
     raises(nwt.read_container, replace_metadata_text(data, b'{"id":1,', b'{"id":3,'), contains="undeclared publisher")
-    # Publisher 0 (system scope) needs no declaration.
     heartbeat = scenario("system-heartbeat")
     assert len(nwt.read_container(nwt.write_container([heartbeat], nwt.build_manifest("D", "P", [], [9])))) == 1
 
-    # Metadata TLV rules.
     m = nwt.MANIFEST.encode()
     provenance = b'{"source_format":"synthetic"}'
     ok = reader_for(with_metadata(tlv(1, 1, m) + tlv(2, 0, provenance) + tlv(40000, 0, b"private")))
@@ -542,8 +519,8 @@ def test_manifest_checks():
     assert reader_for(with_metadata(tlv(1, 1, m))).provenance is None
     assert list(ok.frames())[-1][0].kind == 3
     for bad, why in [
-        (tlv(1, 0, m), "MANIFEST"),  # REQUIRED bit clear
-        (tlv(2, 0, provenance), "MANIFEST"),  # no manifest at all
+        (tlv(1, 0, m), "MANIFEST"),
+        (tlv(2, 0, provenance), "MANIFEST"),
         (tlv(1, 1, m) + tlv(1, 1, m), "duplicate"),
         (tlv(1, 1, m) + tlv(40000, 0, b"a") + tlv(40000, 0, b"b"), "duplicate"),
         (tlv(1, 1, m) + tlv(40000, 1, b"must understand"), "required"),
@@ -552,9 +529,9 @@ def test_manifest_checks():
         (tlv(1, 1, m) + tlv(0, 0, b""), "TLV"),
         (tlv(1, 1, m) + tlv(65535, 0, b""), "TLV"),
         (tlv(1, 1, m) + tlv(40000, 2, b""), "TLV"),
-        (tlv(1, 1, m) + struct.pack("<HHI", 40000, 0, 64), "TLV"),  # value runs past the metadata
-        (tlv(1, 1, m) + bytes(8), "TLV"),  # padding where an element must start
-        (tlv(1, 1, m)[:-1] + b"\1" if len(m) % 8 else tlv(1, 1, m + b" ")[:-1] + b"\1", "TLV"),  # non-zero padding
+        (tlv(1, 1, m) + struct.pack("<HHI", 40000, 0, 64), "TLV"),
+        (tlv(1, 1, m) + bytes(8), "TLV"),
+        (tlv(1, 1, m)[:-1] + b"\1" if len(m) % 8 else tlv(1, 1, m + b" ")[:-1] + b"\1", "TLV"),
     ]:
         raises(reader_for, with_metadata(bad), contains=why)
 
@@ -569,27 +546,25 @@ def test_zstd_round_trip():
         assert nwt.zstd_decompress(packed, len(payload)) == payload
     assert len(nwt.zstd_compress(bytes(1 << 20), 19)) < 200
 
-    raw = v11_bytes()
-    packed = v11_bytes(zstd_level=3)
+    raw = golden_bytes()
+    packed = golden_bytes(zstd_level=3)
     codecs = [codec for _, kind, codec, _, _ in frame_table(packed) if kind == 1]
     assert 1 in codecs and len(codecs) == 16
     assert all(codec == 0 for _, kind, codec, _, _ in frame_table(packed) if kind != 1)
     assert len(packed) < len(raw)
     decoded = nwt.read_container(packed)
     assert nwt.report(decoded) == nwt.report(nwt.read_container(raw))
-    assert nwt.write_container(decoded, nwt.MANIFEST_V11, V11_ID, V11_CREATED) == raw
+    assert nwt.write_container(decoded, nwt.MANIFEST_GOLDEN, GOLDEN_ID, GOLDEN_CREATED) == raw
 
-    # A frame that does not shrink is stored raw.
     out = io.BytesIO()
-    writer = nwt.Writer(out, nwt.MANIFEST_V11, V11_ID, zstd_level=3)
+    writer = nwt.Writer(out, nwt.MANIFEST_GOLDEN, GOLDEN_ID, zstd_level=3)
     noise = rng.randbytes(4096)
     assert writer.store(noise) == (0, noise)
     assert writer.store(bytes(4096))[0] == 1
 
-    # One big frame: the stored payload is one standard Zstd frame that the zstd command also decodes.
     many = renumber(file_records() * 200)
     out = io.BytesIO()
-    writer = nwt.Writer(out, nwt.MANIFEST_V11, V11_ID, V11_CREATED, zstd_level=3)
+    writer = nwt.Writer(out, nwt.MANIFEST_GOLDEN, GOLDEN_ID, GOLDEN_CREATED, zstd_level=3)
     for record in many:
         writer.write(record)
     writer.close()
@@ -609,7 +584,6 @@ def test_zstd_round_trip():
 
 def test_zstd_header_rules():
     def fcs4(packed, window_byte=None, size=None):
-        """Rewrite a single-segment frame header with a 4-byte content size and optional window byte."""
         d = packed[4]
         assert d & 0x20 and not d & 0x0F
         n = (1, 2, 4, 8)[d >> 6]
@@ -621,20 +595,19 @@ def test_zstd_header_rules():
 
     payload = b"NWT frame payload " * 400
     n = len(payload)
-    fake = b"\x28\xb5\x2f\xfd\xa0" + n.to_bytes(4, "little") + bytes(8)  # header only; never decompressed
-    # The header rules are checked by hand, so they hold even without the library.
+    fake = b"\x28\xb5\x2f\xfd\xa0" + n.to_bytes(4, "little") + bytes(8)
     raises(nwt.zstd_check, fake, n + 1, contains="content size")
-    raises(nwt.zstd_check, b"\x50\x2a\x4d\x18" + fake[4:], n, contains="magic")  # skippable frame
+    raises(nwt.zstd_check, b"\x50\x2a\x4d\x18" + fake[4:], n, contains="magic")
     raises(nwt.zstd_check, fake[:4], n, contains="magic")
     raises(nwt.zstd_check, fake[:4] + bytes([0xA1]) + fake[5:], n, contains="dictionary")
     raises(nwt.zstd_check, fake[:4] + bytes([0xA8]) + fake[5:], n, contains="reserved")
-    raises(nwt.zstd_check, fake[:4] + bytes([0x00, 0x50]) + fake[5:], n, contains="content size")  # size absent
-    raises(nwt.zstd_check, fake[:4] + bytes([0x80, 0x78]) + n.to_bytes(4, "little"), n, contains="window")  # 32 MiB
-    raises(nwt.zstd_check, fake[:4] + bytes([0x80, 0x71]) + n.to_bytes(4, "little"), n, contains="window")  # 18 MiB
+    raises(nwt.zstd_check, fake[:4] + bytes([0x00, 0x50]) + fake[5:], n, contains="content size")
+    raises(nwt.zstd_check, fake[:4] + bytes([0x80, 0x78]) + n.to_bytes(4, "little"), n, contains="window")
+    raises(nwt.zstd_check, fake[:4] + bytes([0x80, 0x71]) + n.to_bytes(4, "little"), n, contains="window")
     raises(nwt.zstd_check, fake[:7], n, contains="header")
     nwt.zstd_check(fake, n)
-    nwt.zstd_check(fake[:4] + bytes([0xA4]) + fake[5:], n)  # content checksum flag is allowed
-    nwt.zstd_check(fake[:4] + bytes([0x80, 0x70]) + n.to_bytes(4, "little"), n)  # exactly 16 MiB window
+    nwt.zstd_check(fake[:4] + bytes([0xA4]) + fake[5:], n)
+    nwt.zstd_check(fake[:4] + bytes([0x80, 0x70]) + n.to_bytes(4, "little"), n)
     big = 16777216
     nwt.zstd_check(fake[:4] + bytes([0xA0]) + big.to_bytes(4, "little"), big)
     raises(nwt.zstd_check, fake[:4] + bytes([0xA0]) + (big + 1).to_bytes(4, "little"), big + 1, contains="window")
@@ -644,26 +617,25 @@ def test_zstd_header_rules():
         return "skipped"
     packed = nwt.zstd_compress(payload)
     assert nwt.zstd_decompress(packed, n) == payload
-    assert nwt.zstd_decompress(fcs4(packed), n) == payload  # same blocks, 4-byte size field
-    assert nwt.zstd_decompress(fcs4(packed, window_byte=0x70), n) == payload  # 16 MiB window
+    assert nwt.zstd_decompress(fcs4(packed), n) == payload
+    assert nwt.zstd_decompress(fcs4(packed, window_byte=0x70), n) == payload
     raises(nwt.zstd_decompress, packed, n + 1, contains="content size")
-    raises(nwt.zstd_decompress, fcs4(packed, size=n + 1), n + 1)  # header lies about the size
+    raises(nwt.zstd_decompress, fcs4(packed, size=n + 1), n + 1)
     raises(nwt.zstd_decompress, fcs4(packed, window_byte=0x78), n, contains="window")
     raises(nwt.zstd_decompress, packed[:4] + bytes([packed[4] | 1]) + packed[5:], n, contains="dictionary")
     raises(nwt.zstd_decompress, b"\x50\x2a\x4d\x18" + packed[4:], n, contains="magic")
-    raises(nwt.zstd_decompress, packed + b"\0", n)  # trailing byte
-    raises(nwt.zstd_decompress, packed + packed, n)  # concatenated frames
-    raises(nwt.zstd_decompress, packed[:-1], n)  # truncated frame
+    raises(nwt.zstd_decompress, packed + b"\0", n)
+    raises(nwt.zstd_decompress, packed + packed, n)
+    raises(nwt.zstd_decompress, packed[:-1], n)
     skippable = b"\x50\x2a\x4d\x18" + (4).to_bytes(4, "little") + b"skip"
     raises(nwt.zstd_decompress, packed + skippable, n)
-    if shutil.which("zstd"):  # a frame with Zstd's own content checksum is valid (spec 10.2)
+    if shutil.which("zstd"):
         with tempfile.TemporaryDirectory() as tmp:
             (Path(tmp) / "payload").write_bytes(payload)
             checked = subprocess.run(["zstd", "-c", "--check", str(Path(tmp) / "payload")], capture_output=True).stdout
         assert checked[4] & 0x04
         assert nwt.zstd_decompress(checked, n) == payload
-    # In a container: a frame that says codec 1 but holds raw bytes is rejected.
-    data = bytearray(v11_bytes())
+    data = bytearray(golden_bytes())
     at = frame_table(bytes(data))[0][0]
     data[at + 6] = 1
     data[at : at + 64] = nwt.hcrc(data[at : at + 64], 52)
@@ -677,7 +649,7 @@ def test_zstd_missing():
     raw = run("read", GOLDEN / "all-records.nwt", env=env)
     assert raw.returncode == 0 and raw.stdout == (GOLDEN / "all-fields.txt").read_bytes()
     with tempfile.TemporaryDirectory() as tmp:
-        refused = run("write-v11", Path(tmp) / "x.nwt", "--zstd", env=env)
+        refused = run("write-golden", Path(tmp) / "x.nwt", "--zstd", env=env)
         assert refused.returncode != 0 and b"Zstd library not available" in refused.stderr
     probe = "import nwt_example as n; print(n.zstd_available())"
     result = subprocess.run([sys.executable, "-c", probe], capture_output=True, env=env, cwd=KIT / "examples/python")
@@ -688,7 +660,7 @@ def test_writer_reader_stream():
     records = renumber(file_records() * 20)
     provenance = '{"source_format":"synthetic","converter":"test"}'
     out = io.BytesIO()
-    writer = nwt.Writer(out, nwt.MANIFEST_V11, V11_ID, V11_CREATED, provenance=provenance, frame_bytes=1024)
+    writer = nwt.Writer(out, nwt.MANIFEST_GOLDEN, GOLDEN_ID, GOLDEN_CREATED, provenance=provenance, frame_bytes=1024)
     for record in records[:10]:
         writer.write(record)
     for record in records[10:]:
@@ -703,13 +675,13 @@ def test_writer_reader_stream():
         return data[offset : offset + n]
 
     reader = nwt.Reader(read_at, len(data))
-    assert reader.header["minor"] == 1 and reader.header["stream_id"] == V11_ID
-    assert reader.header["created_ns"] == V11_CREATED and reader.header["major"] == 1
-    assert reader.manifest == json.loads(nwt.MANIFEST_V11) and reader.provenance == json.loads(provenance)
+    assert reader.header["minor"] == 1 and reader.header["stream_id"] == GOLDEN_ID
+    assert reader.header["created_ns"] == GOLDEN_CREATED and reader.header["major"] == 1
+    assert reader.manifest == json.loads(nwt.MANIFEST_GOLDEN) and reader.provenance == json.loads(provenance)
     assert reader.metadata == data[64 : 64 + len(reader.metadata)] and len(reader.metadata) % 8 == 0
     scanned = list(reader.frames())
     assert [info.seq for info, _ in scanned] == list(range(len(scanned)))
-    assert writer.frames == [info for info, _ in scanned if info.kind == 1]  # the writer's own frame table
+    assert writer.frames == [info for info, _ in scanned if info.kind == 1]
     assert [info.kind for info, _ in scanned[-2:]] == [2, 3] and not scanned[-1][1]
     data_frames = [(info, raws) for info, raws in scanned if info.kind == 1]
     assert len(data_frames) > 50
@@ -723,7 +695,7 @@ def test_writer_reader_stream():
 
     reads.clear()
     index = reader.index()
-    assert reads[0] == (len(data) - 96, 64)  # the seek path starts at END
+    assert reads[0] == (len(data) - 96, 64)
     assert len(index) == len(data_frames)
     for entry, (info, raws) in zip(index, data_frames):
         assert entry.kind == 1
@@ -732,19 +704,16 @@ def test_writer_reader_stream():
         assert reader.read_frame(entry) == raws == reader.read_frame(info)
     reads.clear()
     reader.read_frame(index[7])
-    assert sum(n for _, n in reads) < 1200  # one frame, not the file
+    assert sum(n for _, n in reads) < 1200
 
-    # frame_records closes a frame by count.
-    by_count = nwt.write_container(records, nwt.MANIFEST_V11, V11_ID, V11_CREATED, frame_records=7)
+    by_count = nwt.write_container(records, nwt.MANIFEST_GOLDEN, GOLDEN_ID, GOLDEN_CREATED, frame_records=7)
     counts = [info.record_count for info, _ in reader_for(by_count).frames() if info.kind == 1]
     assert counts == [7] * (len(records) // 7) + ([len(records) % 7] if len(records) % 7 else [])
 
-    # An empty container is metadata then END, with no INDEX.
-    empty = nwt.write_container([], nwt.MANIFEST_V11, V11_ID, V11_CREATED)
+    empty = nwt.write_container([], nwt.MANIFEST_GOLDEN, GOLDEN_ID, GOLDEN_CREATED)
     assert len(empty) == 64 + len(reader_for(empty).metadata) + 96
     assert [info.kind for info, _ in reader_for(empty).frames()] == [3] and reader_for(empty).index() == []
 
-    # Truncation is "incomplete" on both paths, wherever the cut falls.
     first = data_frames[0][0].offset
     for cut in (0, 10, 64, 70, first, first + 10, first + 64, first + 70, scanned[-2][0].offset, len(data) - 96, len(data) - 1):
         short = data[:cut]
@@ -759,16 +728,15 @@ def test_writer_reader_stream():
         result = run("read", path)
         assert result.returncode != 0 and b"incomplete" in result.stderr and not result.stdout
 
-    # Writer refuses a sequence gap; an aborted END is readable but not a normal completion.
     out = io.BytesIO()
-    writer = nwt.Writer(out, nwt.MANIFEST_V11, V11_ID)
+    writer = nwt.Writer(out, nwt.MANIFEST_GOLDEN, GOLDEN_ID)
     writer.write(records[0])
     raises(writer.write, records[2], contains="sequence")
     writer.close(status=1)
     aborted = reader_for(out.getvalue())
     assert len(list(aborted.records())) == 1 and aborted.end["status"] == 1
     raises(nwt.read_container, out.getvalue(), contains="aborted")
-    raises(nwt.Writer, io.BytesIO(), nwt.MANIFEST_V11, bytes(16), contains="stream ID")
+    raises(nwt.Writer, io.BytesIO(), nwt.MANIFEST_GOLDEN, bytes(16), contains="stream ID")
 
     sequencer = nwt.Sequencer()
     assert [sequencer.next(1, 0), sequencer.next(1, 0), sequencer.next(1, 1), sequencer.next(0, 0), sequencer.next(1, 0)] == [1, 2, 1, 1, 3]
@@ -781,14 +749,14 @@ def test_pretty():
         (0, "0.000000000"), (1, "0.000000001"), (-1, "-0.000000001"), (177339000000, "177.339000000"),
         ((1 << 63) - 1, "9223372036.854775807"), (-(1 << 63) + 1, "-9223372036.854775807"),
         ((1 << 64) - 2, "18446744073.709551614"),
-    ]:  # fmt: skip
+    ]:
         assert nwt.pretty_decimal(value) == want
     for value, want in [
         (0, "1970-01-01T00:00:00.000000000Z"), (1, "1970-01-01T00:00:00.000000001Z"),
         (951782399999999999, "2000-02-28T23:59:59.999999999Z"), (951782400000000000, "2000-02-29T00:00:00.000000000Z"),
         (4107542400000000000, "2100-03-01T00:00:00.000000000Z"), (1760000000000008100, "2025-10-09T08:53:20.000008100Z"),
         ((1 << 64) - 2, "2554-07-21T23:34:33.709551614Z"),
-    ]:  # fmt: skip
+    ]:
         assert nwt.pretty_time(value) == want, value
     rng = random.Random(3)
     for _ in range(2000):
@@ -799,7 +767,7 @@ def test_pretty():
     minimal = scenario("listing-minimal")
     line = nwt.to_json_line(minimal, pretty=True)
     assert '"ts_event":null,"ts_recv":null,' in line
-    assert '"round_lot":"4294967295"' in line  # no kind: left as the stored integer
+    assert '"round_lot":"4294967295"' in line
     assert '"ts_event":"18446744073709551615"' in nwt.to_json_line(minimal)
     assert nwt.to_csv_line(minimal, pretty=True).split(",")[7:9] == ["", ""]
     trade = scenario("trade-new")
@@ -850,8 +818,7 @@ def test_json_csv_escaping():
     assert nwt.csv_value("plain text; no quoting\t") == "plain text; no quoting\t" and nwt.csv_value(None) == ""
     assert nwt.json_string('\x00\x1f\x20\x7f"\\/é\U0001d11e') == '"\\u0000\\u001f \x7f\\"\\\\/é\U0001d11e"'
 
-    # Key order: type_name, header, body, texts, levels; never "reserved"; no spaces.
-    for record in list(nwt.CATALOG) + list(nwt.CATALOG_V11):
+    for record in list(nwt.CATALOG) + list(nwt.CATALOG_GOLDEN):
         schema = nwt.S[record["type"]]
         for pretty in (False, True):
             line = nwt.to_json_line(record, pretty)
@@ -885,7 +852,7 @@ def random_text(rng, sizes):
     while True:
         ch = rng.choice(pool)
         width = len(ch.encode())
-        if size + width > target or len(out) >= 64:  # long texts: 64 mixed characters, then plain filler
+        if size + width > target or len(out) >= 64:
             return out + "A" * (target - size)
         out += ch
         size += width
@@ -911,7 +878,8 @@ def random_record(rng, typ, sequence):
     body = {}
     for f in schema["fields"]:
         name = f["name"]
-        if name == "reserved" or name[:-6] in texts or (schema["has_levels"] and name == "levels"):
+        derived = name.endswith("_bytes") and name[:-6] in texts
+        if name == "reserved" or derived or (schema["has_levels"] and name == "levels"):
             continue
         if name in enums:
             body[name] = rng.choice(enums[name])
@@ -954,16 +922,16 @@ def test_make_record():
     made = nwt.make_record(
         15, instrument_id=2001, ts_event=5, sequence=3, price=-1, quantity=2, order_count=nwt.NULL_U32,
         action=1, side=2, delta_flags=1,
-    )  # fmt: skip
+    )
     assert made["type"] == 15 and made["texts"] == {} and made["levels"] == []
     assert made["fields"] == {
         "record_bytes": "72", "record_type": "15", "schema_version": "1", "flags": "0", "publisher_id": "1",
         "channel_id": "0", "instrument_id": "2001", "ts_event": "5", "ts_recv": str(nwt.NULL), "sequence": "3",
         "price": "-1", "quantity": "2", "order_count": "4294967295", "action": "1", "side": "2", "delta_flags": "1",
         "reserved": "0",
-    }  # fmt: skip
+    }
     assert (nwt.NULL, nwt.NULL_I64, nwt.NULL_U32) == ((1 << 64) - 1, -(1 << 63), (1 << 32) - 1)
-    for item in nwt.CATALOG_V11:
+    for item in nwt.CATALOG_GOLDEN:
         f, schema = item["fields"], nwt.S[item["type"]]
         derived = {"reserved", "levels"} | {name + "_bytes" for name in schema["texts"]}
         body = {x["name"]: int(f[x["name"]]) for x in schema["fields"] if x["name"] not in derived}
@@ -1002,7 +970,7 @@ def test_typed_path():
 
 
 def test_goldens_current():
-    raw = v11_bytes()
+    raw = golden_bytes()
     assert (GOLDEN / "all-records.nwt").read_bytes() == raw
     records = nwt.read_container(raw)
     assert (GOLDEN / "all-fields.txt").read_bytes() == nwt.report(records).encode()
@@ -1011,12 +979,11 @@ def test_goldens_current():
         assert any(codec == 1 for _, kind, codec, _, _ in frame_table(packed)), name
         if nwt.zstd_available():
             assert nwt.report(nwt.read_container(packed)) == nwt.report(records), name
-    # Every DATA frame of the checksum golden carries Zstd's own content checksum (descriptor bit 2).
     checked = (GOLDEN / "all-records.zst-checksum.nwt").read_bytes()
     assert all(checked[at + 64 + 4] & 0x04 for at, kind, codec, _, _ in frame_table(checked) if kind == 1 and codec == 1)
     plain_zstd = (GOLDEN / "all-records.zst.nwt").read_bytes()
     assert not any(plain_zstd[at + 64 + 4] & 0x04 for at, kind, codec, _, _ in frame_table(plain_zstd) if kind == 1 and codec == 1)
-    if shutil.which("zstd"):  # the zstd command decodes a stored payload to the raw golden's payload
+    if shutil.which("zstd"):
         for at, (raw_at, _, _, raw_size, _) in zip((f[0] for f in frame_table(checked)), frame_table(raw)[:16]):
             stored = int.from_bytes(checked[at + 12 : at + 16], "little")
             tool = subprocess.run(["zstd", "-d", "-c"], input=checked[at + 64 : at + 64 + stored], capture_output=True)
@@ -1031,35 +998,33 @@ def test_goldens_current():
                 continue
             rows = [nwt.to_csv_line(r, pretty) for r in records if r["type"] == typ]
             assert path.read_bytes() == "".join(row + "\n" for row in [nwt.csv_header(typ)] + rows).encode(), path.name
-    for i, item in enumerate(nwt.CATALOG_V11, 1):
+    for i, item in enumerate(nwt.CATALOG_GOLDEN, 1):
         stem = GOLDEN / "records" / f"{i:03}-{item['label']}"
         assert stem.with_suffix(".bin").read_bytes() == nwt.encode_record(item)
         assert json.loads(stem.with_suffix(".json").read_text()) == item
-    assert len(list((GOLDEN / "records").iterdir())) == 2 * len(nwt.CATALOG_V11)
+    assert len(list((GOLDEN / "records").iterdir())) == 2 * len(nwt.CATALOG_GOLDEN)
 
-    # The standalone FRAME_SUMMARY describes DATA frame 0 of the raw golden.
     summary = {k: int(v) for k, v in scenario("frame-summary")["fields"].items()}
     frames = list(reader_for(raw).frames())
     assert [info.kind for info, _ in frames] == [1] * 16 + [2, 3]
-    assert (frames[2][0].min_event_ns, frames[2][0].max_event_ns) == (nwt.NULL, nwt.NULL)  # only null timestamps
+    assert (frames[2][0].min_event_ns, frames[2][0].max_event_ns) == (nwt.NULL, nwt.NULL)
     assert frames[1][0].min_event_ns != nwt.NULL and any(nwt.get(b, 24, 8) == nwt.NULL for b in frames[1][1])
     info, raws = frames[0]
     heads = [nwt.decode_record(b)["fields"] for b in raws]
     instruments = [int(h["instrument_id"]) for h in heads if h["instrument_id"] != "0"]
     assert (summary["data_frame_seq"], summary["data_frame_offset"], summary["stored_bytes"], summary["codec"]) == (
-        info.seq, info.offset, info.stored_bytes, info.codec)  # fmt: skip
+        info.seq, info.offset, info.stored_bytes, info.codec)
     assert summary["type_mask"] == sum({1 << int(h["record_type"]) for h in heads})
     assert (summary["min_instrument_id"], summary["max_instrument_id"]) == (min(instruments), max(instruments))
     times = [int(h["ts_event"]) for h in heads]
     assert summary["summary_flags"] == (nwt.NULL in times) | 2 * (times == sorted(times))
 
-    # The command line reproduces every golden (the commands listed in fixtures/v1.1/README.md).
     with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp) / "out dir "  # a path with spaces, like the kit's own parent folder
+        tmp = Path(tmp) / "out dir "
         tmp.mkdir()
-        assert run("write", tmp / "legacy.nwt").returncode == 0
-        assert hashlib.sha256((tmp / "legacy.nwt").read_bytes()).hexdigest() == LEGACY_SHA
-        assert run("write-v11", tmp / "a.nwt").returncode == 0 and (tmp / "a.nwt").read_bytes() == raw
+        assert run("write", tmp / "catalog.nwt").returncode == 0
+        assert hashlib.sha256((tmp / "catalog.nwt").read_bytes()).hexdigest() == CATALOG_SHA
+        assert run("write-golden", tmp / "a.nwt").returncode == 0 and (tmp / "a.nwt").read_bytes() == raw
         result = run("read", GOLDEN / "all-records.nwt", tmp / "again.nwt")
         assert result.stdout == (GOLDEN / "all-fields.txt").read_bytes() and (tmp / "again.nwt").read_bytes() == raw
         assert run("to-json", GOLDEN / "all-records.nwt").stdout == (GOLDEN / "all-records.jsonl").read_bytes()
@@ -1075,7 +1040,7 @@ def test_goldens_current():
             decoded = run("decode-record", tmp / "r.bin")
             assert decoded.stdout == nwt.report([example(typ)]).encode()
         if nwt.zstd_available():
-            assert run("write-v11", tmp / "z.nwt", "--zstd").returncode == 0
+            assert run("write-golden", tmp / "z.nwt", "--zstd").returncode == 0
             result = run("read", tmp / "z.nwt", tmp / "z-raw.nwt")
             assert result.stdout == (GOLDEN / "all-fields.txt").read_bytes() and (tmp / "z-raw.nwt").read_bytes() == raw
             assert run("to-json", GOLDEN / "all-records.zst.nwt").stdout == (GOLDEN / "all-records.jsonl").read_bytes()
@@ -1094,7 +1059,7 @@ def test_malformed_goldens():
     assert files == sorted(expected) and len(files) >= 11
     assert set(expected.values()) == {"reject"}
     for wanted in ("bad-enum", "bad-mask", "nonzero-reserved", "text-over-limit", "wrong-text-exact", "wrong-fixed-size",
-                   "wrong-minor", "undeclared-type", "undeclared-publisher", "zstd-content-size", "zstd-window"):  # fmt: skip
+                   "wrong-minor", "undeclared-type", "undeclared-publisher", "zstd-content-size", "zstd-window"):
         assert wanted + ".nwt" in expected, wanted
     for name in files:
         data = (GOLDEN / "malformed" / name).read_bytes()
@@ -1104,13 +1069,46 @@ def test_malformed_goldens():
         assert result.returncode != 0 and result.stderr.startswith(b"NWT error: "), name
 
 
+def state_after(labels, extra=()):
+    state = market_state.MarketState()
+    for record in renumber([scenario(label) for label in labels] + list(extra)):
+        state.apply(record)
+    return state
+
+
+def test_gap_clears_best_quote():
+    before = state_after(["def-equity", "quote-two-sided", "best-quote-event"])
+    assert len(before.quotes) == 1 and len(before.best_quotes) == 1
+    after = state_after(["def-equity", "quote-two-sided", "best-quote-event", "gap"])
+    assert after.quotes == {} and after.best_quotes == {}
+    assert len(after.definitions) == 1
+
+
+def test_nested_snapshot_rejected():
+    begin = nwt.make_record(
+        4, instrument_id=2001, sequence=1, order_id=0, price=nwt.NULL_I64, quantity=0, priority=nwt.NULL,
+        action=5, side=0, mbo_flags=0,
+    )
+    assert state_after(["def-equity"], [begin]).working != {}
+    raises(state_after, ["def-equity"], [begin, begin], contains="snapshot")
+
+
+def test_query_notice_only_on_success():
+    tool = [sys.executable, str(KIT / "tools/nwt.py"), "query", str(GOLDEN / "all-records.nwt"), "--type"]
+    failed = subprocess.run(tool + ["NO_SUCH_TYPE"], capture_output=True, timeout=120)
+    assert failed.returncode == 1 and failed.stdout == b""
+    assert failed.stderr.startswith(b"NWT error: ") and b"# partial" not in failed.stderr, failed.stderr
+    found = subprocess.run(tool + ["TRADE"], capture_output=True, timeout=120)
+    assert found.returncode == 0 and found.stdout.count(b"\n") == 1 and b"# partial" in found.stderr
+
+
 def main():
     tests = [(name, fn) for name, fn in globals().items() if name.startswith("test_") and callable(fn)]
     passed, failed, skipped = 0, [], 0
     for name, fn in tests:
         try:
             outcome = fn()
-        except Exception as error:  # report every failing test, then exit non-zero
+        except Exception as error:
             failed.append(name)
             tb = error.__traceback__
             while tb.tb_next:

@@ -1,8 +1,6 @@
 #pragma once
-// Generated example inputs. Numeric field values are decimal strings.
 inline constexpr const char* schema_json = R"NWTDATA({
   "format": "NWT",
-  "revision": "1.1-draft.1",
   "header": [
     {
       "name": "record_bytes",
@@ -20,7 +18,7 @@ inline constexpr const char* schema_json = R"NWTDATA({
       "name": "schema_version",
       "bytes": 1,
       "signed": false,
-      "meaning": "Exactly 1 for every standard schema in this draft. A different version is a different wire contract."
+      "meaning": "Exactly 1 for every standard record type. A different version is a different wire contract."
     },
     {
       "name": "flags",
@@ -357,7 +355,7 @@ inline constexpr const char* schema_json = R"NWTDATA({
           "name": "mbo_flags",
           "bytes": 2,
           "signed": false,
-          "meaning": "Zero in v1.0. No implied execution, partial-fill, or snapshot bits."
+          "meaning": "Reserved; zero. No implied execution, partial-fill, or snapshot bits."
         },
         {
           "name": "reserved",
@@ -529,7 +527,7 @@ inline constexpr const char* schema_json = R"NWTDATA({
           "name": "status_flags",
           "bytes": 4,
           "signed": false,
-          "meaning": "Zero in v1.0."
+          "meaning": "Reserved; zero."
         },
         {
           "name": "reserved",
@@ -3795,8 +3793,8 @@ inline constexpr const char* catalog_json = R"NWTDATA([
     "levels": []
   }
 ])NWTDATA";
-inline constexpr const char* manifest_json = R"NWTDATA({"dataset":"EXAMPLE.ALL","producer":"nwt-developer-kit/1.0-draft.2","profile":"market-data","clock":"posix-ns","publishers":[{"id":1,"name":"Example Feed","venue":"EXAMPLE"}],"schemas":[{"type":1,"version":1,"required":true,"name":"TRADE","spec_uri":"urn:nwt:spec:1.0"},{"type":2,"version":1,"required":true,"name":"QUOTE","spec_uri":"urn:nwt:spec:1.0"},{"type":3,"version":1,"required":true,"name":"BAR","spec_uri":"urn:nwt:spec:1.0"},{"type":4,"version":1,"required":true,"name":"MBO","spec_uri":"urn:nwt:spec:1.0"},{"type":5,"version":1,"required":true,"name":"BOOK_SNAPSHOT","spec_uri":"urn:nwt:spec:1.0"},{"type":6,"version":1,"required":true,"name":"INSTRUMENT_DEF","spec_uri":"urn:nwt:spec:1.0"},{"type":7,"version":1,"required":true,"name":"STATUS","spec_uri":"urn:nwt:spec:1.0"},{"type":8,"version":1,"required":true,"name":"GAP","spec_uri":"urn:nwt:spec:1.0"},{"type":9,"version":1,"required":true,"name":"SYSTEM","spec_uri":"urn:nwt:spec:1.0"}]})NWTDATA";
-inline constexpr const char* catalog_v11_json = R"NWTDATA([
+inline constexpr const char* manifest_json = R"NWTDATA({"dataset":"EXAMPLE.ALL","producer":"nwt-reference-codec","profile":"market-data","clock":"posix-ns","publishers":[{"id":1,"name":"Example Feed","venue":"EXAMPLE"}],"schemas":[{"type":1,"version":1,"required":true,"name":"TRADE","spec_uri":"urn:nwt:spec:1.0"},{"type":2,"version":1,"required":true,"name":"QUOTE","spec_uri":"urn:nwt:spec:1.0"},{"type":3,"version":1,"required":true,"name":"BAR","spec_uri":"urn:nwt:spec:1.0"},{"type":4,"version":1,"required":true,"name":"MBO","spec_uri":"urn:nwt:spec:1.0"},{"type":5,"version":1,"required":true,"name":"BOOK_SNAPSHOT","spec_uri":"urn:nwt:spec:1.0"},{"type":6,"version":1,"required":true,"name":"INSTRUMENT_DEF","spec_uri":"urn:nwt:spec:1.0"},{"type":7,"version":1,"required":true,"name":"STATUS","spec_uri":"urn:nwt:spec:1.0"},{"type":8,"version":1,"required":true,"name":"GAP","spec_uri":"urn:nwt:spec:1.0"},{"type":9,"version":1,"required":true,"name":"SYSTEM","spec_uri":"urn:nwt:spec:1.0"}]})NWTDATA";
+inline constexpr const char* catalog_golden_json = R"NWTDATA([
   {
     "label": "def-equity",
     "type": 6,
@@ -5431,7 +5429,7 @@ inline constexpr const char* catalog_v11_json = R"NWTDATA([
       "ts_recv": "18446744073709551615",
       "sequence": "2",
       "data_frame_seq": "0",
-      "data_frame_offset": "2280",
+      "data_frame_offset": "2272",
       "stored_bytes": "480",
       "codec": "0",
       "summary_flags": "2",
@@ -5444,4 +5442,4 @@ inline constexpr const char* catalog_v11_json = R"NWTDATA([
     "levels": []
   }
 ])NWTDATA";
-inline constexpr const char* manifest_v11_json = R"NWTDATA({"dataset":"EXAMPLE.V11","producer":"nwt-developer-kit/1.1-draft.1","profile":"market-data","clock":"posix-ns","publishers":[{"id":1,"name":"Example Feed","venue":"EXAMPLE"},{"id":2,"name":"Second Venue","venue":"EXAMPLE2"}],"schemas":[{"type":1,"version":1,"required":true,"name":"TRADE","spec_uri":"urn:nwt:spec:1.0"},{"type":2,"version":1,"required":true,"name":"QUOTE","spec_uri":"urn:nwt:spec:1.0"},{"type":3,"version":1,"required":true,"name":"BAR","spec_uri":"urn:nwt:spec:1.0"},{"type":4,"version":1,"required":true,"name":"MBO","spec_uri":"urn:nwt:spec:1.0"},{"type":5,"version":1,"required":true,"name":"BOOK_SNAPSHOT","spec_uri":"urn:nwt:spec:1.0"},{"type":6,"version":1,"required":true,"name":"INSTRUMENT_DEF","spec_uri":"urn:nwt:spec:1.0"},{"type":7,"version":1,"required":true,"name":"STATUS","spec_uri":"urn:nwt:spec:1.0"},{"type":8,"version":1,"required":true,"name":"GAP","spec_uri":"urn:nwt:spec:1.0"},{"type":9,"version":1,"required":true,"name":"SYSTEM","spec_uri":"urn:nwt:spec:1.0"},{"type":10,"version":1,"required":false,"name":"VENUE_DEF","spec_uri":"urn:nwt:spec:1.1"},{"type":11,"version":1,"required":false,"name":"OPTION_DEF","spec_uri":"urn:nwt:spec:1.1"},{"type":12,"version":1,"required":false,"name":"LISTING","spec_uri":"urn:nwt:spec:1.1"},{"type":13,"version":1,"required":false,"name":"STATISTICS","spec_uri":"urn:nwt:spec:1.1"},{"type":14,"version":1,"required":false,"name":"OPTION_ANALYTICS","spec_uri":"urn:nwt:spec:1.1"},{"type":15,"version":1,"required":true,"name":"BOOK_DELTA","spec_uri":"urn:nwt:spec:1.1"},{"type":16,"version":1,"required":false,"name":"IMBALANCE","spec_uri":"urn:nwt:spec:1.1"},{"type":17,"version":1,"required":false,"name":"SYMBOL_MAP","spec_uri":"urn:nwt:spec:1.1"},{"type":18,"version":1,"required":false,"name":"TRADE_QUOTE","spec_uri":"urn:nwt:spec:1.1"},{"type":19,"version":1,"required":false,"name":"BEST_QUOTE","spec_uri":"urn:nwt:spec:1.1"},{"type":20,"version":1,"required":false,"name":"FRAME_SUMMARY","spec_uri":"urn:nwt:spec:1.1"},{"type":21,"version":1,"required":false,"name":"SECURITY_DEF","spec_uri":"urn:nwt:spec:1.1"},{"type":22,"version":1,"required":false,"name":"CORPORATE_ACTION","spec_uri":"urn:nwt:spec:1.1"}]})NWTDATA";
+inline constexpr const char* manifest_golden_json = R"NWTDATA({"dataset":"EXAMPLE.CONFORMANCE","producer":"nwt-reference-codec","profile":"market-data","clock":"posix-ns","publishers":[{"id":1,"name":"Example Feed","venue":"EXAMPLE"},{"id":2,"name":"Second Venue","venue":"EXAMPLE2"}],"schemas":[{"type":1,"version":1,"required":true,"name":"TRADE","spec_uri":"urn:nwt:spec:1.0"},{"type":2,"version":1,"required":true,"name":"QUOTE","spec_uri":"urn:nwt:spec:1.0"},{"type":3,"version":1,"required":true,"name":"BAR","spec_uri":"urn:nwt:spec:1.0"},{"type":4,"version":1,"required":true,"name":"MBO","spec_uri":"urn:nwt:spec:1.0"},{"type":5,"version":1,"required":true,"name":"BOOK_SNAPSHOT","spec_uri":"urn:nwt:spec:1.0"},{"type":6,"version":1,"required":true,"name":"INSTRUMENT_DEF","spec_uri":"urn:nwt:spec:1.0"},{"type":7,"version":1,"required":true,"name":"STATUS","spec_uri":"urn:nwt:spec:1.0"},{"type":8,"version":1,"required":true,"name":"GAP","spec_uri":"urn:nwt:spec:1.0"},{"type":9,"version":1,"required":true,"name":"SYSTEM","spec_uri":"urn:nwt:spec:1.0"},{"type":10,"version":1,"required":false,"name":"VENUE_DEF","spec_uri":"urn:nwt:spec:1.1"},{"type":11,"version":1,"required":false,"name":"OPTION_DEF","spec_uri":"urn:nwt:spec:1.1"},{"type":12,"version":1,"required":false,"name":"LISTING","spec_uri":"urn:nwt:spec:1.1"},{"type":13,"version":1,"required":false,"name":"STATISTICS","spec_uri":"urn:nwt:spec:1.1"},{"type":14,"version":1,"required":false,"name":"OPTION_ANALYTICS","spec_uri":"urn:nwt:spec:1.1"},{"type":15,"version":1,"required":true,"name":"BOOK_DELTA","spec_uri":"urn:nwt:spec:1.1"},{"type":16,"version":1,"required":false,"name":"IMBALANCE","spec_uri":"urn:nwt:spec:1.1"},{"type":17,"version":1,"required":false,"name":"SYMBOL_MAP","spec_uri":"urn:nwt:spec:1.1"},{"type":18,"version":1,"required":false,"name":"TRADE_QUOTE","spec_uri":"urn:nwt:spec:1.1"},{"type":19,"version":1,"required":false,"name":"BEST_QUOTE","spec_uri":"urn:nwt:spec:1.1"},{"type":20,"version":1,"required":false,"name":"FRAME_SUMMARY","spec_uri":"urn:nwt:spec:1.1"},{"type":21,"version":1,"required":false,"name":"SECURITY_DEF","spec_uri":"urn:nwt:spec:1.1"},{"type":22,"version":1,"required":false,"name":"CORPORATE_ACTION","spec_uri":"urn:nwt:spec:1.1"}]})NWTDATA";

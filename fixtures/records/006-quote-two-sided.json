@@ -1,0 +1,26 @@
+{
+  "label": "quote-two-sided",
+  "type": 2,
+  "fields": {
+    "record_bytes": "96",
+    "record_type": "2",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "1001",
+    "ts_event": "1700000000000005000",
+    "ts_recv": "1700000000000005100",
+    "sequence": "6",
+    "bid_price": "123000000000",
+    "ask_price": "124000000000",
+    "bid_quantity": "10000000000",
+    "ask_quantity": "11000000000",
+    "bid_order_count": "2",
+    "ask_order_count": "3",
+    "quote_flags": "0",
+    "reserved": "0"
+  },
+  "texts": {},
+  "levels": []
+}

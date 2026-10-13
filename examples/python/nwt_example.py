@@ -1,29 +1,23 @@
 #!/usr/bin/env python3
-"""NWT examples for all 22 record types: explicit little endian, raw and Zstd frames, no native casts.
-
-Educational reference codec. Validation is driven by schemas/records.json; every
-value in a decoded record is a decimal string and no floating point is used.
-See docs/IMPLEMENTATION-GUIDE.md for supported boundaries.
-"""
 
 import copy, ctypes, ctypes.util, io, json, os, struct, sys, time
 from collections import namedtuple
 from contextlib import nullcontext
 from pathlib import Path
-from example_data import SCHEMA, CATALOG, MANIFEST, CATALOG_V11, MANIFEST_V11
+from example_data import SCHEMA, CATALOG, MANIFEST, CATALOG_GOLDEN, MANIFEST_GOLDEN
 
 NULL = (1 << 64) - 1
 NULL_I64 = -(1 << 63)
 NULL_U32 = (1 << 32) - 1
-LIMIT = 16777216  # largest frame payload and largest Zstd window
+LIMIT = 16777216
 S = {s["type"]: s for s in SCHEMA["schemas"]}
 LEVEL_BYTES = sum(f["bytes"] for f in SCHEMA["level"])
 LEVEL_NAMES = [f["name"] for f in SCHEMA["level"]]
-LEGACY_ID = bytes.fromhex("102132435465768798a9bacbdcedfe0f")
-V11_ID = bytes.fromhex("a1b2c3d4e5f60718293a4b5c6d7e8f90")
+CATALOG_ID = bytes.fromhex("102132435465768798a9bacbdcedfe0f")
+GOLDEN_ID = bytes.fromhex("a1b2c3d4e5f60718293a4b5c6d7e8f90")
 ORDERINGS = ("none", "ts_event", "instrument,ts_event")
 USAGE = (
-    "usage: nwt_example.py write FILE | write-v11 FILE [--zstd] | read FILE [REENCODED_FILE] | "
+    "usage: nwt_example.py write FILE | write-golden FILE [--zstd] | read FILE [REENCODED_FILE] | "
     "record TYPE FILE | decode-record FILE | to-json FILE [--pretty] | to-csv FILE TYPE [--pretty] | bench FILE"
 )
 
@@ -33,7 +27,6 @@ def need(ok, why):
         raise ValueError(why)
 
 
-# ------------------------------------------------------------ bytes and CRC
 
 
 def crc_table():
@@ -83,7 +76,6 @@ def vh(b, o):
     need(crc(tmp) == c, "header CRC")
 
 
-# ------------------------------------------------------------------ records
 
 
 def encode_fields(values, fields):
@@ -116,7 +108,6 @@ def utf8(text):
 
 
 def check_schema(s, f):
-    """Data-driven rules shared by encode and decode: enums, flag masks and text byte lengths."""
     for name, allowed in s.get("enums", {}).items():
         need(int(f[name]) in allowed, "invalid " + name)
     for name, mask in s.get("masks", {}).items():
@@ -174,15 +165,13 @@ def decode_record(b):
         texts[name] = b[p : p + n].decode("utf-8", errors="strict")
         utf8(texts[name])
         p += n
-    # A fixed type must have its exact size; a variable type its exact padded size.
     need((p + 7) & ~7 == len(b) and not any(b[p:]), "padding/record length")
     check_schema(s, f)
     return {"type": typ, "fields": f, "texts": texts, "levels": levels}
 
 
 def make_record(typ, *, publisher_id=1, channel_id=0, instrument_id=0, ts_event=NULL, ts_recv=NULL,
-                sequence, flags=0, texts=None, levels=None, **body):  # fmt: skip
-    """Build a record dictionary. Lengths, level count, reserved fields and record_bytes are derived."""
+                sequence, flags=0, texts=None, levels=None, **body):
     s = S[typ]
     texts = dict(texts or {})
     need(s["has_levels"] or not levels, "this record type has no levels")
@@ -196,7 +185,7 @@ def make_record(typ, *, publisher_id=1, channel_id=0, instrument_id=0, ts_event=
     fields = dict(
         record_bytes=0, record_type=typ, schema_version=1, flags=flags, publisher_id=publisher_id,
         channel_id=channel_id, instrument_id=instrument_id, ts_event=ts_event, ts_recv=ts_recv, sequence=sequence,
-    )  # fmt: skip
+    )
     for f in s["fields"]:
         name = f["name"]
         if name == "reserved":
@@ -215,7 +204,6 @@ def make_record(typ, *, publisher_id=1, channel_id=0, instrument_id=0, ts_event=
 
 
 class Sequencer:
-    """Hands out the next output sequence for each (publisher, channel), starting at 1."""
 
     def __init__(self):
         self.last = {}
@@ -226,7 +214,6 @@ class Sequencer:
         return self.last[key]
 
 
-# ------------------------------------------------------------- text output
 
 
 def report_lines(i, r):
@@ -246,17 +233,15 @@ def report(records):
 
 
 def pretty_decimal(v):
-    """Integer scaled by 10^9 as a decimal string with exactly nine fractional digits."""
     return ("-" if v < 0 else "") + f"{abs(v) // 10**9}.{abs(v) % 10**9:09}"
 
 
 def pretty_time(ns):
-    """POSIX nanoseconds as YYYY-MM-DDTHH:MM:SS.nnnnnnnnnZ, by integer arithmetic only."""
     seconds, fraction = divmod(ns, 10**9)
     days, rest = divmod(seconds, 86400)
-    era, doe = divmod(days + 719468, 146097)  # days since 0000-03-01, in 400-year eras
+    era, doe = divmod(days + 719468, 146097)
     yoe = (doe - doe // 1460 + doe // 36524 - doe // 146096) // 365
-    doy = doe - (365 * yoe + yoe // 4 - yoe // 100)  # day of a year that starts on 1 March
+    doy = doe - (365 * yoe + yoe // 4 - yoe // 100)
     mp = (5 * doy + 2) // 153
     day = doy - (153 * mp + 2) // 5 + 1
     month = mp + 3 if mp < 10 else mp - 9
@@ -265,7 +250,6 @@ def pretty_time(ns):
 
 
 def pretty_value(f, text):
-    """A field value for --pretty: None for a null price, quantity or time; fields without a kind unchanged."""
     kind = f.get("kind")
     if not kind:
         return text
@@ -282,7 +266,6 @@ def output_items(fields, values, pretty):
 
 
 def record_items(r, pretty):
-    """(name, value) in output order: header fields, body fields, texts. No reserved, no level count."""
     s = S[r["type"]]
     fields = [f for f in SCHEMA["header"] + s["fields"] if not (s["has_levels"] and f["name"] == "levels")]
     return list(output_items(fields, r["fields"], pretty)) + [(name, r["texts"][name]) for name in s["texts"]]
@@ -330,7 +313,6 @@ def to_csv_line(record, pretty=False):
     return ",".join(csv_value(v) for _, v in record_items(record, pretty))
 
 
-# ---------------------------------------------------------------- metadata
 
 
 def strict_json(text):
@@ -353,7 +335,6 @@ def is_int(v, lo, hi):
 
 
 def parse_manifest(text):
-    """Parse and validate a MANIFEST value. Unknown properties are kept and ignored."""
     m = strict_json(text)
     need(isinstance(m, dict), "manifest must be a JSON object")
     for key in ("dataset", "producer", "profile", "publishers", "schemas", "clock"):
@@ -380,7 +361,6 @@ def parse_manifest(text):
 
 
 def build_manifest(dataset, producer, publishers, types, ordering=None, profile="market-data"):
-    """Compact manifest text for standard types. Types 1-9 and 15 are marked required."""
     m = {"dataset": dataset, "producer": producer, "profile": profile, "clock": "posix-ns"}
     if ordering is not None:
         m["ordering"] = ordering
@@ -389,14 +369,13 @@ def build_manifest(dataset, producer, publishers, types, ordering=None, profile=
         {"type": t, "version": 1, "required": t <= 9 or t == 15, "name": S[t]["name"],
          "spec_uri": "urn:nwt:spec:1.0" if t <= 9 else "urn:nwt:spec:1.1"}
         for t in sorted(set(types))
-    ]  # fmt: skip
+    ]
     text = json.dumps(m, separators=(",", ":"), ensure_ascii=False)
     parse_manifest(text)
     return text
 
 
 def manifest_minor(manifest):
-    """Container minor: 1 exactly when the manifest declares any of the 1.1 types 10-22."""
     return 1 if any(10 <= s["type"] <= 22 for s in manifest["schemas"]) else 0
 
 
@@ -405,7 +384,6 @@ def tlv(typ, flags, value):
 
 
 def parse_metadata(meta):
-    """Split metadata into {type: (flags, value)}. Unknown optional elements are bounds-checked and skipped."""
     out = {}
     p = 0
     while p < len(meta):
@@ -432,9 +410,8 @@ def parse_provenance(tlvs):
     return value
 
 
-# -------------------------------------------------------------------- Zstd
 
-zstd_library = None  # None: not tried yet; False: not available
+zstd_library = None
 
 
 def zstd_load():
@@ -444,7 +421,7 @@ def zstd_load():
         chosen = os.environ.get("NWT_ZSTD_LIB")
         found = ctypes.util.find_library("zstd")
         fallbacks = [found, "/opt/homebrew/lib/libzstd.dylib", "/usr/local/lib/libzstd.dylib", "libzstd.so.1"]
-        names = [chosen] if chosen else fallbacks  # a chosen library is the only one tried
+        names = [chosen] if chosen else fallbacks
         for name in filter(None, names):
             try:
                 lib = ctypes.CDLL(name)
@@ -475,12 +452,10 @@ def zstd_available():
 
 
 def zstd_check(stored, raw_bytes):
-    """Spec 10.2 checked by hand on the Zstd frame header, before any library call."""
     need(len(stored) >= 6 and stored[:4] == b"\x28\xb5\x2f\xfd", "Zstd magic")
     d = stored[4]
     fcs = d >> 6
     single = d >> 5 & 1
-    # RFC 8878: bit 3 is reserved; bit 2 (content checksum) is allowed; bits 0-1 flag a dictionary ID.
     need(d & 0x08 == 0, "Zstd reserved bit")
     need(d & 0x03 == 0, "Zstd dictionary")
     p = 5
@@ -510,7 +485,6 @@ def zstd_compress(b, level=3):
 def zstd_decompress(b, raw_bytes):
     zstd_check(b, raw_bytes)
     lib = zstd_load()
-    # Exactly one frame: no concatenated or skippable frame and no trailing bytes.
     need(lib.ZSTD_findFrameCompressedSize(b, len(b)) == len(b), "Zstd frame must fill stored_bytes exactly")
     out = ctypes.create_string_buffer(max(raw_bytes, 1))
     n = lib.ZSTD_decompress(out, raw_bytes, b, len(b))
@@ -518,7 +492,6 @@ def zstd_decompress(b, raw_bytes):
     return out.raw[:raw_bytes]
 
 
-# --------------------------------------------------------------- container
 
 
 def frame(kind, seq, payload, count=0, lo=NULL, hi=NULL, codec=0, stored=None):
@@ -565,7 +538,6 @@ def index_entry(i):
 
 
 class Scope:
-    """Checks that need only a record's 48-byte header: declared type, declared publisher, sequence."""
 
     def __init__(self, manifest):
         self.types = {(s["type"], s["version"]) for s in manifest["schemas"]}
@@ -586,14 +558,10 @@ FrameInfo = namedtuple(
 
 
 class Writer:
-    """Streaming container writer: header and metadata first, DATA frames as they fill, INDEX and END on close.
-
-    frames: the FrameInfo of every DATA frame written so far (flush() closes the open one).
-    """
 
     def __init__(self, fileobj, manifest, stream_id, created_ns=NULL, provenance=None,
-                 frame_bytes=1 << 20, frame_records=None, zstd_level=None, metadata=None):  # fmt: skip
-        if metadata is None:  # otherwise existing metadata bytes are reused verbatim (re-encoding a file)
+                 frame_bytes=1 << 20, frame_records=None, zstd_level=None, metadata=None):
+        if metadata is None:
             metadata = tlv(1, 1, manifest.encode("utf-8"))
             if provenance is not None:
                 metadata += tlv(2, 0, provenance.encode("utf-8"))
@@ -637,7 +605,6 @@ class Writer:
         self.pending_bytes += len(b)
 
     def store(self, payload):
-        """(codec, stored bytes) for one DATA payload: raw when Zstd is off or does not make it smaller."""
         if self.zstd_level is None:
             return 0, payload
         packed = zstd_compress(payload, self.zstd_level)
@@ -663,7 +630,7 @@ class Writer:
         self.flush()
         first_index = self.position if self.frames else 0
         entries = [index_entry(info) for info in self.frames]
-        per_frame = LIMIT // 40  # an INDEX payload is bounded like any other frame
+        per_frame = LIMIT // 40
         for start in range(0, len(entries), per_frame):
             self.emit(frame(2, self.seq, b"".join(entries[start : start + per_frame])))
             self.seq += 1
@@ -671,13 +638,6 @@ class Writer:
 
 
 class Reader:
-    """Container reader over read_at(offset, n) -> bytes, so it can sit on a file or on byte-range requests.
-
-    header: major, minor, metadata_bytes, stream_id (16 bytes), created_ns.
-    manifest: the validated MANIFEST object. provenance: the PROVENANCE object or None.
-    metadata: the padded metadata bytes exactly as stored.
-    end: first_index_offset, total_data_frames, total_records, status; set when a scan reaches END.
-    """
 
     def __init__(self, read_at, size):
         self.read_at, self.size, self.end = read_at, size, None
@@ -710,12 +670,11 @@ class Reader:
             h[:4] == b"NWF1" and h[4] == 1 and h[6] in (0, 1) and h[7] == 0
             and get(h, 8, 2) == 64 and get(h, 10, 2) == 0 and get(h, 56, 8) == 0,
             "frame fields/codec",
-        )  # fmt: skip
+        )
         stored, raw, count, lo, hi = get(h, 12, 4), get(h, 16, 4), get(h, 20, 4), get(h, 32, 8), get(h, 40, 8)
         info = FrameInfo(get(h, 24, 8), offset, h[5], h[6], stored, raw, count, lo, hi)
         need(info.kind in (1, 2, 3), "frame sequence/kind")
         need(info.stored_bytes <= LIMIT and info.raw_bytes <= LIMIT, "frame size")
-        # Raw frames store the payload as is; only DATA frames may be compressed.
         need(info.stored_bytes == info.raw_bytes if info.codec == 0 else info.kind == 1, "frame size/codec")
         return info, get(h, 48, 4)
 
@@ -728,7 +687,6 @@ class Reader:
         return raw
 
     def scan(self, decode=True):
-        """Full sequential validation. Yields (FrameInfo, raw records, decoded records) once per frame."""
         self.end = None
         scope = Scope(self.manifest)
         pos = 64 + len(self.metadata)
@@ -769,7 +727,6 @@ class Reader:
             seq += 1
 
     def frames(self):
-        """Every frame in order after full validation; INDEX and END frames carry an empty record list."""
         for info, raws, _ in self.scan():
             yield info, raws
 
@@ -778,8 +735,6 @@ class Reader:
             yield from decoded
 
     def index(self):
-        """Seek path: END, then INDEX. One FrameInfo per DATA frame, with codec and stored_bytes None:
-        INDEX entries do not carry them (the frame header and FRAME_SUMMARY records do)."""
         at = self.size - 96
         need(at >= 64 + len(self.metadata), "incomplete: no END frame at the end of the file")
         try:
@@ -812,7 +767,6 @@ class Reader:
         return out
 
     def read_frame(self, info):
-        """Raw records of one DATA frame found by index(). Envelope and CRC are checked; records are not decoded."""
         got, payload_crc = self.frame_info(info.offset)
         need(
             got.kind == 1
@@ -824,7 +778,6 @@ class Reader:
 
 
 def complete_records(reader):
-    """Decoded records of a normally completed container; an aborted END is an error after the last record."""
     yield from reader.records()
     need(reader.end["status"] == 0, "aborted container")
 
@@ -833,8 +786,8 @@ def read_container(data):
     return list(complete_records(Reader(lambda offset, n: data[offset : offset + n], len(data))))
 
 
-def write_container(records, manifest=MANIFEST, stream_id=LEGACY_ID, created_ns=1700000000000000000,
-                    frame_records=3, zstd_level=None):  # fmt: skip
+def write_container(records, manifest=MANIFEST, stream_id=CATALOG_ID, created_ns=1700000000000000000,
+                    frame_records=3, zstd_level=None):
     out = io.BytesIO()
     writer = Writer(out, manifest, stream_id, created_ns, frame_records=frame_records, zstd_level=zstd_level)
     for r in records:
@@ -843,11 +796,9 @@ def write_container(records, manifest=MANIFEST, stream_id=LEGACY_ID, created_ns=
     return out.getvalue()
 
 
-# -------------------------------------------------------------- typed path
 
 
 def typed_tables():
-    """One precompiled struct per fixed-size type (reserved bytes skipped) and its matching field names."""
     codes = {(1, False): "B", (2, False): "H", (4, False): "I", (8, False): "Q", (8, True): "q"}
     structs, names = {}, {}
     for s in SCHEMA["schemas"]:
@@ -865,7 +816,6 @@ STRUCTS, TYPED_NAMES = typed_tables()
 
 
 def dtype(typ):
-    """NumPy structured dtype for a fixed-size type, for zero-copy views over record bytes."""
     import numpy
 
     fields = SCHEMA["header"] + S[typ]["fields"]
@@ -883,7 +833,7 @@ def dtype(typ):
 
 def rate_line(label, records, size, ns):
     ns = max(ns, 1)
-    mb = size * 10**12 // (ns * 1048576)  # thousandths of a MiB per second
+    mb = size * 10**12 // (ns * 1048576)
     return (
         f"{label} records={records} seconds={ns // 10**9}.{ns % 10**9 // 1000:06} "
         f"records_per_second={records * 10**9 // ns} mb_per_second={mb // 1000}.{mb % 1000:03}\n"
@@ -891,7 +841,6 @@ def rate_line(label, records, size, ns):
 
 
 def bench(path):
-    """Time a full decode (frames, CRC, decompression, typed records) and a re-encode of every record."""
     data = Path(path).read_bytes()
     start = time.perf_counter_ns()
     values = []
@@ -912,7 +861,6 @@ def bench(path):
     return rate_line("decode", count, size, decoded - start) + rate_line("encode", count, size, encoded - decoded)
 
 
-# ------------------------------------------------------------ command line
 
 
 def open_reader(f):
@@ -935,14 +883,14 @@ def main():
     command, pretty = args[0], "--pretty" in options
     if command == "write":
         Path(args[1]).write_bytes(write_container(CATALOG))
-    elif command == "write-v11":
-        records = [r for r in CATALOG_V11 if not r.get("standalone")]
+    elif command == "write-golden":
+        records = [r for r in CATALOG_GOLDEN if not r.get("standalone")]
         level = 3 if "--zstd" in options else None
-        Path(args[1]).write_bytes(write_container(records, MANIFEST_V11, V11_ID, 1760000000000000000, 3, level))
+        Path(args[1]).write_bytes(write_container(records, MANIFEST_GOLDEN, GOLDEN_ID, 1760000000000000000, 3, level))
     elif command == "record":
         need(len(args) == 3, USAGE)
         typ = int(args[1])
-        r = next((r for r in (CATALOG if typ <= 9 else CATALOG_V11) if r["type"] == typ), None)
+        r = next((r for r in (CATALOG if typ <= 9 else CATALOG_GOLDEN) if r["type"] == typ), None)
         need(r, "no example for this record type")
         Path(args[2]).write_bytes(encode_record(r))
     elif command == "decode-record":
@@ -951,12 +899,10 @@ def main():
         emit(report([decode_record(path.read_bytes())]))
     elif command == "read":
         again = args[2] if len(args) > 2 else None
-        # The output is opened for writing while the input is still being read.
         same = again and os.path.exists(again) and os.path.samefile(args[1], again)
         need(not same, "REENCODED_FILE must differ from FILE")
         with open(args[1], "rb") as f, (open(again, "wb") if again else nullcontext()) as out:
             reader = open_reader(f)
-            # The re-encode keeps the input's identity and metadata bytes; only the framing is rewritten.
             identity = (reader.header["stream_id"], reader.header["created_ns"])
             writer = out and Writer(out, None, *identity, frame_records=3, metadata=reader.metadata)
             for i, r in enumerate(complete_records(reader), 1):
@@ -989,6 +935,8 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+    except BrokenPipeError:  # the reader of a pipe closed it, as `head` does: a normal end
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
     except (ValueError, KeyError, OverflowError, UnicodeError, OSError) as e:
         print("NWT error: " + str(e), file=sys.stderr)
         sys.exit(1)

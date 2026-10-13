@@ -1,0 +1,29 @@
+{
+  "label": "analytics-put-negative",
+  "type": 14,
+  "fields": {
+    "record_bytes": "120",
+    "record_type": "14",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "2002",
+    "ts_event": "1760000060000016000",
+    "ts_recv": "1760000060000016100",
+    "sequence": "34",
+    "implied_volatility": "247100000",
+    "delta": "-448800000",
+    "gamma": "29800000",
+    "theta": "-31200000",
+    "vega": "187500000",
+    "rho": "-62100000",
+    "underlying_price": "149250000000",
+    "theoretical_price": "4870000000",
+    "price_basis": "5",
+    "model": "3",
+    "reserved": "0"
+  },
+  "texts": {},
+  "levels": []
+}

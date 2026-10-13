@@ -8,7 +8,7 @@
     <EmbeddedResource Include="../../schemas/records.json" LogicalName="schemas" />
     <EmbeddedResource Include="../../fixtures/catalog.json" LogicalName="catalog" />
     <EmbeddedResource Include="../../fixtures/manifest.json" LogicalName="manifest" />
-    <EmbeddedResource Include="../../fixtures/catalog-v1.1.json" LogicalName="catalog11" />
-    <EmbeddedResource Include="../../fixtures/manifest-v1.1.json" LogicalName="manifest11" />
+    <EmbeddedResource Include="../../fixtures/catalog-golden.json" LogicalName="catalog-golden" />
+    <EmbeddedResource Include="../../fixtures/manifest-golden.json" LogicalName="manifest-golden" />
   </ItemGroup>
 </Project>

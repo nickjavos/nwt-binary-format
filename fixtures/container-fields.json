@@ -4,11 +4,11 @@
     "minor": "0",
     "header_bytes": "64",
     "flags": "0",
-    "metadata_bytes": "968",
-    "metadata_crc32c": "1801640928",
+    "metadata_bytes": "960",
+    "metadata_crc32c": "2492444200",
     "created_ns": "1700000000000000000",
     "reserved_48": "0",
-    "header_crc32c": "705917651",
+    "header_crc32c": "1734200383",
     "reserved_60": "0",
     "magic_hex": "4e575442494e0d0a",
     "stream_id_hex": "102132435465768798a9bacbdcedfe0f"
@@ -16,7 +16,7 @@
   "manifest_tlv": {
     "type": "1",
     "flags": "1",
-    "value_bytes": "956"
+    "value_bytes": "946"
   },
   "frames": [
     {
@@ -35,7 +35,7 @@
       "payload_crc32c": "3465153982",
       "header_crc32c": "3475177837",
       "reserved_56": "0",
-      "offset": "1032",
+      "offset": "1024",
       "magic_hex": "4e574631"
     },
     {
@@ -54,7 +54,7 @@
       "payload_crc32c": "3576552812",
       "header_crc32c": "2942777569",
       "reserved_56": "0",
-      "offset": "1408",
+      "offset": "1400",
       "magic_hex": "4e574631"
     },
     {
@@ -73,7 +73,7 @@
       "payload_crc32c": "3780450560",
       "header_crc32c": "3472424669",
       "reserved_56": "0",
-      "offset": "1744",
+      "offset": "1736",
       "magic_hex": "4e574631"
     },
     {
@@ -92,7 +92,7 @@
       "payload_crc32c": "1787212220",
       "header_crc32c": "298856809",
       "reserved_56": "0",
-      "offset": "2096",
+      "offset": "2088",
       "magic_hex": "4e574631"
     },
     {
@@ -111,7 +111,7 @@
       "payload_crc32c": "118354016",
       "header_crc32c": "1595090095",
       "reserved_56": "0",
-      "offset": "2472",
+      "offset": "2464",
       "magic_hex": "4e574631"
     },
     {
@@ -130,7 +130,7 @@
       "payload_crc32c": "2207164247",
       "header_crc32c": "3227986993",
       "reserved_56": "0",
-      "offset": "2800",
+      "offset": "2792",
       "magic_hex": "4e574631"
     },
     {
@@ -149,7 +149,7 @@
       "payload_crc32c": "2570436031",
       "header_crc32c": "2626656780",
       "reserved_56": "0",
-      "offset": "3128",
+      "offset": "3120",
       "magic_hex": "4e574631"
     },
     {
@@ -168,7 +168,7 @@
       "payload_crc32c": "2772194649",
       "header_crc32c": "4275456273",
       "reserved_56": "0",
-      "offset": "3488",
+      "offset": "3480",
       "magic_hex": "4e574631"
     },
     {
@@ -187,7 +187,7 @@
       "payload_crc32c": "4278593643",
       "header_crc32c": "1882088930",
       "reserved_56": "0",
-      "offset": "3784",
+      "offset": "3776",
       "magic_hex": "4e574631"
     },
     {
@@ -206,7 +206,7 @@
       "payload_crc32c": "2667815145",
       "header_crc32c": "749535602",
       "reserved_56": "0",
-      "offset": "4040",
+      "offset": "4032",
       "magic_hex": "4e574631"
     },
     {
@@ -225,7 +225,7 @@
       "payload_crc32c": "3834614406",
       "header_crc32c": "2148767469",
       "reserved_56": "0",
-      "offset": "4328",
+      "offset": "4320",
       "magic_hex": "4e574631"
     },
     {
@@ -244,7 +244,7 @@
       "payload_crc32c": "4208525805",
       "header_crc32c": "4250306930",
       "reserved_56": "0",
-      "offset": "4648",
+      "offset": "4640",
       "magic_hex": "4e574631"
     },
     {
@@ -263,7 +263,7 @@
       "payload_crc32c": "1270570339",
       "header_crc32c": "1459124417",
       "reserved_56": "0",
-      "offset": "4992",
+      "offset": "4984",
       "magic_hex": "4e574631"
     },
     {
@@ -282,7 +282,7 @@
       "payload_crc32c": "2660405774",
       "header_crc32c": "2682710685",
       "reserved_56": "0",
-      "offset": "5272",
+      "offset": "5264",
       "magic_hex": "4e574631"
     },
     {
@@ -301,7 +301,7 @@
       "payload_crc32c": "3948539508",
       "header_crc32c": "2554645250",
       "reserved_56": "0",
-      "offset": "5648",
+      "offset": "5640",
       "magic_hex": "4e574631"
     },
     {
@@ -320,7 +320,7 @@
       "payload_crc32c": "3477842033",
       "header_crc32c": "1922541260",
       "reserved_56": "0",
-      "offset": "6120",
+      "offset": "6112",
       "magic_hex": "4e574631"
     },
     {
@@ -339,7 +339,7 @@
       "payload_crc32c": "3475579399",
       "header_crc32c": "1329028793",
       "reserved_56": "0",
-      "offset": "6592",
+      "offset": "6584",
       "magic_hex": "4e574631"
     },
     {
@@ -355,15 +355,15 @@
       "frame_seq": "17",
       "min_event_ns": "18446744073709551615",
       "max_event_ns": "18446744073709551615",
-      "payload_crc32c": "1980211399",
-      "header_crc32c": "1292885462",
+      "payload_crc32c": "836151763",
+      "header_crc32c": "2273121107",
       "reserved_56": "0",
-      "offset": "6792",
+      "offset": "6784",
       "magic_hex": "4e574631",
       "index_entries": [
         {
           "data_frame_seq": "0",
-          "data_frame_offset": "1032",
+          "data_frame_offset": "1024",
           "min_event_ns": "1700000000000000000",
           "max_event_ns": "1700000000000002000",
           "raw_bytes": "312",
@@ -371,7 +371,7 @@
         },
         {
           "data_frame_seq": "1",
-          "data_frame_offset": "1408",
+          "data_frame_offset": "1400",
           "min_event_ns": "1700000000000003000",
           "max_event_ns": "1700000000000005000",
           "raw_bytes": "272",
@@ -379,7 +379,7 @@
         },
         {
           "data_frame_seq": "2",
-          "data_frame_offset": "1744",
+          "data_frame_offset": "1736",
           "min_event_ns": "1700000000000006000",
           "max_event_ns": "1700000000000008000",
           "raw_bytes": "288",
@@ -387,7 +387,7 @@
         },
         {
           "data_frame_seq": "3",
-          "data_frame_offset": "2096",
+          "data_frame_offset": "2088",
           "min_event_ns": "1700000000000000000",
           "max_event_ns": "1700000060000000000",
           "raw_bytes": "312",
@@ -395,7 +395,7 @@
         },
         {
           "data_frame_seq": "4",
-          "data_frame_offset": "2472",
+          "data_frame_offset": "2464",
           "min_event_ns": "1700000000000012000",
           "max_event_ns": "1700000000000014000",
           "raw_bytes": "264",
@@ -403,7 +403,7 @@
         },
         {
           "data_frame_seq": "5",
-          "data_frame_offset": "2800",
+          "data_frame_offset": "2792",
           "min_event_ns": "1700000000000015000",
           "max_event_ns": "1700000000000017000",
           "raw_bytes": "264",
@@ -411,7 +411,7 @@
         },
         {
           "data_frame_seq": "6",
-          "data_frame_offset": "3128",
+          "data_frame_offset": "3120",
           "min_event_ns": "1700000000000018000",
           "max_event_ns": "1700000000000020000",
           "raw_bytes": "296",
@@ -419,7 +419,7 @@
         },
         {
           "data_frame_seq": "7",
-          "data_frame_offset": "3488",
+          "data_frame_offset": "3480",
           "min_event_ns": "1700000000000021000",
           "max_event_ns": "1700000000000023000",
           "raw_bytes": "232",
@@ -427,7 +427,7 @@
         },
         {
           "data_frame_seq": "8",
-          "data_frame_offset": "3784",
+          "data_frame_offset": "3776",
           "min_event_ns": "1700000000000024000",
           "max_event_ns": "1700000000000026000",
           "raw_bytes": "192",
@@ -435,7 +435,7 @@
         },
         {
           "data_frame_seq": "9",
-          "data_frame_offset": "4040",
+          "data_frame_offset": "4032",
           "min_event_ns": "1700000000000027000",
           "max_event_ns": "1700000000000029000",
           "raw_bytes": "224",
@@ -443,7 +443,7 @@
         },
         {
           "data_frame_seq": "10",
-          "data_frame_offset": "4328",
+          "data_frame_offset": "4320",
           "min_event_ns": "1700000000000030000",
           "max_event_ns": "1700000000000032000",
           "raw_bytes": "256",
@@ -451,7 +451,7 @@
         },
         {
           "data_frame_seq": "11",
-          "data_frame_offset": "4648",
+          "data_frame_offset": "4640",
           "min_event_ns": "1700000000000033000",
           "max_event_ns": "1700000000000035000",
           "raw_bytes": "280",
@@ -459,7 +459,7 @@
         },
         {
           "data_frame_seq": "12",
-          "data_frame_offset": "4992",
+          "data_frame_offset": "4984",
           "min_event_ns": "1700000000000036000",
           "max_event_ns": "1700000000000038000",
           "raw_bytes": "216",
@@ -467,7 +467,7 @@
         },
         {
           "data_frame_seq": "13",
-          "data_frame_offset": "5272",
+          "data_frame_offset": "5264",
           "min_event_ns": "1700000000000039000",
           "max_event_ns": "1700000000000041000",
           "raw_bytes": "312",
@@ -475,7 +475,7 @@
         },
         {
           "data_frame_seq": "14",
-          "data_frame_offset": "5648",
+          "data_frame_offset": "5640",
           "min_event_ns": "1700000000000042000",
           "max_event_ns": "1700000000000044000",
           "raw_bytes": "408",
@@ -483,7 +483,7 @@
         },
         {
           "data_frame_seq": "15",
-          "data_frame_offset": "6120",
+          "data_frame_offset": "6112",
           "min_event_ns": "1700000000000045000",
           "max_event_ns": "1700000000000047000",
           "raw_bytes": "408",
@@ -491,7 +491,7 @@
         },
         {
           "data_frame_seq": "16",
-          "data_frame_offset": "6592",
+          "data_frame_offset": "6584",
           "min_event_ns": "1700000000000048000",
           "max_event_ns": "1700000000000048000",
           "raw_bytes": "136",
@@ -512,13 +512,13 @@
       "frame_seq": "18",
       "min_event_ns": "18446744073709551615",
       "max_event_ns": "18446744073709551615",
-      "payload_crc32c": "2195646865",
-      "header_crc32c": "506245391",
+      "payload_crc32c": "1778653496",
+      "header_crc32c": "4284766511",
       "reserved_56": "0",
-      "offset": "7536",
+      "offset": "7528",
       "magic_hex": "4e574631",
       "end_payload": {
-        "first_index_offset": "6792",
+        "first_index_offset": "6784",
         "total_data_frames": "17",
         "total_records": "49",
         "completion_status": "0",

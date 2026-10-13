@@ -1,6 +1,5 @@
 {
   "format": "NWT",
-  "revision": "1.1-draft.1",
   "header": [
     {
       "name": "record_bytes",
@@ -18,7 +17,7 @@
       "name": "schema_version",
       "bytes": 1,
       "signed": false,
-      "meaning": "Exactly 1 for every standard schema in this draft. A different version is a different wire contract."
+      "meaning": "Exactly 1 for every standard record type. A different version is a different wire contract."
     },
     {
       "name": "flags",
@@ -355,7 +354,7 @@
           "name": "mbo_flags",
           "bytes": 2,
           "signed": false,
-          "meaning": "Zero in v1.0. No implied execution, partial-fill, or snapshot bits."
+          "meaning": "Reserved; zero. No implied execution, partial-fill, or snapshot bits."
         },
         {
           "name": "reserved",
@@ -527,7 +526,7 @@
           "name": "status_flags",
           "bytes": 4,
           "signed": false,
-          "meaning": "Zero in v1.0."
+          "meaning": "Reserved; zero."
         },
         {
           "name": "reserved",

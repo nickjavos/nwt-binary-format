@@ -1,0 +1,49 @@
+{
+ "kind": "bar",
+ "title": {
+  "en": "Encode throughput of the reference codecs",
+  "ru": "Скорость кодирования эталонных кодеков"
+ },
+ "unit": {
+  "en": "MB per second",
+  "ru": "МБ в секунду"
+ },
+ "note": {
+  "en": "Median of 9 runs of each reference codec's bench command on a file of 1,000,000 records: the 2,476 data records of the equity-quotes sample repeated, with timestamps and sequence numbers that advance. The timer starts after the file is in memory, so process start and disk reads are not counted. Encoding writes the decoded values back to record bytes; frames and checksums are not written. 1 MB is 1,048,576 bytes of records. Machine: Apple M5, 10 cores, 16 GB of memory.",
+  "ru": "Медиана 9 запусков команды bench каждого эталонного кодека. Данные — файл из 1 000 000 записей: 2 476 записей данных образца equity-quotes повторены, метки времени и порядковые номера возрастают. Отсчёт времени начинается, когда файл уже в памяти: запуск процесса и чтение с диска не учитываются. Кодирование записывает декодированные значения обратно в байты записей; кадры и контрольные суммы не пишутся. 1 МБ — это 1 048 576 байт записей. Машина: Apple M5, 10 ядер, 16 ГБ памяти."
+ },
+ "series": [
+  {
+   "label": {
+    "en": "Python",
+    "ru": "Python"
+   },
+   "value": 452,
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "Rust",
+    "ru": "Rust"
+   },
+   "value": 1200,
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "C#",
+    "ru": "C#"
+   },
+   "value": 7460,
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "C++",
+    "ru": "C++"
+   },
+   "value": 1230,
+   "highlight": true
+  }
+ ]
+}

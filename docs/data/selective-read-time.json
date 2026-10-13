@@ -1,0 +1,33 @@
+{
+ "kind": "bar",
+ "title": {
+  "en": "Time to answer a time-range query",
+  "ru": "Время ответа на запрос по интервалу времени"
+ },
+ "unit": {
+  "en": "ms",
+  "ru": "мс"
+ },
+ "note": {
+  "en": "A store file of 1,000,096 records in 97 DATA frames, written by nwt repack from a file of 1,000,000 records: the 2,476 data records of the equity-quotes sample repeated, with timestamps and sequence numbers that advance. The query asks for 60 seconds of ts_event from the middle of the file and returns 181 records. Median of 9 runs inside the Python nwt tool, from opening the file to the last matching record. The whole-file read scans every frame and applies the same filter. Machine: Apple M5, 10 cores, 16 GB of memory.",
+  "ru": "Файл хранилища (записей: 1 000 096, кадров DATA: 97), записанный командой nwt repack. Исходные данные — файл из 1 000 000 записей: 2 476 записей данных образца equity-quotes повторены, метки времени и порядковые номера возрастают. Запрос выбирает 60 секунд ts_event из середины файла; найдено записей: 181. Медиана 9 запусков внутри инструмента nwt на Python, от открытия файла до последней подходящей записи. Чтение файла целиком проходит все кадры и применяет тот же фильтр. Машина: Apple M5, 10 ядер, 16 ГБ памяти."
+ },
+ "series": [
+  {
+   "label": {
+    "en": "Time-range query",
+    "ru": "Запрос по интервалу времени"
+   },
+   "value": 61.3,
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "Whole file",
+    "ru": "Файл целиком"
+   },
+   "value": 7880,
+   "highlight": false
+  }
+ ]
+}

@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 426" role="img" aria-labelledby="nwtd-selective-read-w-title nwtd-selective-read-w-desc" class="nwt-diagram" font-family="inherit" fill="none">
+<title id="nwtd-selective-read-w-title">Reading only the frames a query needs</title>
+<desc id="nwtd-selective-read-w-desc">In a store file a reader goes from the END frame to the INDEX frames and the summary frames, and then reads only the DATA frames that can hold a match.</desc>
+<defs>
+<marker id="nwtd-selective-read-w-a-c3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1L7 4L1 7z" fill="var(--c3, #b7791f)"/></marker>
+</defs>
+<path d="M48.5 348.5 L36.5 348.5 Q30.5 348.5 30.5 342.5 L30.5 313.5 Q30.5 307.5 36.5 307.5 L48.5 307.5" fill="none" stroke="var(--c3, #b7791f)" marker-end="url(#nwtd-selective-read-w-a-c3)"/>
+<path d="M48.5 289.5 L20.5 289.5 Q14.5 289.5 14.5 283.5 L14.5 164.5 Q14.5 158.5 20.5 158.5 L35.5 158.5" fill="none" stroke="var(--c3, #b7791f)" marker-end="url(#nwtd-selective-read-w-a-c3)"/>
+<path d="M0 396.5H720" fill="none" stroke="var(--line-2, #d8d7d2)"/>
+<rect x="48.5" y="0.5" width="239" height="35" rx="3" fill="var(--c4-bg, #ece9f7)" stroke="var(--c4, #6b5bb5)"/>
+<text x="56" y="22" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Container header, metadata</text>
+<rect x="48.5" y="40.5" width="239" height="35" rx="3" fill="none" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.7" stroke-dasharray="4 3"/>
+<text x="56" y="62" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">DATA</tspan> frame 0</text>
+<rect x="48.5" y="80.5" width="239" height="35" rx="3" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
+<text x="56" y="102" font-size="14" fill="var(--fg, #37352f)" font-weight="600"><tspan font-family="var(--font-mono, ui-monospace, monospace)">DATA</tspan> frame 1</text>
+<circle cx="308" cy="98" r="11" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
+<text x="308" y="102.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">5</text>
+<rect x="48.5" y="120.5" width="239" height="35" rx="3" fill="none" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.7" stroke-dasharray="4 3"/>
+<text x="56" y="142" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">DATA</tspan> frame 2</text>
+<rect x="48.5" y="160.5" width="239" height="35" rx="3" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
+<text x="56" y="182" font-size="14" fill="var(--fg, #37352f)" font-weight="600"><tspan font-family="var(--font-mono, ui-monospace, monospace)">DATA</tspan> frame 3</text>
+<circle cx="308" cy="178" r="11" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
+<text x="308" y="182.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">5</text>
+<rect x="48.5" y="200.5" width="239" height="75" rx="3" fill="var(--c3-bg, #f8efdc)" stroke="var(--c3, #b7791f)"/>
+<text x="56" y="222" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Summary frames</text>
+<text x="56" y="242" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">DATA</tspan> frames with <tspan font-family="var(--font-mono, ui-monospace, monospace)">FRAME_SUMMARY</tspan></text>
+<text x="56" y="262" font-size="13" fill="var(--fg-2, #63625d)">records only</text>
+<circle cx="308" cy="238" r="11" fill="var(--c3-bg, #f8efdc)" stroke="var(--c3, #b7791f)"/>
+<text x="308" y="242.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">3</text>
+<rect x="48.5" y="280.5" width="239" height="35" rx="3" fill="var(--c3-bg, #f8efdc)" stroke="var(--c3, #b7791f)"/>
+<text x="56" y="302" font-size="14" fill="var(--fg, #37352f)" font-weight="600"><tspan font-family="var(--font-mono, ui-monospace, monospace)">INDEX</tspan> frames</text>
+<circle cx="308" cy="298" r="11" fill="var(--c3-bg, #f8efdc)" stroke="var(--c3, #b7791f)"/>
+<text x="308" y="302.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">2</text>
+<rect x="48.5" y="320.5" width="239" height="55" rx="3" fill="var(--c3-bg, #f8efdc)" stroke="var(--c3, #b7791f)"/>
+<text x="56" y="342" font-size="14" fill="var(--fg, #37352f)" font-weight="600"><tspan font-family="var(--font-mono, ui-monospace, monospace)">END</tspan> frame</text>
+<text x="56" y="362" font-size="13" fill="var(--fg-2, #63625d)">the last 96 bytes</text>
+<circle cx="308" cy="348" r="11" fill="var(--c3-bg, #f8efdc)" stroke="var(--c3, #b7791f)"/>
+<text x="308" y="352.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">1</text>
+<path d="M44 40.5H36.5V275.5H44" fill="none" stroke="var(--c3, #b7791f)"/>
+<circle cx="347" cy="15" r="11" fill="var(--c3-bg, #f8efdc)" stroke="var(--c3, #b7791f)"/>
+<text x="347" y="19.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">1</text>
+<text x="370" y="18" font-size="13" fill="var(--fg, #37352f)">Read the last 96 bytes: the <tspan font-family="var(--font-mono, ui-monospace, monospace)">END</tspan> frame. It holds the</text>
+<text x="370" y="38" font-size="13" fill="var(--fg, #37352f)">offset of the first <tspan font-family="var(--font-mono, ui-monospace, monospace)">INDEX</tspan> frame.</text>
+<circle cx="347" cy="69" r="11" fill="var(--c3-bg, #f8efdc)" stroke="var(--c3, #b7791f)"/>
+<text x="347" y="73.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">2</text>
+<text x="370" y="72" font-size="13" fill="var(--fg, #37352f)">Read the <tspan font-family="var(--font-mono, ui-monospace, monospace)">INDEX</tspan> frames. Each 40-byte entry gives the</text>
+<text x="370" y="92" font-size="13" fill="var(--fg, #37352f)">offset and the time range of one <tspan font-family="var(--font-mono, ui-monospace, monospace)">DATA</tspan> frame.</text>
+<circle cx="347" cy="123" r="11" fill="var(--c3-bg, #f8efdc)" stroke="var(--c3, #b7791f)"/>
+<text x="347" y="127.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">3</text>
+<text x="370" y="126" font-size="13" fill="var(--fg, #37352f)">Read the summary frames. Each <tspan font-family="var(--font-mono, ui-monospace, monospace)">FRAME_SUMMARY</tspan></text>
+<text x="370" y="146" font-size="13" fill="var(--fg, #37352f)">record gives the record types and the instrument range</text>
+<text x="370" y="166" font-size="13" fill="var(--fg, #37352f)">of one frame.</text>
+<circle cx="347" cy="197" r="11" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="347" y="201.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">4</text>
+<text x="370" y="200" font-size="13" fill="var(--fg, #37352f)">Keep a frame only when its time range, its <tspan font-family="var(--font-mono, ui-monospace, monospace)">type_mask</tspan></text>
+<text x="370" y="220" font-size="13" fill="var(--fg, #37352f)">and its instrument range can match the query.</text>
+<circle cx="347" cy="251" r="11" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
+<text x="347" y="255.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">5</text>
+<text x="370" y="254" font-size="13" fill="var(--fg, #37352f)">Read the kept frames in file order. Check each one,</text>
+<text x="370" y="274" font-size="13" fill="var(--fg, #37352f)">then filter its records.</text>
+<rect x="0.5" y="408.5" width="19" height="13" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="28" y="420" font-size="13" fill="var(--fg-2, #63625d)">read</text>
+<rect x="80.95" y="408.5" width="19" height="13" rx="3" fill="none" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.7" stroke-dasharray="4 3"/>
+<text x="108.45" y="420" font-size="13" fill="var(--fg-2, #63625d)">skipped</text>
+</svg>

@@ -1,10 +1,3 @@
-"""Exact parsers for source text: decimals, timestamps, dates and prefixed identifiers.
-
-Integer arithmetic only: no float and no decimal module. Every function raises
-ValueError on text it cannot represent exactly; nothing is guessed, trimmed or
-defaulted. Surrounding whitespace is not accepted: strip it in the caller if the
-source format allows it.
-"""
 
 import re
 
@@ -24,7 +17,6 @@ def need(ok, why):
 
 
 def decimal_parts(text):
-    """(negative, digits, exponent) with value = digits x 10^exponent. Accepts 12, 1.5, .5, 6e-06, 1E3."""
     m = DECIMAL.fullmatch(text)
     need(m and (m[2] or m[3]), f"not a decimal number: {text!r}")
     fraction = m[3] or ""
@@ -32,23 +24,21 @@ def decimal_parts(text):
 
 
 def scale_decimal(text, scale, rounded):
-    """The value x 10^scale as an integer, and whether non-zero digits were dropped (only when `rounded`)."""
     negative, digits, exponent = decimal_parts(text)
     shift = exponent + scale
     dropped = False
     if digits == 0:
         value = 0
     elif shift >= 0:
-        need(shift <= 40, f"decimal out of range: {text!r}")  # also keeps a huge exponent from building a huge integer
+        need(shift <= 40, f"decimal out of range: {text!r}")
         value = digits * 10**shift
     else:
-        # -shift digits fall below the scale. More of them than the number has digits means less than 0.1 of a unit.
         value, rest = divmod(digits, 10**-shift) if -shift <= len(str(digits)) else (0, digits)
         dropped = rest != 0
         need(rounded or not dropped, f"more than {scale} decimal places: {text!r}")
         if -shift <= len(str(digits)):
             half = 2 * rest - 10**-shift
-            if half > 0 or (half == 0 and value % 2 == 1):  # round half to even
+            if half > 0 or (half == 0 and value % 2 == 1):
                 value += 1
     value = -value if negative else value
     need(I64_MIN <= value <= I64_MAX, f"decimal out of range: {text!r}")
@@ -56,25 +46,18 @@ def scale_decimal(text, scale, rounded):
 
 
 def parse_decimal(text, scale=9):
-    """Exact decimal text to an integer scaled by 10^scale: "177.339" -> 177339000000, "6e-06" -> 6000.
-
-    Fails when a non-zero digit lies beyond `scale` decimal places (trailing zeros there are
-    harmless: "7370.0" with scale 0 is 7370) or when the result does not fit a signed 64-bit integer.
-    """
     return scale_decimal(text, scale, False)[0]
 
 
 def parse_decimal_rounded(text, scale=9):
-    """Like parse_decimal, but rounds half to even at `scale` places. Returns (value, digits_were_dropped)."""
     return scale_decimal(text, scale, True)
 
 
 def days_from_civil(year, month, day):
-    """Days from 1970-01-01 to a valid proleptic Gregorian date."""
     leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
     need(1 <= month <= 12, "month out of range")
     need(1 <= day <= MONTH_DAYS[month - 1] + (leap and month == 2), "day out of range")
-    year -= month <= 2  # count years from 1 March so the leap day comes last
+    year -= month <= 2
     era, yoe = divmod(year, 400)
     doy = (153 * (month - 3 if month > 2 else month + 9) + 2) // 5 + day - 1
     return era * 146097 + yoe * 365 + yoe // 4 - yoe // 100 + doy - 719468
@@ -89,7 +72,6 @@ def date_ns(text, year, month, day):
 
 
 def parse_date_ns(text):
-    """ "YYYY-MM-DD" to POSIX nanoseconds at midnight UTC."""
     m = DATE.fullmatch(text)
     need(m, f"not a date (YYYY-MM-DD): {text!r}")
     ns = date_ns(text, int(m[1]), int(m[2]), int(m[3]))
@@ -98,12 +80,6 @@ def parse_date_ns(text):
 
 
 def parse_timestamp_ns(text):
-    """UTC timestamp to POSIX nanoseconds.
-
-    Accepts YYYY-MM-DD, "T" or one space, HH:MM:SS, an optional fraction of 1-9 digits, and
-    the zone "Z" or "+00:00". Any other offset, a missing zone, second 60 and years before
-    1970 are errors.
-    """
     m = TIMESTAMP.fullmatch(text)
     need(m, f"not a timestamp: {text!r}")
     need(m[8] in ("Z", "+00:00"), f"timestamp is not UTC: {text!r}")
@@ -116,7 +92,6 @@ def parse_timestamp_ns(text):
 
 
 def strip_id(text, prefix):
-    """The unsigned number after a fixed prefix: strip_id("L-1688030", "L-") -> 1688030."""
     need(text.startswith(prefix), f"expected prefix {prefix!r}: {text!r}")
     number = text[len(prefix) :]
     need(number.isascii() and number.isdigit(), f"expected digits after {prefix!r}: {text!r}")

@@ -1,0 +1,22 @@
+{
+  "label": "status-open",
+  "type": 7,
+  "fields": {
+    "record_bytes": "64",
+    "record_type": "7",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "2001",
+    "ts_event": "1760000060000001000",
+    "ts_recv": "1760000060000001100",
+    "sequence": "18",
+    "status": "2",
+    "reason": "1",
+    "status_flags": "0",
+    "reserved": "0"
+  },
+  "texts": {},
+  "levels": []
+}

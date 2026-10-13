@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 762" role="img" aria-labelledby="nwtd-write-path-w-title nwtd-write-path-w-desc" class="nwt-diagram" font-family="inherit" fill="none">
+<title id="nwtd-write-path-w-title">How a writer builds a file</title>
+<desc id="nwtd-write-path-w-desc">A writer opens the container, checks each record, fills a frame, seals it with checksums and optional Zstandard compression, repeats, and closes the container with INDEX and END frames.</desc>
+<defs>
+<marker id="nwtd-write-path-w-a-fg3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1L7 4L1 7z" fill="var(--fg-3, #6b6a65)"/></marker>
+</defs>
+<rect x="496.5" y="0.5" width="223" height="759" rx="3" fill="var(--bg-2, #f4f3f0)" stroke="var(--line-2, #d8d7d2)"/>
+<path d="M280.5 164.5 L280.5 196.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-write-path-w-a-fg3)"/>
+<path d="M448.5 102.5 L512.5 102.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-write-path-w-a-fg3)"/>
+<path d="M280.5 300.5 L280.5 332.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-write-path-w-a-fg3)"/>
+<path d="M280.5 436.5 L280.5 468.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-write-path-w-a-fg3)"/>
+<path d="M280.5 612.5 L280.5 644.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-write-path-w-a-fg3)"/>
+<path d="M448.5 540.5 L512.5 540.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-write-path-w-a-fg3)"/>
+<path d="M448.5 696.5 L512.5 696.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-write-path-w-a-fg3)"/>
+<path d="M112.5 540.5 L102.5 540.5 Q96.5 540.5 96.5 534.5 L96.5 254.5 Q96.5 248.5 102.5 248.5 L112.5 248.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-write-path-w-a-fg3)"/>
+<text x="512" y="22" font-size="13" fill="var(--fg-3, #6b6a65)">The file, first byte to last</text>
+<rect x="112.5" y="40.5" width="335" height="123" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="156" y="66" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Open the container</text>
+<text x="156" y="86" font-size="13" fill="var(--fg-2, #63625d)">Write the container header and the</text>
+<text x="156" y="106" font-size="13" fill="var(--fg-2, #63625d)">metadata. The <tspan font-family="var(--font-mono, ui-monospace, monospace)">MANIFEST</tspan> is final: a new</text>
+<text x="156" y="126" font-size="13" fill="var(--fg-2, #63625d)">publisher or record type needs a new</text>
+<text x="156" y="146" font-size="13" fill="var(--fg-2, #63625d)">container.</text>
+<circle cx="135" cy="62" r="11" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="135" y="66.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">1</text>
+<rect x="512.5" y="64.5" width="207" height="35" rx="3" fill="var(--c4-bg, #ece9f7)" stroke="var(--c4, #6b5bb5)"/>
+<text x="520" y="86" font-size="13" fill="var(--fg, #37352f)">Container header</text>
+<rect x="512.5" y="104.5" width="207" height="35" rx="3" fill="var(--c4-bg, #ece9f7)" stroke="var(--c4, #6b5bb5)"/>
+<text x="520" y="126" font-size="13" fill="var(--fg, #37352f)">Metadata</text>
+<rect x="112.5" y="196.5" width="335" height="103" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="156" y="222" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Check each record</text>
+<text x="156" y="242" font-size="13" fill="var(--fg-2, #63625d)">Its record type and publisher are declared in</text>
+<text x="156" y="262" font-size="13" fill="var(--fg-2, #63625d)">the <tspan font-family="var(--font-mono, ui-monospace, monospace)">MANIFEST</tspan>. Its <tspan font-family="var(--font-mono, ui-monospace, monospace)">sequence</tspan> is the next</text>
+<text x="156" y="282" font-size="13" fill="var(--fg-2, #63625d)">number of its publisher and channel, from 1.</text>
+<circle cx="135" cy="218" r="11" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="135" y="222.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">2</text>
+<rect x="112.5" y="332.5" width="335" height="103" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="156" y="358" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Fill a frame</text>
+<text x="156" y="378" font-size="13" fill="var(--fg-2, #63625d)">Add whole records, in the order of the</text>
+<text x="156" y="398" font-size="13" fill="var(--fg-2, #63625d)">source, until the frame is full. A record</text>
+<text x="156" y="418" font-size="13" fill="var(--fg-2, #63625d)">never crosses a frame boundary.</text>
+<circle cx="135" cy="354" r="11" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="135" y="358.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">3</text>
+<rect x="112.5" y="468.5" width="335" height="143" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="156" y="494" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Seal the frame</text>
+<text x="156" y="514" font-size="13" fill="var(--fg-2, #63625d)">Compute the CRC-32C of the raw payload.</text>
+<text x="156" y="534" font-size="13" fill="var(--fg-2, #63625d)">Optionally compress it with Zstandard; keep</text>
+<text x="156" y="554" font-size="13" fill="var(--fg-2, #63625d)">the result only when it is smaller. Write the</text>
+<text x="156" y="574" font-size="13" fill="var(--fg-2, #63625d)">frame header, with its own CRC-32C</text>
+<text x="156" y="594" font-size="13" fill="var(--fg-2, #63625d)">computed last.</text>
+<circle cx="135" cy="490" r="11" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="135" y="494.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">4</text>
+<text x="292" y="633" font-size="13" fill="var(--fg-2, #63625d)">the source has ended</text>
+<rect x="512.5" y="522.5" width="207" height="35" rx="3" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
+<text x="520" y="544" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">DATA</tspan> frame</text>
+<rect x="112.5" y="644.5" width="335" height="103" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="156" y="670" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Close the container</text>
+<text x="156" y="690" font-size="13" fill="var(--fg-2, #63625d)">Seal the last frame. Write the optional</text>
+<text x="156" y="710" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">INDEX</tspan> frames, one 40-byte entry per <tspan font-family="var(--font-mono, ui-monospace, monospace)">DATA</tspan></text>
+<text x="156" y="730" font-size="13" fill="var(--fg-2, #63625d)">frame, then the <tspan font-family="var(--font-mono, ui-monospace, monospace)">END</tspan> frame with the totals.</text>
+<circle cx="135" cy="666" r="11" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="135" y="670.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle">5</text>
+<rect x="512.5" y="658.5" width="207" height="35" rx="3" fill="var(--c3-bg, #f8efdc)" stroke="var(--c3, #b7791f)" stroke-dasharray="4 3"/>
+<text x="520" y="680" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">INDEX</tspan> frames</text>
+<rect x="512.5" y="698.5" width="207" height="35" rx="3" fill="var(--c3-bg, #f8efdc)" stroke="var(--c3, #b7791f)"/>
+<text x="520" y="720" font-size="13" fill="var(--fg, #37352f)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">END</tspan> frame</text>
+<text x="84" y="399" font-size="13" fill="var(--fg-2, #63625d)" text-anchor="end">more records</text>
+</svg>

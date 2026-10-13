@@ -1,0 +1,51 @@
+{
+  "conversion_policy": "Prices, sizes and timestamps are exact; nothing is rounded. Source publisher and instrument IDs are kept; the channel is the source channel_id, or 0 when the file has none. NWT sequences restart at 1 per (publisher, channel); the source sequence number is not carried. Source flags are not carried. Each instrument's definition comes from the venue's definition file and is written before its first record. The source gives size changes; NWT MBO carries the remaining size, so every live order is tracked. Clear (R) -> CLEAR. Add (A) -> ADD. Cancel (C) -> MODIFY with the remaining size, or DELETE when nothing remains. Modify (M) -> MODIFY; a side change -> DELETE then ADD; a modify for an order not in the book -> ADD. Fill rule cancel-carries-fill: a fill (F) row does not change the book; the cancel row that follows it carries the filled size. Trade (T) -> TRADE NEW with trade IDs 1, 2, 3, ... per instrument in file order; the side column is the aggressor. Priority is null: the source gives no queue rank.",
+  "converter": "tools/nwt_convert_market.py csv-mbo",
+  "definitions_sha256": "310be1930960ed49d8de04c66b7fa90a7054c8bed37f332985a000f76dede6f4",
+  "deltas": {
+    "conversion_policy": "Prices, sizes and timestamps are exact; nothing is rounded. Source publisher and instrument IDs are kept; the channel is the source channel_id, or 0 when the file has none. NWT sequences restart at 1 per (publisher, channel); the source sequence number is not carried. Source flags are not carried. Each instrument's definition comes from the venue's definition file and is written before its first record. The source gives size changes; NWT MBO carries the remaining size, so every live order is tracked. Clear (R) -> CLEAR. Add (A) -> ADD. Cancel (C) -> MODIFY with the remaining size, or DELETE when nothing remains. Modify (M) -> MODIFY; a side change -> DELETE then ADD; a modify for an order not in the book -> ADD. Fill rule cancel-carries-fill: a fill (F) row does not change the book; the cancel row that follows it carries the filled size. Trade (T) -> TRADE NEW with trade IDs 1, 2, 3, ... per instrument in file order; the side column is the aggressor. Priority is null: the source gives no queue rank. DERIVED: the BOOK_DELTA records are not in the source. Each one is the aggregate size and order count at a price after one order-level row was applied; LAST_IN_EVENT marks the last delta of each source row.",
+    "converter": "tools/nwt_convert_market.py csv-mbo",
+    "definitions_sha256": "310be1930960ed49d8de04c66b7fa90a7054c8bed37f332985a000f76dede6f4",
+    "license_reference": "Licensed market data; see the Licenses document.",
+    "notes": {
+      "fill rows (no book effect: the cancel row that follows carries the size)": 59
+    },
+    "output": "deltas",
+    "policy_options": {
+      "currency": "USD",
+      "fill_rule": "cancel-carries-fill",
+      "quantity_unit": "share"
+    },
+    "records_written": {
+      "BOOK_DELTA": 1818,
+      "INSTRUMENT_DEF": 1
+    },
+    "rows_skipped": {},
+    "source_format": "exchange market-data export (CSV)",
+    "source_rows": 2000,
+    "source_schema": "mbo",
+    "source_sha256": "a1fcc9d0a4a6be5c1cfced022a654b5e1c90572f3eb4c8779bf71170fde162c5",
+    "values_rounded": 0
+  },
+  "license_reference": "Licensed market data; see the Licenses document.",
+  "notes": {
+    "fill rows (no book effect: the cancel row that follows carries the size)": 59
+  },
+  "output": "main",
+  "policy_options": {
+    "currency": "USD",
+    "fill_rule": "cancel-carries-fill",
+    "quantity_unit": "share"
+  },
+  "records_written": {
+    "INSTRUMENT_DEF": 1,
+    "MBO": 1818,
+    "TRADE": 123
+  },
+  "rows_skipped": {},
+  "source_format": "exchange market-data export (CSV)",
+  "source_rows": 2000,
+  "source_schema": "mbo",
+  "source_sha256": "a1fcc9d0a4a6be5c1cfced022a654b5e1c90572f3eb4c8779bf71170fde162c5",
+  "values_rounded": 0
+}

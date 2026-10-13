@@ -1,0 +1,33 @@
+{
+ "kind": "bar",
+ "title": {
+  "en": "DATA frames read to answer a time-range query",
+  "ru": "Кадры DATA, прочитанные для запроса по интервалу времени"
+ },
+ "unit": {
+  "en": "DATA frames",
+  "ru": "кадров DATA"
+ },
+ "note": {
+  "en": "A store file of 1,000,096 records in 97 DATA frames, written by nwt repack from a file of 1,000,000 records: the 2,476 data records of the equity-quotes sample repeated, with timestamps and sequence numbers that advance. The query asks for 60 seconds of ts_event from the middle of the file and returns 181 records. The query reads the INDEX, the frames of FRAME_SUMMARY records (their number here: 1) and the frames whose time range overlaps the window. The count does not depend on the machine. Machine: Apple M5, 10 cores, 16 GB of memory.",
+  "ru": "Файл хранилища (записей: 1 000 096, кадров DATA: 97), записанный командой nwt repack. Исходные данные — файл из 1 000 000 записей: 2 476 записей данных образца equity-quotes повторены, метки времени и порядковые номера возрастают. Запрос выбирает 60 секунд ts_event из середины файла; найдено записей: 181. Запрос читает INDEX, кадры с записями FRAME_SUMMARY (здесь их 1) и кадры, интервал времени которых пересекается с окном. Это число не зависит от машины. Машина: Apple M5, 10 ядер, 16 ГБ памяти."
+ },
+ "series": [
+  {
+   "label": {
+    "en": "Time-range query",
+    "ru": "Запрос по интервалу времени"
+   },
+   "value": 2,
+   "highlight": true
+  },
+  {
+   "label": {
+    "en": "Whole file",
+    "ru": "Файл целиком"
+   },
+   "value": 97,
+   "highlight": false
+  }
+ ]
+}

@@ -1,0 +1,21 @@
+{
+  "label": "book-empty",
+  "type": 5,
+  "fields": {
+    "record_bytes": "56",
+    "record_type": "5",
+    "schema_version": "1",
+    "flags": "0",
+    "publisher_id": "1",
+    "channel_id": "0",
+    "instrument_id": "1001",
+    "ts_event": "1700000000000020000",
+    "ts_recv": "1700000000000020100",
+    "sequence": "21",
+    "levels": "0",
+    "book_flags": "0",
+    "reserved": "0"
+  },
+  "texts": {},
+  "levels": []
+}

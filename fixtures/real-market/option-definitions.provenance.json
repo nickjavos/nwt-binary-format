@@ -1,0 +1,20 @@
+{
+  "conversion_policy": "Prices, sizes and timestamps are exact; nothing is rounded. Source publisher and instrument IDs are kept; the channel is the source channel_id, or 0 when the file has none. NWT sequences restart at 1 per (publisher, channel); the source sequence number is not carried. Source flags are not carried. Asset class: stock 1, future 2, call and put 3, every other source class 0 (unspecified). Currency is the row's currency, or --currency where the row has none; the quantity unit is --quantity-unit. Exercise style comes only from a filled option CFI code (third letter A or E); otherwise unknown. quantity_increment and contract_multiplier are null: the source has no equivalent column.",
+  "converter": "tools/nwt_convert_market.py csv-definition",
+  "license_reference": "Licensed market data; see the Licenses document.",
+  "notes": {},
+  "output": "main",
+  "policy_options": {
+    "quantity_unit": "contract"
+  },
+  "records_written": {
+    "INSTRUMENT_DEF": 500,
+    "OPTION_DEF": 370
+  },
+  "rows_skipped": {},
+  "source_format": "exchange market-data export (CSV)",
+  "source_rows": 500,
+  "source_schema": "definition",
+  "source_sha256": "76e24bc3655fab108b0b288a1c7cd17b71e7cad78e8ce9e047894668424e9d0a",
+  "values_rounded": 0
+}

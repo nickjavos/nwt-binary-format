@@ -1,20 +1,4 @@
 #!/usr/bin/env python3
-"""Converters from a vendor's CSV exports of market data to NWT containers.
-
-    python3 tools/nwt_convert_market.py KIND SRC OUT --dataset NAME [--option value | --flag] ...
-
-Kinds: csv-definition, csv-mbo, csv-mbp1, csv-mbp10, csv-cmbp1, csv-ohlcv, csv-statistics.
-The same kinds are registered with tools/nwt_convert.py through add_kinds().
-
-Rules that hold for every kind (docs/REAL-DATA-MARKET.md has the column mapping):
-- Prices, sizes and timestamps are parsed exactly (tools/nwt_parse.py). No floating point, no rounding.
-- Source publisher and instrument IDs are kept. NWT sequences restart at 1 per (publisher, channel);
-  the source sequence number is not carried.
-- Records keep the order of the source rows. Rows that cannot be represented are skipped and counted
-  in the provenance; an unknown code or an over-long text stops the conversion with the line number.
-- The output is deterministic: a fixed created_ns and a stream ID taken from the SHA-256 of the rows read.
-- Nothing is written when the conversion fails.
-"""
 
 import csv
 import hashlib
@@ -35,32 +19,28 @@ for folder in (ROOT / "examples/python", ROOT / "tools"):
 import nwt_example as nwt
 from nwt_parse import parse_date_ns, parse_decimal, parse_timestamp_ns
 
-PRODUCER = "nwt-developer-kit/1.1-draft.1"
-CREATED_NS = parse_date_ns("2026-10-13")  # fixed, so the same source rows always give the same bytes
+PRODUCER = "nwt-binary-format-kit"
+CREATED_NS = parse_date_ns("2026-10-13")
 NULL, NULL_I64, NULL_U32 = nwt.NULL, nwt.NULL_I64, nwt.NULL_U32
 MINUTE = 60 * 10**9
-SOURCE_NULL_QUANTITY = "9223372036854775807"  # how the statistics export writes "no quantity"
+SOURCE_NULL_QUANTITY = "9223372036854775807"
 ERRORS = (ValueError, KeyError, OverflowError, UnicodeError, OSError)
 
-# Source instrument class -> NWT asset class. Only stock, future, call and put are evident; the rest are unspecified.
 ASSET_CLASS = {"K": 1, "F": 2, "C": 3, "P": 3, "B": 0, "I": 0, "M": 0, "S": 0, "T": 0, "X": 0, "Y": 0}
 OPTION_RIGHT = {"C": 1, "P": 2}
-EXERCISE_STYLE = {"A": 1, "E": 2}  # ISO 10962, third letter of an option CFI code
-SIDE = {"B": 1, "A": 2}  # book side of an order; aggressor of a trade (buyer 1, seller 2)
-OSI = re.compile(r"[A-Z0-9]{1,6} {0,5}\d{6}[CP]\d{8}")  # root padded to 6, YYMMDD, right, strike x 1000
-# Bits seen in the flags column of order-level files (values 0, 2, 8, 40, 128, 130, 168). None changes how a
-# row is applied to the book, so they are not carried. Any other bit stops the conversion.
+EXERCISE_STYLE = {"A": 1, "E": 2}
+SIDE = {"B": 1, "A": 2}
+OSI = re.compile(r"[A-Z0-9]{1,6} {0,5}\d{6}[CP]\d{8}")
 MBO_FLAG_BITS = 2 | 8 | 32 | 128
 FILL_RULES = ("cancel-carries-fill", "fill-reduces")
-# Source stat_type -> (NWT stat_type, which column holds the value). Confirmed against the export's reference page.
 STAT_TYPES = {
-    "1": (1, "price"),  # opening price -> open
-    "5": (2, "price"),  # trading session high price -> high
-    "4": (3, "price"),  # trading session low price -> low
-    "11": (4, "price"),  # close price -> close
-    "3": (5, "price"),  # settlement price -> settlement
-    "6": (7, "quantity"),  # cleared volume -> volume
-    "9": (8, "quantity"),  # open interest -> open interest
+    "1": (1, "price"),
+    "5": (2, "price"),
+    "4": (3, "price"),
+    "11": (4, "price"),
+    "3": (5, "price"),
+    "6": (7, "quantity"),
+    "9": (8, "quantity"),
 }
 SOURCE_SETTLEMENT = "3"
 
@@ -68,7 +48,7 @@ DEFINITION_COLUMNS = (
     "ts_recv", "ts_event", "publisher_id", "instrument_id", "raw_symbol", "security_update_action",
     "instrument_class", "min_price_increment", "expiration", "underlying_id", "channel_id", "currency",
     "exchange", "asset", "cfi", "underlying", "strike_price",
-)  # fmt: skip
+)
 EVENT_COLUMNS = ("ts_recv", "ts_event", "publisher_id", "instrument_id", "action", "side", "price", "size", "symbol")
 TOP_COLUMNS = ("bid_px_00", "ask_px_00", "bid_sz_00", "ask_sz_00")
 
@@ -79,16 +59,15 @@ def need(ok, why):
 
 
 class Located(ValueError):
-    """An error whose message already names the source file and line."""
+    pass
 
 
 class NoCurrency(ValueError):
-    """A definition row has no currency and no --currency was given."""
+    pass
 
 
 @contextmanager
 def located(source, line=None):
-    """Put the source file name and line number in front of any conversion error raised inside."""
     try:
         yield
     except Located:
@@ -108,11 +87,9 @@ def required(args, name, why):
     return value
 
 
-# ------------------------------------------------------------------ source
 
 
 class Source:
-    """One CSV file read as a stream: rows as dictionaries, the current line number, a SHA-256 of the lines read."""
 
     def __init__(self, path, columns, max_rows=None):
         self.name = os.path.basename(path)
@@ -131,13 +108,12 @@ class Source:
             yield line.decode("utf-8")
 
     def lists(self):
-        """Rows as lists, in header order. Stops after max_rows rows without reading any further line."""
         try:
             while self.max_rows is None or self.rows < self.max_rows:
                 row = next(self.reader, None)
                 if row is None:
                     break
-                if not row:  # a blank line
+                if not row:
                     continue
                 need(len(row) == len(self.header), f"{self.name} line {self.reader.line_num}: wrong number of columns")
                 self.rows += 1
@@ -154,7 +130,6 @@ class Source:
 
 
 def price(text):
-    """Decimal text to a price x 10^9; empty text is the null price."""
     if text == "":
         return NULL_I64
     value = parse_decimal(text)
@@ -178,7 +153,6 @@ def number(text, limit=NULL):
 
 
 def head_of(row):
-    """The NWT record header fields that come straight from a source row. The channel is 0 when the file has none."""
     head = dict(
         publisher_id=number(row["publisher_id"], NULL_U32 + 1),
         channel_id=number(row.get("channel_id", "0"), NULL_U32 + 1),
@@ -190,12 +164,9 @@ def head_of(row):
     return head
 
 
-# ------------------------------------------------------------------ output
 
 
 class Output:
-    """One output container. Encoded records are spooled to a temporary file, because the manifest and the
-    provenance (publishers seen, counts, source hash) are complete only after the last source row."""
 
     def __init__(self, types):
         self.spool = tempfile.TemporaryFile()
@@ -222,14 +193,13 @@ class Output:
                     writer.write_raw(head + self.spool.read(int.from_bytes(head, "little") - 4))
                 writer.close()
         except BaseException:
-            Path(path).unlink(missing_ok=True)  # never leave a partial container behind
+            Path(path).unlink(missing_ok=True)
             raise
         finally:
             self.spool.close()
 
 
 class Job:
-    """What every kind shares: the options, the source, the counts, the definitions and the final write."""
 
     def __init__(self, kind, schema, src_path, args, columns, types):
         self.kind, self.schema, self.args = kind, schema, args
@@ -250,16 +220,14 @@ class Job:
         self.definitions = None
 
     def use_definitions(self):
-        """Call before the first row of a market-data kind: definitions are written ahead of each instrument's records."""
         self.definitions = Definitions(self)
 
     def define(self, out, head, row):
-        """False when the instrument cannot be defined and --skip-undefined says to leave its rows out."""
         return self.definitions.before(out, head, row)
 
     def provenance(self, out, role):
         value = {
-            "source_format": "vendor CSV export",
+            "source_format": "exchange market-data export (CSV)",
             "source_schema": self.schema,
             "source_sha256": self.source.sha256(),
             "source_rows": self.source.rows,
@@ -270,7 +238,7 @@ class Job:
             "rows_skipped": dict(sorted(self.skipped.items())),
             "values_rounded": 0,
             "notes": dict(sorted(self.notes.items())),
-            "license_reference": "Licensed vendor data. Check the licence before redistributing.",
+            "license_reference": "Licensed market data; see the Licenses document.",
         }
         value["policy_options"] = policy_options(self.args)
         if self.definitions and self.definitions.source:
@@ -279,7 +247,6 @@ class Job:
         return value
 
     def write(self, out, path, role):
-        """Write one container and return its provenance, which is also the summary for the caller."""
         value = self.provenance(out, role)
         digest = hashlib.sha256(f"{self.kind}\0{role}\0{value['source_sha256']}".encode()).digest()
         out.finish(path, self.dataset, digest[:16], value)
@@ -289,13 +256,9 @@ class Job:
         return self.write(self.out, path, "main")
 
 
-# ------------------------------------------------------------- definitions
 
 
 def definition_records(row, job, publisher_id=None, channel_id=None):
-    """(type, head, body, texts) for one definition row: INSTRUMENT_DEF, then OPTION_DEF for a call or a put.
-
-    Returns [] for a row that deletes a definition, which NWT cannot express."""
     args = job.args
     update = row["security_update_action"]
     need(update in ("A", "M", "D"), f"unknown security_update_action {update!r}")
@@ -305,7 +268,7 @@ def definition_records(row, job, publisher_id=None, channel_id=None):
     cls = row["instrument_class"]
     need(cls in ASSET_CLASS, f"unknown instrument class {cls!r}")
     head = head_of(row)
-    if publisher_id is not None:  # written ahead of a market record: that record's publisher and channel
+    if publisher_id is not None:
         head.update(publisher_id=publisher_id, channel_id=channel_id)
     currency = row["currency"] or option(args, "currency")
     if not (isinstance(currency, str) and currency):
@@ -317,8 +280,8 @@ def definition_records(row, job, publisher_id=None, channel_id=None):
     need(row["raw_symbol"], "empty raw_symbol")
     body = dict(
         price_increment=increment,
-        quantity_increment=NULL,  # the source has lot sizes, not a size increment
-        contract_multiplier=NULL_I64,  # the source has a contract size in a unit of measure, not a price multiplier
+        quantity_increment=NULL,
+        contract_multiplier=NULL_I64,
         expiration_ns=expiration,
         underlying_instrument_id=underlying,
         strike=strike,
@@ -327,11 +290,11 @@ def definition_records(row, job, publisher_id=None, channel_id=None):
     texts = dict(
         symbol=row["raw_symbol"], venue=row["exchange"] or option(args, "venue") or "", currency=currency,
         quantity_unit=unit,
-    )  # fmt: skip
+    )
     records = [(6, head, body, texts)]
     if cls not in OPTION_RIGHT:
         return records
-    if underlying == 0 and not row["underlying"]:  # OPTION_DEF needs an underlying ID or symbol
+    if underlying == 0 and not row["underlying"]:
         job.notes["option rows with no underlying ID or symbol: INSTRUMENT_DEF only, no OPTION_DEF"] += 1
         return records
     need(expiration != NULL and strike != NULL_I64, "option row without an expiration or a strike")
@@ -345,7 +308,6 @@ def definition_records(row, job, publisher_id=None, channel_id=None):
         strike=strike,
         contract_multiplier=NULL_I64,
         right=OPTION_RIGHT[cls],
-        # Only from a filled option CFI code; never inferred from the symbol.
         exercise_style=EXERCISE_STYLE.get(cfi[2], 0) if len(cfi) == 6 and cfi[0] == "O" else 0,
         settlement=0,
         closing_type=0,
@@ -356,21 +318,13 @@ def definition_records(row, job, publisher_id=None, channel_id=None):
 
 
 class Definitions:
-    """Writes each instrument's INSTRUMENT_DEF (and OPTION_DEF) immediately before its first record.
-
-    With --definitions FILE the rows of the venue's definition file are used (the last row of an instrument
-    wins). Without it a minimal INSTRUMENT_DEF is built from the row's symbol and the policy options.
-
-    An instrument whose definition row has no currency cannot be defined unless --currency supplies one. That
-    stops the conversion, or with --skip-undefined leaves out the instrument's rows and counts them."""
 
     def __init__(self, job):
-        self.job, self.rows, self.done, self.source = job, {}, {}, None  # done: output -> defined instruments
+        self.job, self.rows, self.done, self.source = job, {}, {}, None
         self.undefined = set()
         path = option(job.args, "definitions")
         if path:
             need(isinstance(path, str), "--definitions needs a file")
-            # A definition file can hold millions of rows: keep only the instruments this conversion will meet.
             wanted = {row["instrument_id"] for row in Source(job.src_path, ("instrument_id",), job.max_rows)}
             self.source = Source(path, DEFINITION_COLUMNS)
             at = self.source.header.index("instrument_id")
@@ -389,7 +343,7 @@ class Definitions:
             )
 
     def before(self, out, head, row):
-        key = (head["publisher_id"], head["instrument_id"])  # definition scope: every channel of the publisher
+        key = (head["publisher_id"], head["instrument_id"])
         done = self.done.setdefault(out, set())
         if key in done:
             return True
@@ -416,11 +370,11 @@ class Definitions:
             body = dict(
                 price_increment=NULL_I64, quantity_increment=NULL, contract_multiplier=NULL_I64, expiration_ns=NULL,
                 underlying_instrument_id=0, strike=NULL_I64, asset_class=0,
-            )  # fmt: skip
+            )
             texts = dict(
                 symbol=row["symbol"], venue=option(args, "venue") or "", currency=args.currency,
                 quantity_unit=args.quantity_unit,
-            )  # fmt: skip
+            )
             records = [(6, dict(head, ts_event=NULL, ts_recv=NULL), body, texts)]
         done.add(key)
         for typ, definition_head, body, texts in records:
@@ -429,13 +383,11 @@ class Definitions:
 
 
 def policy_options(args):
-    """The options that decide what is written, as given on the command line (a bare flag is true)."""
     names = ("currency", "quantity_unit", "venue", "fill_rule", "skip_undefined", "max_rows")
     return {name: option(args, name) for name in names if option(args, name) is not None}
 
 
 def convert_definition(src_path, out_path, args):
-    """Definitions -> INSTRUMENT_DEF, and OPTION_DEF for calls and puts."""
     job = Job("csv-definition", "definition", src_path, args, DEFINITION_COLUMNS, (6,))
     required(args, "quantity_unit", "the source has no unit for order sizes (for example share or contract)")
     job.policy += [
@@ -458,16 +410,14 @@ def convert_definition(src_path, out_path, args):
     return job.finish(out_path)
 
 
-# --------------------------------------------------------- order-level book
 
 
 class Book:
-    """Live orders of one (publisher, channel, instrument) and the aggregate size and count at each price."""
 
     def __init__(self):
-        self.valid = False  # true after the first clear: an ADD alone cannot prove the book is complete
-        self.orders = {}  # order_id -> [side, price, remaining quantity]
-        self.levels = {}  # (side, price) -> [aggregate quantity, order count]
+        self.valid = False
+        self.orders = {}
+        self.levels = {}
         self.trades = 0
 
     def shift(self, side, order_price, change, count):
@@ -516,7 +466,6 @@ class Book:
         return [(4, body)] + moved + [self.delta(side, order_price)]
 
     def reduce(self, order_id, size):
-        """Take `size` off an order: MODIFY with what remains, or DELETE when nothing remains."""
         _, order_price, remaining = self.orders[order_id]
         need(
             size <= remaining,
@@ -526,8 +475,6 @@ class Book:
 
 
 def mbo_items(source, fill_rule, skipped, notes):
-    """Apply order-level rows in order. Yields (row, head, items) per source row; an item is (type, body):
-    type 4 MBO, type 1 TRADE, and type 15 for the BOOK_DELTA records derived from the same change."""
     need(fill_rule in FILL_RULES, f"--fill-rule must be one of: {', '.join(FILL_RULES)}")
     books = {}
     for row in source:
@@ -547,11 +494,11 @@ def mbo_items(source, fill_rule, skipped, notes):
                     skipped["trade rows without a price or a size"] += 1
                 else:
                     need(row["side"] in ("A", "B", "N"), f"unknown side {row['side']!r}")
-                    book.trades += 1  # the source has no trade ID: 1, 2, 3, ... per instrument, in file order
+                    book.trades += 1
                     items = [(1, dict(
                         price=price(row["price"]), quantity=size, trade_id=book.trades, original_sequence=0,
                         action=1, aggressor=SIDE.get(row["side"], 0), conditions=0,
-                    ))]  # fmt: skip
+                    ))]
             elif action in ("A", "C", "M", "F"):
                 order_id, size = number(row["order_id"]), quantity(row["size"])
                 live = order_id in book.orders
@@ -567,10 +514,10 @@ def mbo_items(source, fill_rule, skipped, notes):
                     if action == "A":
                         need(not live, f"add for order {order_id}, which is already in the book")
                         items = book.add(order_id, side, order_price, size)
-                    elif not live:  # the row states the whole order, so it is written as an ADD
+                    elif not live:
                         notes["modify rows for an order not in the book (written as ADD)"] += 1
                         items = book.add(order_id, side, order_price, size)
-                    elif book.orders[order_id][0] != side:  # MODIFY must keep the side
+                    elif book.orders[order_id][0] != side:
                         items = book.remove(order_id) + book.add(order_id, side, order_price, size)
                     else:
                         items = book.replace(order_id, order_price, size)
@@ -581,12 +528,11 @@ def mbo_items(source, fill_rule, skipped, notes):
                 raise ValueError(f"unknown action {action!r}")
         deltas = [body for typ, body in items if typ == 15]
         if deltas:
-            deltas[-1]["delta_flags"] = 1  # LAST_IN_EVENT: the last delta derived from this source row
+            deltas[-1]["delta_flags"] = 1
         yield row, head, items
 
 
 def convert_mbo(src_path, out_path, args):
-    """Order-level book -> MBO and TRADE; with --emit-deltas also a derived BOOK_DELTA file."""
     job = Job("csv-mbo", "mbo", src_path, args, EVENT_COLUMNS + ("order_id", "flags", "channel_id"), (4, 1, 6))
     fill_rule = option(args, "fill_rule") or FILL_RULES[0]
     emit = option(args, "emit_deltas")
@@ -605,7 +551,7 @@ def convert_mbo(src_path, out_path, args):
         "Trade (T) -> TRADE NEW with trade IDs 1, 2, 3, ... per instrument in file order; the side column is the aggressor.",
         "Priority is null: the source gives no queue rank.",
     ]
-    levels = {}  # (publisher, channel, instrument) -> side -> prices, to hold the BOOK_DELTA limit of 1024 levels
+    levels = {}
     for row, head, items in mbo_items(job.source, fill_rule, job.skipped, job.notes):
         with located(job.source):
             if not items or not job.define(job.out, head, row):
@@ -640,11 +586,9 @@ def convert_mbo(src_path, out_path, args):
     return summary
 
 
-# ------------------------------------------------------------ top of book
 
 
 def quote_side(row, prefix, level, job):
-    """(price, quantity, order count) of one side of one level, under the QUOTE presence rules."""
     side_price = price(row[f"{prefix}_px_{level}"])
     size = quantity(row[f"{prefix}_sz_{level}"])
     if side_price == NULL_I64:
@@ -662,11 +606,10 @@ def top_of_book(row, job):
     return dict(
         bid_price=bid[0], ask_price=ask[0], bid_quantity=bid[1], ask_quantity=ask[1],
         bid_order_count=bid[2], ask_order_count=ask[2],
-    )  # fmt: skip
+    )
 
 
 def events(job, actions="ACMRTFN"):
-    """(row, head) per source row of a top-of-book or depth file, with the definition written first."""
     job.use_definitions()
     for row in job.source:
         with located(job.source):
@@ -678,7 +621,6 @@ def events(job, actions="ACMRTFN"):
 
 
 def trade_of(row, job):
-    """(price, quantity, aggressor) of a trade row, or None when the row has no price or no size."""
     need(row["side"] in ("A", "B", "N"), f"unknown side {row['side']!r}")
     size = quantity(row["size"])
     if row["price"] == "" or size == 0:
@@ -688,7 +630,6 @@ def trade_of(row, job):
 
 
 def convert_mbp1(src_path, out_path, args):
-    """Top of book -> QUOTE for every row, and TRADE_QUOTE for trade rows."""
     job = Job("csv-mbp1", "mbp-1", src_path, args, EVENT_COLUMNS + TOP_COLUMNS + ("bid_ct_00", "ask_ct_00"), (2, 18, 6))
     job.policy += [
         "Every row -> QUOTE with the row's book columns (the top of book after the event).",
@@ -708,7 +649,6 @@ def convert_mbp1(src_path, out_path, args):
 
 
 def convert_mbp10(src_path, out_path, args):
-    """Ten-level depth -> one depth-limited BOOK_SNAPSHOT per row."""
     job = Job("csv-mbp10", "mbp-10", src_path, args, EVENT_COLUMNS + TOP_COLUMNS, (5, 6))
     depth = [name[7:] for name in job.source.header if name.startswith("bid_px_")]
     job.policy += [
@@ -737,7 +677,6 @@ def convert_mbp10(src_path, out_path, args):
 
 
 def convert_cmbp1(src_path, out_path, args):
-    """Consolidated top of book -> BEST_QUOTE with the venue that set each side."""
     job = Job("csv-cmbp1", "cmbp-1", src_path, args, EVENT_COLUMNS + TOP_COLUMNS + ("bid_pb_00", "ask_pb_00"), (19, 6))
     job.policy += [
         "Every row -> BEST_QUOTE, event-driven (interval_ns 0). bid_publisher_id and ask_publisher_id are the "
@@ -759,17 +698,13 @@ def convert_cmbp1(src_path, out_path, args):
             job.out.add(
                 19, head, quote_flags=0, bid_publisher_id=venues["bid"], ask_publisher_id=venues["ask"],
                 interval_ns=0, **top,
-            )  # fmt: skip
+            )
     return job.finish(out_path)
 
 
-# -------------------------------------------------------------------- bars
 
 
 def trade_tally(path, wanted):
-    """{(publisher, instrument, minute start): [trade rows, summed size]} for the wanted minutes, and the file's hash.
-
-    The bars are built from the capture time of the trade rows, so the minute is taken from ts_recv."""
     source = Source(path, ("ts_recv", "publisher_id", "instrument_id", "action", "size"))
     at = {name: source.header.index(name) for name in ("ts_recv", "publisher_id", "instrument_id", "action", "size")}
     tally = {}
@@ -787,13 +722,12 @@ def trade_tally(path, wanted):
 
 
 def convert_ohlcv(src_path, out_path, args):
-    """One-minute bars -> BAR, with the trade count taken from the venue's trade rows."""
     columns = ("ts_event", "rtype", "publisher_id", "instrument_id", "open", "high", "low", "close", "volume", "symbol")
     job = Job("csv-ohlcv", "ohlcv-1m", src_path, args, columns, (3, 6))
     trades = required(
         args, "trades",
         "the venue's top-of-book or order-level file; the source bars have no trade count and none is ever invented",
-    )  # fmt: skip
+    )
     job.policy += [
         "The source timestamp is the start of the minute: the BAR interval is [start, start + 60 s) and ts_event is its end.",
         "trade_count is the number of trade (T) rows of the --trades file whose capture time (ts_recv) falls in the "
@@ -828,19 +762,17 @@ def convert_ohlcv(src_path, out_path, args):
             job.out.add(
                 3, head, interval_start_ns=start, interval_end_ns=start + MINUTE, volume=volume,
                 trade_count=count, bar_flags=0, **body,
-            )  # fmt: skip
+            )
     return job.finish(out_path)
 
 
-# -------------------------------------------------------------- statistics
 
 
 def convert_statistics(src_path, out_path, args):
-    """Venue statistics -> STATISTICS."""
     columns = (
         "ts_recv", "ts_event", "publisher_id", "instrument_id", "ts_ref", "price", "quantity", "stat_type",
         "channel_id", "update_action", "stat_flags", "symbol",
-    )  # fmt: skip
+    )
     job = Job("csv-statistics", "statistics", src_path, args, columns, (13, 6))
     job.use_definitions()
     job.policy += [
@@ -879,7 +811,6 @@ def convert_statistics(src_path, out_path, args):
     return job.finish(out_path)
 
 
-# ------------------------------------------------------------ command line
 
 KINDS = {
     "csv-definition": convert_definition,
@@ -897,7 +828,6 @@ def add_kinds(registry):
 
 
 def parse_options(tokens):
-    """--name value, --name=value and bare --flag (True), as tools/nwt_convert.py passes them."""
     args, i = SimpleNamespace(), 0
     while i < len(tokens):
         need(tokens[i].startswith("--") and len(tokens[i]) > 2, f"expected an --option, found {tokens[i]!r}")

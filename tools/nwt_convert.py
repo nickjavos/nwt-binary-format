@@ -1,21 +1,4 @@
 #!/usr/bin/env python3
-"""The `convert` command: turn a source file into an NWT container.
-
-    python3 tools/nwt_convert.py KIND SRC OUT [--option value | --flag] ...
-    python3 tools/nwt.py convert KIND SRC OUT [--option value | --flag] ...
-
-This file only dispatches. The converters live in optional modules in this
-folder; each one that is present registers its kinds:
-
-    def add_kinds(registry: dict) -> None      # registry[kind] = convert
-    def convert(src_path: str, out_path: str, args) -> dict   # returns a provenance summary
-
-Options come after OUT and are passed through untouched, so a converter needs no
-change here to gain one. `--currency USD` becomes `args.currency == "USD"`,
-`--quantity-unit share` becomes `args.quantity_unit`, and a bare `--emit-deltas`
-becomes `args.emit_deltas is True`. Values are strings. A converter reads an
-option it may not have been given with `getattr(args, "currency", None)`.
-"""
 
 import argparse
 import importlib
@@ -28,7 +11,6 @@ ERRORS = (ValueError, KeyError, OverflowError, UnicodeError, OSError)
 
 
 def kinds():
-    """Kind name -> convert function, from every converter module that exists."""
     folder = str(Path(__file__).resolve().parent)
     if folder not in sys.path:
         sys.path.insert(0, folder)
@@ -37,7 +19,7 @@ def kinds():
         try:
             module = importlib.import_module(name)
         except ModuleNotFoundError as error:
-            if error.name != name:  # the module exists but one of its own imports is missing: do not hide that
+            if error.name != name:
                 raise
             continue
         module.add_kinds(registry)
@@ -45,7 +27,6 @@ def kinds():
 
 
 def set_options(args, tokens):
-    """Copy `--name value` and bare `--flag` tokens onto args as attributes (dashes become underscores)."""
     seen = set()
     i = 0
     while i < len(tokens):
@@ -66,7 +47,6 @@ def set_options(args, tokens):
 
 
 def run(args):
-    """Run one conversion and print its provenance summary as JSON. Exits with status 1 on any failure."""
     try:
         registry = kinds()
         if args.kind not in registry:
@@ -90,7 +70,6 @@ def add_arguments(parser):
 
 
 def register(subparsers):
-    """Add the `convert` command to another tool's subparsers. Dispatch with `args.func(args)`."""
     add_arguments(subparsers.add_parser("convert", help="convert a source file to an NWT container"))
 
 

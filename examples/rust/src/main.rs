@@ -1,5 +1,3 @@
-// NWT teaching codec for all 22 record types. All integers use explicit little-endian byte operations.
-// Validation and output are driven by schemas/records.json. No floating point is used anywhere.
 use serde::Deserialize;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
@@ -13,23 +11,22 @@ use std::{
 type R<T> = Result<T, Box<dyn Error>>;
 type Values = BTreeMap<String, String>;
 const NULL: u64 = u64::MAX;
-const LIMIT: usize = 16_777_216; // largest frame payload and largest Zstd window
+const LIMIT: usize = 16_777_216;
 const RECORD_LIMIT: usize = 1_048_576;
 const MANIFEST: &str = include_str!("../../../fixtures/manifest.json");
-const MANIFEST_V11: &str = include_str!("../../../fixtures/manifest-v1.1.json");
+const MANIFEST_GOLDEN: &str = include_str!("../../../fixtures/manifest-golden.json");
 const CATALOG: &str = include_str!("../../../fixtures/catalog.json");
-const CATALOG_V11: &str = include_str!("../../../fixtures/catalog-v1.1.json");
+const CATALOG_GOLDEN: &str = include_str!("../../../fixtures/catalog-golden.json");
 const SCHEMA: &str = include_str!("../../../schemas/records.json");
-const LEGACY_ID: [u8; 16] = [
+const CATALOG_ID: [u8; 16] = [
     0x10, 0x21, 0x32, 0x43, 0x54, 0x65, 0x76, 0x87, 0x98, 0xa9, 0xba, 0xcb, 0xdc, 0xed, 0xfe, 0x0f,
 ];
-const V11_ID: [u8; 16] = [
+const GOLDEN_ID: [u8; 16] = [
     0xa1, 0xb2, 0xc3, 0xd4, 0xe5, 0xf6, 0x07, 0x18, 0x29, 0x3a, 0x4b, 0x5c, 0x6d, 0x7e, 0x8f, 0x90,
 ];
-const USAGE: &str = "usage: nwt-example write FILE | write-v11 FILE [--zstd] | read FILE [REENCODED_FILE] | \
+const USAGE: &str = "usage: nwt-example write FILE | write-golden FILE [--zstd] | read FILE [REENCODED_FILE] | \
 record TYPE FILE | decode-record FILE | to-json FILE [--pretty] | to-csv FILE TYPE [--pretty] | bench FILE";
 
-// ------------------------------------------------------------------ schema
 
 #[derive(Deserialize)]
 struct Field {
@@ -88,9 +85,7 @@ fn schema(s: &Schemas, t: u16) -> R<&Schema> {
         .ok_or_else(|| "unknown schema".into())
 }
 
-// ------------------------------------------------------------ bytes and CRC
 
-/// Eight lookup tables for slicing-by-8 CRC-32C (reflected polynomial 0x82f63b78).
 fn crc_tables() -> &'static [[u32; 256]; 8] {
     static TABLES: OnceLock<[[u32; 256]; 8]> = OnceLock::new();
     TABLES.get_or_init(|| {
@@ -145,7 +140,6 @@ fn get(b: &[u8], o: usize, n: usize) -> R<u64> {
 fn put(b: &mut [u8], o: usize, n: usize, v: u64) {
     b[o..o + n].copy_from_slice(&v.to_le_bytes()[..n]);
 }
-// Unchecked readers for callers that already know the bytes are there.
 fn le16(b: &[u8], o: usize) -> u16 {
     u16::from_le_bytes([b[o], b[o + 1]])
 }
@@ -164,7 +158,6 @@ fn le64(b: &[u8], o: usize) -> u64 {
         b[o + 7],
     ])
 }
-/// A little-endian unsigned integer of 1 to 8 bytes (the schema has 3-, 6- and 7-byte reserved blocks).
 fn uint(b: &[u8], o: usize, n: usize) -> u64 {
     match n {
         1 => b[o] as u64,
@@ -187,7 +180,6 @@ fn vh(b: &[u8], o: usize) -> R<()> {
     put(&mut t, o, 4, 0);
     need(crc(&t) as u64 == c, "header CRC")
 }
-/// Reads until `buf` is full or the input ends; returns how many bytes arrived.
 fn fill<T: Read>(r: &mut T, buf: &mut [u8]) -> R<usize> {
     let mut n = 0;
     while n < buf.len() {
@@ -201,7 +193,6 @@ fn fill<T: Read>(r: &mut T, buf: &mut [u8]) -> R<usize> {
     Ok(n)
 }
 
-// ------------------------------------------------------------------ records
 
 fn enc_fields(v: &Values, fields: &[Field]) -> R<Vec<u8>> {
     let mut b = vec![];
@@ -243,7 +234,6 @@ fn text_bytes(s: &str) -> R<&[u8]> {
     need(!s.contains('\0'), "NUL text")?;
     Ok(s.as_bytes())
 }
-/// Rules shared by encode and decode, all read from the schema: enums, flag masks and text byte lengths.
 fn check_schema(s: &Schema, f: &Values) -> R<()> {
     for (name, allowed) in &s.enums {
         if !allowed.contains(&number(f, name)?) {
@@ -287,7 +277,6 @@ fn encode_record(record: &Record, ss: &Schemas) -> R<Vec<u8>> {
         let v = text_bytes(r.texts.get(n).ok_or("missing text")?)?;
         r.fields.insert(format!("{n}_bytes"), v.len().to_string());
     }
-    // The limits are checked before any length is written, so a 16-bit length can never wrap.
     check_schema(s, &r.fields)?;
     let mut body = enc_fields(&r.fields, &s.fields)?;
     if s.has_levels {
@@ -339,7 +328,6 @@ fn decode_record(b: &[u8], ss: &Schemas) -> R<Record> {
         texts.insert(name.clone(), text.to_string());
         p += n;
     }
-    // A fixed type must have its exact size; a variable type its exact padded size.
     need(
         (p + 7) & !7 == b.len() && b[p..].iter().all(|x| *x == 0),
         "padding/record length",
@@ -354,13 +342,11 @@ fn decode_record(b: &[u8], ss: &Schemas) -> R<Record> {
     })
 }
 
-// ------------------------------------------------------------- typed path
 
-/// Byte layout of one fixed-size type, compiled from the schema: no strings are built when decoding.
 struct Layout {
     size: usize,
-    offs: Vec<(usize, usize)>, // (offset, width) of every header and body field, in schema order
-    reserved: Vec<usize>,      // positions in `offs` of the fields named reserved
+    offs: Vec<(usize, usize)>,
+    reserved: Vec<usize>,
     version: usize,
     flags: usize,
     enums: Vec<(usize, Vec<u64>)>,
@@ -445,7 +431,6 @@ fn build_layouts(ss: &Schemas) -> HashMap<u16, Layout> {
     m
 }
 
-// ------------------------------------------------------------- text output
 
 fn write_report<W: Write>(out: &mut W, i: usize, r: &Record, ss: &Schemas) -> R<()> {
     let s = schema(ss, r.r#type)?;
@@ -462,7 +447,6 @@ fn write_report<W: Write>(out: &mut W, i: usize, r: &Record, ss: &Schemas) -> R<
     }
     Ok(())
 }
-/// Integer scaled by 10^9 as a decimal string with exactly nine fractional digits.
 fn pretty_decimal(neg: bool, mag: u64) -> String {
     format!(
         "{}{}.{:09}",
@@ -471,17 +455,16 @@ fn pretty_decimal(neg: bool, mag: u64) -> String {
         mag % 1_000_000_000
     )
 }
-/// POSIX nanoseconds as YYYY-MM-DDTHH:MM:SS.nnnnnnnnnZ, by integer arithmetic only.
 fn pretty_time(ns: u64) -> String {
     let seconds = ns / 1_000_000_000;
     let fraction = ns % 1_000_000_000;
     let days = seconds / 86_400;
     let rest = seconds % 86_400;
-    let z = days + 719_468; // days since 0000-03-01
+    let z = days + 719_468;
     let era = z / 146_097;
     let doe = z % 146_097;
     let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100); // day of a year that starts on 1 March
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
     let mp = (5 * doy + 2) / 153;
     let day = doy - (153 * mp + 2) / 5 + 1;
     let month = if mp < 10 { mp + 3 } else { mp - 9 };
@@ -497,7 +480,6 @@ fn pretty_time(ns: u64) -> String {
         fraction
     )
 }
-/// A field value for --pretty: None for a null price, quantity or time; fields without a kind unchanged.
 fn pretty_value(f: &Field, text: &str) -> R<Option<String>> {
     let kind = match &f.kind {
         None => return Ok(Some(text.to_string())),
@@ -521,7 +503,6 @@ fn pretty_value(f: &Field, text: &str) -> R<Option<String>> {
     }
 }
 type Items = Vec<(String, Option<String>)>;
-/// (name, value) for the given fields: no reserved fields, values reformatted when pretty.
 fn items_of(fields: &[&Field], vals: &Values, pretty: bool) -> R<Items> {
     let mut v = Vec::new();
     for f in fields {
@@ -538,7 +519,6 @@ fn items_of(fields: &[&Field], vals: &Values, pretty: bool) -> R<Items> {
     }
     Ok(v)
 }
-/// Header and body fields in output order: no level count for a type with levels.
 fn record_fields<'a>(ss: &'a Schemas, s: &'a Schema) -> Vec<&'a Field> {
     ss.header
         .iter()
@@ -595,7 +575,7 @@ fn to_json_line(r: &Record, ss: &Schemas, pretty: bool) -> R<String> {
         for l in &r.levels {
             parts.push(json_object(&items_of(&level_fields, l, pretty)?));
         }
-        text.pop(); // the closing brace
+        text.pop();
         text.push_str(",\"levels\":[");
         text.push_str(&parts.join(","));
         text.push_str("]}");
@@ -633,7 +613,6 @@ fn to_csv_line(r: &Record, ss: &Schemas, pretty: bool) -> R<String> {
     Ok(cells.join(","))
 }
 
-// ---------------------------------------------------------------- metadata
 
 enum Json {
     Null,
@@ -643,7 +622,6 @@ enum Json {
     Arr(Vec<Json>),
     Obj(Vec<(String, Json)>),
 }
-/// Strict JSON reader: duplicate object keys at any depth and non-integer numbers are errors.
 struct Jp<'a> {
     s: &'a [u8],
     i: usize,
@@ -716,7 +694,7 @@ impl<'a> Jp<'a> {
     }
     fn string(&mut self) -> R<String> {
         let s = self.s;
-        self.i += 1; // the opening quote
+        self.i += 1;
         let mut out: Vec<u8> = Vec::new();
         loop {
             need(self.i < s.len(), "JSON string ends early")?;
@@ -835,13 +813,11 @@ fn int_in(v: Option<&Json>, lo: i128, hi: i128) -> Option<i128> {
     }
 }
 
-/// What the scope checks need from a MANIFEST: the declared (type, version) pairs and publisher IDs.
 struct Manifest {
     types: HashSet<(u16, u8)>,
     publishers: HashSet<u32>,
 }
 impl Manifest {
-    /// Container minor: 1 exactly when a standard type above the 1.0 range (10 up to the highest in the schema) is declared.
     fn minor(&self, ss: &Schemas) -> u64 {
         let top = ss.schemas.iter().map(|s| s.r#type).max().unwrap_or(9);
         if self.types.iter().any(|&(t, _)| t >= 10 && t <= top) {
@@ -851,7 +827,6 @@ impl Manifest {
         }
     }
 }
-/// Parse and validate a MANIFEST value. Unknown properties are ignored.
 fn parse_manifest(text: &str) -> R<Manifest> {
     let m = parse_json(text)?;
     let o = match &m {
@@ -937,8 +912,6 @@ fn tlv(typ: u16, flags: u16, value: &[u8]) -> Vec<u8> {
     b.extend_from_slice(value);
     pad(b)
 }
-/// Check the TLV elements of the metadata and return the parsed MANIFEST.
-/// Unknown optional elements are bounds-checked and skipped.
 fn parse_metadata(meta: &[u8]) -> R<Manifest> {
     let mut seen: Vec<u64> = Vec::new();
     let mut manifest: Option<Manifest> = None;
@@ -976,10 +949,7 @@ fn parse_metadata(meta: &[u8]) -> R<Manifest> {
     manifest.ok_or_else(|| "MANIFEST TLV must be present with its required flag".into())
 }
 
-// -------------------------------------------------------------------- Zstd
 
-/// Spec 10.2 checked by hand on the Zstd frame header, before any library call.
-/// Returns the length of the frame header.
 fn zstd_check(stored: &[u8], raw_bytes: usize) -> R<usize> {
     need(
         stored.len() >= 6 && &stored[..4] == b"\x28\xb5\x2f\xfd",
@@ -988,7 +958,6 @@ fn zstd_check(stored: &[u8], raw_bytes: usize) -> R<usize> {
     let d = stored[4];
     let fcs = (d >> 6) as usize;
     let single = (d >> 5) & 1 == 1;
-    // RFC 8878: bit 3 is reserved; bit 2 (content checksum) is allowed; bits 0-1 flag a dictionary ID.
     need(d & 0x08 == 0, "Zstd reserved bit")?;
     need(d & 0x03 == 0, "Zstd dictionary")?;
     let mut p = 5usize;
@@ -1010,7 +979,6 @@ fn zstd_check(stored: &[u8], raw_bytes: usize) -> R<usize> {
     )?;
     Ok(p + n)
 }
-/// Length of the one Zstd frame at the start of `stored`, found by walking its blocks.
 #[cfg(feature = "zstd")]
 fn zstd_frame_len(stored: &[u8], header: usize) -> R<usize> {
     let mut p = header;
@@ -1030,13 +998,12 @@ fn zstd_frame_len(stored: &[u8], header: usize) -> R<usize> {
         }
     }
     if stored[4] & 0x04 != 0 {
-        p += 4; // content checksum
+        p += 4;
     }
     Ok(p)
 }
 #[cfg(feature = "zstd")]
 fn zstd_unpack(stored: &[u8], raw_bytes: usize, header: usize) -> R<Vec<u8>> {
-    // Exactly one frame: no concatenated or skippable frame and no trailing bytes.
     need(
         zstd_frame_len(stored, header)? == stored.len(),
         "Zstd frame must fill stored_bytes exactly",
@@ -1062,7 +1029,6 @@ fn zstd_decompress(stored: &[u8], raw_bytes: usize) -> R<Vec<u8>> {
     zstd_unpack(stored, raw_bytes, header)
 }
 
-// --------------------------------------------------------------- container
 
 fn frame(
     kind: u8,
@@ -1110,7 +1076,6 @@ fn entry(seq: u64, offset: u64, lo: u64, hi: u64, raw: u64, count: u64) -> Vec<u
     }
     b
 }
-/// (min, max) of the non-null ts_event values of the records in `spans`, or (NULL, NULL).
 fn bounds(data: &[u8], spans: &[(usize, usize)]) -> (u64, u64) {
     let mut found: Option<(u64, u64)> = None;
     for &(a, _) in spans {
@@ -1141,7 +1106,6 @@ fn split_records(data: &[u8], count: u64) -> R<Vec<(usize, usize)>> {
     Ok(spans)
 }
 
-/// Checks that need only a record's 48-byte header: declared type, declared publisher, sequence.
 struct Scope {
     types: HashSet<(u16, u8)>,
     publishers: HashSet<u32>,
@@ -1173,7 +1137,6 @@ impl Scope {
     }
 }
 
-/// Streaming container writer: header and metadata first, DATA frames as they fill, INDEX and END on close.
 struct Writer<W: Write> {
     out: W,
     position: u64,
@@ -1279,7 +1242,6 @@ impl<W: Write> Writer<W> {
         }
         Ok(())
     }
-    /// Zstd form of one DATA payload; None (store raw) when Zstd is off or does not make it smaller.
     fn store(&self, payload: &[u8]) -> R<Option<Vec<u8>>> {
         match self.zstd {
             None => Ok(None),
@@ -1321,12 +1283,10 @@ impl<W: Write> Writer<W> {
         self.records += count;
         Ok(())
     }
-    /// Writes the last DATA frame, the INDEX and the END frame, and returns the output.
     fn close(mut self, status: u64) -> R<W> {
         self.flush()?;
         let first_index = if self.frames > 0 { self.position } else { 0 };
         let entries = std::mem::take(&mut self.entries);
-        // An INDEX payload is bounded like any other frame.
         for chunk in entries.chunks(LIMIT / 40 * 40) {
             let f = frame(2, self.seq, chunk, 0, NULL, NULL, 0, chunk);
             self.emit(&f)?;
@@ -1343,12 +1303,10 @@ impl<W: Write> Writer<W> {
     }
 }
 
-/// One validated frame: its payload and, for a DATA frame, where each record lies in it.
 struct Frame {
     payload: Vec<u8>,
     spans: Vec<(usize, usize)>,
 }
-/// Streaming container reader: the input is consumed one frame at a time and never held whole.
 struct Reader<T: Read> {
     inp: T,
     pos: u64,
@@ -1359,7 +1317,7 @@ struct Reader<T: Read> {
     entries: Vec<u8>,
     index: Vec<u8>,
     scope: Scope,
-    end: Option<u64>, // END status, once the END frame has been read
+    end: Option<u64>,
     metadata: Vec<u8>,
     stream_id: [u8; 16],
     created_ns: u64,
@@ -1426,7 +1384,6 @@ impl<T: Read> Reader<T> {
         }
         Ok(v)
     }
-    /// The next frame after full validation, or None after END. A file that stops early is `incomplete`.
     fn next(&mut self) -> R<Option<Frame>> {
         let mut h = [0u8; 64];
         let got = fill(&mut self.inp, &mut h)?;
@@ -1460,7 +1417,6 @@ impl<T: Read> Reader<T> {
             "frame sequence/kind",
         )?;
         need(stored <= LIMIT && raw <= LIMIT, "frame size")?;
-        // Raw frames store the payload as is; only DATA frames may be compressed.
         need(
             if codec == 0 { stored == raw } else { kind == 1 },
             "frame size/codec",
@@ -1520,8 +1476,6 @@ impl<T: Read> Reader<T> {
         }))
     }
 }
-/// Decodes the records of a normally completed container, frame by frame: every record of a frame is
-/// decoded before `each` sees the first one. An aborted END is an error after the last record.
 fn complete_records<T: Read>(
     reader: &mut Reader<T>,
     ss: &Schemas,
@@ -1538,7 +1492,6 @@ fn complete_records<T: Read>(
     }
     need(reader.end == Some(0), "aborted container")
 }
-/// A whole container in memory: used by `write` and `write-v11`, which have a small fixed catalog.
 fn build(
     records: &[Record],
     manifest: &str,
@@ -1555,7 +1508,6 @@ fn build(
     w.close(0)
 }
 
-// ------------------------------------------------------------------- bench
 
 enum Decoded {
     Typed(u16, Vec<u64>),
@@ -1563,7 +1515,7 @@ enum Decoded {
 }
 fn rate_line(label: &str, records: u64, size: u64, ns: u128) -> String {
     let ns = ns.max(1);
-    let mb = size as u128 * 1_000_000_000_000 / (ns * 1_048_576); // thousandths of a MiB per second
+    let mb = size as u128 * 1_000_000_000_000 / (ns * 1_048_576);
     format!(
         "{} records={} seconds={}.{:06} records_per_second={} mb_per_second={}.{:03}\n",
         label,
@@ -1575,7 +1527,6 @@ fn rate_line(label: &str, records: u64, size: u64, ns: u128) -> String {
         mb % 1000
     )
 }
-/// Time a full decode (frames, CRC, decompression, typed records) and a re-encode of every record.
 fn bench(path: &str, ss: &Schemas) -> R<String> {
     let data = fs::read(path)?;
     let layouts = build_layouts(ss);
@@ -1611,7 +1562,6 @@ fn bench(path: &str, ss: &Schemas) -> R<String> {
     Ok(rate_line("decode", count, size, decoded) + &rate_line("encode", count, size, encoded))
 }
 
-// ------------------------------------------------------------ command line
 
 fn run() -> R<()> {
     need(crc(b"123456789") == 0xe3069283, "CRC check")?;
@@ -1627,21 +1577,21 @@ fn run() -> R<()> {
     match args[0].as_str() {
         "write" => {
             let records: Vec<Record> = serde_json::from_str(CATALOG)?;
-            let bytes = build(&records, MANIFEST, LEGACY_ID, 1_700_000_000_000_000_000, None, &ss)?;
+            let bytes = build(&records, MANIFEST, CATALOG_ID, 1_700_000_000_000_000_000, None, &ss)?;
             fs::write(&args[1], bytes)?;
         }
-        "write-v11" => {
-            let all: Vec<Record> = serde_json::from_str(CATALOG_V11)?;
+        "write-golden" => {
+            let all: Vec<Record> = serde_json::from_str(CATALOG_GOLDEN)?;
             let records: Vec<Record> = all.into_iter().filter(|r| !r.standalone).collect();
             let level = if zstd { Some(3) } else { None };
-            let bytes = build(&records, MANIFEST_V11, V11_ID, 1_760_000_000_000_000_000, level, &ss)?;
+            let bytes = build(&records, MANIFEST_GOLDEN, GOLDEN_ID, 1_760_000_000_000_000_000, level, &ss)?;
             fs::write(&args[1], bytes)?;
         }
         "record" => {
             need(args.len() == 3, USAGE)?;
             let typ: u16 = args[1].parse()?;
             let records: Vec<Record> =
-                serde_json::from_str(if typ <= 9 { CATALOG } else { CATALOG_V11 })?;
+                serde_json::from_str(if typ <= 9 { CATALOG } else { CATALOG_GOLDEN })?;
             let r = records
                 .iter()
                 .find(|r| r.r#type == typ)
@@ -1659,13 +1609,11 @@ fn run() -> R<()> {
         "read" => {
             let again = args.get(2);
             if let Some(a) = again {
-                // The output is created while the input is still being read.
                 if let (Ok(x), Ok(y)) = (fs::canonicalize(&args[1]), fs::canonicalize(a)) {
                     need(x != y, "REENCODED_FILE must differ from FILE")?;
                 }
             }
             let mut reader = Reader::new(BufReader::new(File::open(&args[1])?), &ss)?;
-            // The re-encode keeps the input's identity and metadata bytes; only the framing is rewritten.
             let mut writer = match again {
                 Some(a) => Some(Writer::new(
                     BufWriter::new(File::create(a)?),
@@ -1734,6 +1682,10 @@ fn run() -> R<()> {
 }
 fn main() {
     if let Err(e) = run() {
+        // The reader of a pipe closed it, as `head` does: a normal end.
+        if e.downcast_ref::<std::io::Error>().is_some_and(|x| x.kind() == std::io::ErrorKind::BrokenPipe) {
+            return;
+        }
         eprintln!("NWT error: {e}");
         std::process::exit(1);
     }

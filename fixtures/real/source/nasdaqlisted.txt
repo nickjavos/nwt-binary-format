@@ -1,0 +1,102 @@
+Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares
+AAAP|Pacer Barings CLO Market Flex ETF|G|N|N|100|Y|N
+AACG|ATA Creativity Global - American Depositary Shares, each representing two common shares|S|N|D|100|N|N
+AACI|Armada Acquisition Corp. III - Class A Ordinary Share|G|N|N|100|N|N
+AACIU|Armada Acquisition Corp. III - Units|G|N|N|100|N|N
+AACIW|Armada Acquisition Corp. III - Warrant|G|N|N|100|N|N
+AACO|Abony Acquisition Corp. I - Class A Ordinary Share|G|N|N|100|N|N
+AACOU|Abony Acquisition Corp. I - Units|G|N|N|100|N|N
+AACOW|Abony Acquisition Corp. I - Warrants|G|N|N|100|N|N
+AACP|Apogee Acquisition Corp - Class A Ordinary Shares|G|N|N|100|N|N
+AACPR|Apogee Acquisition Corp - Rights|G|N|N|100|N|N
+AACPU|Apogee Acquisition Corp - Units|G|N|N|100|N|N
+AACPW|Apogee Acquisition Corp - Warrant|G|N|N|100|N|N
+AADR|AdvisorShares Dorsey Wright ADR ETF|G|N|N|100|Y|N
+AAEQ|Alpha Architect US Equity 2 ETF|G|N|N|100|Y|N
+AAL|American Airlines Group, Inc. - Common Stock|Q|N|N|100|N|N
+AALG|Leverage Shares 2X Long AAL Daily ETF|G|N|N|100|Y|N
+AAME|Atlantic American Corporation - Common Stock|G|N|E|100|N|N
+AAOI|Applied Optoelectronics, Inc. - Common Stock|G|N|N|100|N|N
+AAON|AAON, Inc. - Common Stock|Q|N|N|100|N|N
+AAPB|GraniteShares 2x Long AAPL Daily ETF|G|N|N|100|Y|N
+AAPD|Direxion Daily AAPL Bear 1X ETF|G|N|N|100|Y|N
+AAPG|Ascentage Pharma Group International - American Depository Shares|G|N|N|100|N|N
+AAPL|Apple Inc. - Common Stock|Q|N|N|40|N|N
+AAPU|Direxion Daily AAPL Bull 2X ETF|G|N|N|100|Y|N
+AARD|Aardvark Therapeutics, Inc. - Common Stock|Q|N|N|100|N|N
+AAUB|Alpha Architect US Equity 4 ETF|G|N|N|100|Y|N
+AAUS|Alpha Architect US Equity ETF|G|N|N|100|Y|N
+AAVM|Alpha Architect Global Factor Equity ETF|G|N|N|100|Y|N
+AAXJ|iShares MSCI All Country Asia ex Japan ETF|G|N|N|100|Y|N
+ABAT|American Battery Technology Company - Common Stock|S|N|N|100|N|N
+ABCL|AbCellera Biologics Inc. - Common Shares|Q|N|N|100|N|N
+ABCS|Alpha Blue Capital US Small-Mid Cap Dynamic ETF|G|N|N|100|Y|N
+ABEO|Abeona Therapeutics Inc. - Common Stock|S|N|N|100|N|N
+ABI|VictoryShares Pioneer Asset-Based Income ETF|G|N|N|100|Y|N
+ABIG|Argent Large Cap ETF|G|N|N|100|Y|N
+ABLV|Able View Global Inc. - Class B Ordinary Shares|S|N|N|100|N|N
+ABLVW|Able View Global Inc. - Warrant|S|N|N|100|N|N
+ABNB|Airbnb, Inc. - Class A Common Stock|Q|N|N|100|N|N
+ABOS|Acumen Pharmaceuticals, Inc. - Common Stock|Q|N|N|100|N|N
+ABSI|Absci Corporation - Common Stock|Q|N|N|100|N|N
+ABTC|American Bitcoin Corp. - Class A Common Stock|S|N|N|100|N|N
+ABTS|Abits Group Inc - Ordinary Shares|S|N|N|100|N|N
+ABUS|Arbutus Biopharma Corporation - Common Stock|Q|N|N|100|N|N
+ABVC|ABVC BioPharma, Inc. - Common Stock|S|N|N|100|N|N
+ABVX|Abivax SA - American Depositary Shares|G|N|N|100|N|N
+ACAA|Averin Capital Acquisition Corp. - Class A Ordinary Shares|G|N|N|100|N|N
+ACAAU|Averin Capital Acquisition Corp. - Units|G|N|N|100|N|N
+ACAAW|Averin Capital Acquisition Corp. - Warrants|G|N|N|100|N|N
+ACAD|ACADIA Pharmaceuticals Inc. - Common Stock|Q|N|N|100|N|N
+ACB|Aurora Cannabis Inc. - Common Shares|S|N|N|100|N|N
+ACBE|Pacer Metaurus Enhanced Core Income Autocallable ETF|G|N|N|100|Y|N
+ACBH|Pacer Metaurus High Income Autocallable ETF|G|N|N|100|Y|N
+ACCL|Acco Group Holdings Limited - Class A Ordinary Shares|S|N|N|100|N|N
+ACCV|Accelevation Holdings Corp. - Class A ordinary shares|Q|N|N|100|N|N
+ACDC|ProFrac Holding Corp. - Class A Common Stock|Q|N|N|100|N|N
+ACEP|ARS Core Equity Portfolio ETF|G|N|N|100|Y|N
+ACET|Adicet Bio, Inc. - Common Stock|S|N|N|100|N|N
+ACFN|Acorn Energy, Inc. - Common Stock|S|N|N|100|N|N
+ACGC|ACP Holdings Acquisition Corp. - Class A Ordinary Shares|G|N|N|100|N|N
+ACGCU|ACP Holdings Acquisition Corp. - Units|G|N|N|100|N|N
+ACGCW|ACP Holdings Acquisition Corp. - Warrants|G|N|N|100|N|N
+ACGL|Arch Capital Group Ltd. - Common Stock|Q|N|N|100|N|N
+ACGLN|Arch Capital Group Ltd. - Depositary Shares, each Representing a 1/1,000th Interest in a 4.550% Non-Cumulative Preferred Share, Series G|Q|N|N|100|N|N
+ACGLO|Arch Capital Group Ltd. - Depositary Shares Each Representing 1/1,000th Interest in a Share of5.45% Non-Cumulative Preferred Shares, Series F|Q|N|N|100|N|N
+ACHC|Acadia Healthcare Company, Inc. - Common Stock|Q|N|N|100|N|N
+ACHV|Achieve Life Sciences, Inc.  - Common Shares|S|N|N|100|N|N
+ACIC|American Coastal Insurance Corporation - Common Stock|S|N|N|100|N|N
+ACIU|AC Immune SA - Common Stock|G|N|N|100|N|N
+ACIW|ACI Worldwide, Inc. - Common Stock|Q|N|N|100|N|N
+ACLS|Axcelis Technologies, Inc. - Common Stock|Q|N|N|100|N|N
+ACMR|ACM Research, Inc. - Class A Common Stock|G|N|N|100|N|N
+ACNB|ACNB Corporation - Common Stock|S|N|N|100|N|N
+ACNT|Ascent Industries Co. - Common Stock|G|N|N|100|N|N
+ACOG|Alpha Cognition Inc. - Common Stock|S|N|N|100|N|N
+ACON|Aclarion, Inc. - Common Stock|S|N|N|100|N|N
+ACONW|Aclarion, Inc. - Warrant|S|N|N|100|N|N
+ACQQ|ProShares Nasdaq-100 Autocallable Income ETF|G|N|N|100|Y|N
+ACRS|Aclaris Therapeutics, Inc. - Common Stock|Q|N|N|100|N|N
+ACRT|ProShares Russell 2000 Autocallable Income ETF|G|N|N|100|Y|N
+ACRV|Acrivon Therapeutics, Inc. - Common Stock|G|N|N|100|N|N
+ACSP|ProShares S&P 500 Autocallable Income ETF|G|N|N|100|Y|N
+ACT|Enact Holdings, Inc. - Common Stock|Q|N|N|100|N|N
+ACTG|Acacia Research Corporation - Common Stock|Q|N|N|100|N|N
+ACTU|Actuate Therapeutics, Inc. - Common stock|G|N|D|100|N|N
+ACWI|iShares MSCI ACWI ETF|G|N|N|100|Y|N
+ACWX|iShares MSCI ACWI ex U.S. ETF|G|N|N|100|Y|N
+ACXP|Acurx Pharmaceuticals, Inc. - Common Stock|S|N|N|100|N|N
+ADAC|American Drive Acquisition Company - Class A Ordinary Shares|G|N|N|100|N|N
+ADACU|American Drive Acquisition Company - Units|G|N|N|100|N|N
+ADACW|American Drive Acquisition Company - Warrant|G|N|N|100|N|N
+ADAG|Adagene Inc. - ADS, each representing 1.25 ordinary shares|G|N|N|100|N|N
+ADAM|Adamas Trust, Inc. - Common Stock|Q|N|N|100|N|N
+ADAMG|Adamas Trust, Inc. - 9.125% Senior Notes Due 2030|Q|N|N|100|N|N
+ADAMH|Adamas Trust, Inc. - 9.875% Senior Notes Due 2030|G|N|N|100|N|N
+ADAMI|Adamas Trust, Inc. - 9.125% Senior Notes Due 2029|Q|N|N|100|N|N
+ADAMK|Adamas Trust, Inc. - 9.600% Senior Notes Due 2031|Q|N|N|100|N|N
+ADAML|Adamas Trust, Inc. - 6.875% Series F Fixed-to-Floating Rate Cumulative Redeemable Preferred Stock, $0.01 par value per share|Q|N|N|100|N|N
+ADAMM|Adamas Trust, Inc. - 7.875% Series E Fixed-to-Floating Rate Cumulative Redeemable Preferred Stock|Q|N|N|100|N|N
+ADAMN|Adamas Trust, Inc. - 8.00% Series D Fixed-to-Floating Rate Cumulative Redeemable Preferred Stock|Q|N|N|100|N|N
+ADAMO|Adamas Trust, Inc. - 9.250% Senior Notes Due 2031|Q|N|N|100|N|N
+File Creation Time: 1013202612:11|||||||

@@ -1,7 +1,6 @@
 {
   "source_format": "synthetic",
-  "source_version": "1.0-draft.2",
-  "converter": "nwt-example",
+  "converter": "nwt-reference-codec",
   "conversion_policy": "All values are exact synthetic examples; no rounding.",
   "clock_policy": "POSIX nanoseconds; no source leap-smear applied.",
   "license_reference": "Example data generated for this documentation."

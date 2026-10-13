@@ -1,31 +1,84 @@
-# NWT — complete field reference
+# Field reference
 
-**Revision:** 1.1-draft.1. This companion explains every standard record field and every container field. The [specification](SPECIFICATION.md) remains the normative contract. All offsets are zero-based bytes; record payload offsets include the 48-byte common header. Offsets and widths in the type tables are generated from `schemas/records.json`, so they match that file exactly. Worked examples, with real data where a real source exists, are in the [feed cookbook](FEED-COOKBOOK.md).
+This page lists every field of the format: the common record header, the fields of all 22 record types, and the structures of the container around the records. For each field it gives the offset, the type, the width, the unit, the null value and the validation rules. Use it while you write a decoder or an encoder, and when a value in a file needs an explanation. The [Specification](SPECIFICATION.md) states the rules in full, and [Examples by record type](FEED-COOKBOOK.md) shows a worked record for each type.
 
-## Three different kinds of type
+## How values are encoded
 
-The **container version** selects the outer format. The **frame kind** selects DATA, INDEX, or END. The **record type and schema version** select TRADE, QUOTE, and the other feed schemas. None is interchangeable with a venue's native message code.
+### Three kinds of type
 
-## Constants and conversions
+Three different numbers are called a type or a version. Each selects a different thing, and none of them is a message code of an exchange.
 
-| Concept | Value / rule |
+| Number | Stored in | Selects |
+|---|---|---|
+| Container version | `major` and `minor` of the container header | The outer format |
+| Frame kind | `kind` of the frame header | `DATA`, `INDEX` or `END` |
+| Record type and schema version | `record_type` and `schema_version` of the record header | The record layout: `TRADE`, `QUOTE` and the other record types |
+
+### Constants and conversions
+
+| Convention | Rule |
 |---|---|
-| Price/strike/multiplier scale | Exact integer × 10^-9 |
-| Quantity/volume scale | Exact integer × 10^-9 in quantity_unit |
-| Signed null | -9223372036854775808 |
-| Unsigned 64-bit null | 18446744073709551615 |
-| Count null | 4294967295, only where a schema permits it |
-| Timestamp unit | POSIX nanoseconds, never milliseconds or microseconds |
 | Byte order | Little-endian for every multi-byte integer |
-| Padding | Zero bytes to the next multiple of 8 |
-| Text | UTF-8, no NUL, lengths in bytes, in the order of the length fields |
-| Boolean wire fields | None in the standard record layouts; metadata has JSON booleans |
+| Price, strike, multiplier | `i64` holding the value × 10⁹, exactly |
+| Quantity, volume | `u64` holding the value × 10⁹, in the quantity unit of the instrument definition |
+| Timestamp | `u64` nanoseconds since the Unix epoch on the POSIX time scale, never milliseconds or microseconds |
+| Null of a signed field | `INT64_MIN`, which is `-9223372036854775808` |
+| Null of an unsigned 64-bit field | `UINT64_MAX`, which is `18446744073709551615` |
+| Null of a count | `UINT32_MAX`, which is `4294967295`, only where the record type permits it |
+| Padding | Zero bytes up to the next multiple of 8 |
+| Text | UTF-8 without NUL. A length counts bytes. Texts follow in the order of their length fields |
+| Booleans | None in the record layouts. The metadata uses JSON booleans |
 
-For prices, `123.45 → 123450000000`; for size, `0.5 → 500000000`. Parse decimal text using decimal/integer arithmetic. A currency unit and a quantity unit are distinct. A quantity of 1.0 is encoded as 1,000,000,000 even when the venue reports integer lots. A few fields are plain whole numbers and are not scaled: counts, `round_lot`, `shares_outstanding`, IDs and `interval_ns`.
+To encode a decimal value, multiply it by 10⁹. The price 123.45 is stored as `123450000000` and the size 0.5 as `500000000`. A quantity of exactly 1 is stored as `1000000000` even when the venue reports whole lots. Parse decimal text with decimal or integer arithmetic. The currency and the quantity unit are two separate properties of an instrument.
 
-## How to read the type tables
+A few fields are plain whole numbers and are not scaled: counts, identifiers, `round_lot`, `shares_outstanding` and `interval_ns`.
 
-Each table lists the fields after the 48-byte common header, in wire order. The offset is the sum of the widths before it, starting at 48. “Bytes / wire” gives the width and the integer type: `u` unsigned, `i` signed, `bytes[N]` for reserved blocks. A type with text has a second table that gives the order and limits of the texts; each text has a length field in the fixed portion. Enum and flag rules are in the “Meaning” column and summarised under each table.
+### How to read a field table
+
+Each record type has a table of the fields that follow the 48-byte common record header, in wire order.
+
+| Column | Content |
+|---|---|
+| Offset | Byte offset from the start of the record. The first field after the header is at 48, and each offset is the sum of the widths before it |
+| Field | Field name, as in the schema |
+| Type | `u8`, `u16`, `u32` and `u64` are unsigned integers, `i64` is a signed two's-complement integer, and `bytes[N]` is a block of N bytes |
+| Bytes | Width of the field in bytes |
+| Meaning | Unit, null value, allowed values and validation rules |
+
+Four rules apply to every table:
+
+- **Text.** A record type with text lists its text fields after the fixed fields. Each text has a length field in the fixed part of the record. The texts follow the fixed part in the order of their length fields, with no terminator and no separator.
+- **Record size.** A record without text has a fixed size. A record with text occupies `align8(fixed size + text bytes)`, where `align8` rounds up to the next multiple of 8 and the gap is filled with zero bytes. A `BOOK_SNAPSHOT` occupies `56 + 48 × levels` bytes.
+- **Enumerations and flags.** A value or a flag bit that the table does not list is invalid.
+- **Reserved fields.** Every byte of a `reserved` field is zero. Do not store application data there.
+
+The tables are generated from the schema, [records.json](files/records.json), so every offset and width matches it. The schema describes a field by its name, its width in bytes, its signedness, an optional kind (`price`, `quantity` or `time`) and its meaning:
+
+<!-- nwt-file: schemas/records.json lines=116-175 -->
+
+## Common record header
+
+Every record starts with these 48 bytes. The offsets in the tables of the record types continue from 48.
+
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 0 | `record_bytes` | `u32` | 4 | Size of the whole record in bytes, from the first byte of this header through the final padding. A multiple of 8, from 48 to 1,048,576. The encoder computes it. |
+| 4 | `record_type` | `u16` | 2 | Record type, 1 to 22 for the standard record types. Selects the layout of the fields after this header. |
+| 6 | `schema_version` | `u8` | 1 | 1 for every standard record type. Another value is another wire layout. |
+| 7 | `flags` | `u8` | 1 | Bit 0 is `REPLAY`, bit 1 is `SUSPECT`. Bits 2–7 are zero. |
+| 8 | `publisher_id` | `u32` | 4 | Publisher, as declared in the manifest. Nonzero for types 1–8, 10–19, 21 and 22. `SYSTEM` can use 0 together with channel 0. `FRAME_SUMMARY` always uses 0. |
+| 12 | `channel_id` | `u32` | 4 | Logical partition chosen by the producer. 0 is valid. |
+| 16 | `instrument_id` | `u64` | 8 | Opaque instrument identifier, scoped by dataset and publisher. Nonzero for types 1–7, 11–19, 21 and 22. Zero for `GAP`, `SYSTEM`, `VENUE_DEF` and `FRAME_SUMMARY`. |
+| 24 | `ts_event` | `u64` | 8 | Event time at the source, in nanoseconds since the Unix epoch. `UINT64_MAX` when it is unavailable. For a `BAR` it is the end of the interval. |
+| 32 | `ts_recv` | `u64` | 8 | Capture time at the producer, in nanoseconds since the Unix epoch. `UINT64_MAX` when it is unavailable. |
+| 40 | `sequence` | `u64` | 8 | Position of the record in the output of one container, publisher and channel. Starts at 1, increases by 1, never wraps. |
+
+Four points apply to the header:
+
+- `record_type` is not a message code of the source exchange, and `sequence` is not an exchange sequence number. A `GAP` record reports a loss at the source.
+- `REPLAY` marks a record that the producer identifies as historical or replayed. `SUSPECT` marks a record with a known quality problem at the source. Neither flag changes the layout or relaxes validation.
+- Sequence continuity is checked separately for each pair of publisher and channel.
+- `ts_event` can move backward from one record to the next, and `ts_recv` is not necessarily later than `ts_event`.
 
 <!-- BEGIN GENERATED: type tables (tools/build_html.py --write-field-reference) -->
 
@@ -35,7 +88,7 @@ Each table lists the fields after the 48-byte common header, in wire order. The 
 |---:|---|---|---|
 | 0 | `record_bytes` | 4 / u32 | Total bytes from record start through final padding, including the 48-byte common header. Derived by encoder; multiple of 8, maximum 1 MiB. |
 | 4 | `record_type` | 2 / u16 | Standard schema identifier 1–22. Selects payload layout. It is not a source exchange message ID. |
-| 6 | `schema_version` | 1 / u8 | Exactly 1 for every standard schema in this draft. A different version is a different wire contract. |
+| 6 | `schema_version` | 1 / u8 | Exactly 1 for every standard record type. A different version is a different wire contract. |
 | 7 | `flags` | 1 / u8 | Bit 0 REPLAY; bit 1 SUSPECT. All other bits zero. Flags do not alter byte layout or waive validation. |
 | 8 | `publisher_id` | 4 / u32 | Producer-assigned publisher namespace. Nonzero for types 1–8, 10–19 and 21–22. SYSTEM may use 0 with channel 0; FRAME_SUMMARY always does. |
 | 12 | `channel_id` | 4 / u32 | Logical producer partition. Zero is valid. Sequence continuity is checked independently per publisher/channel. |
@@ -102,7 +155,7 @@ Fixed portion: 88 bytes, including the 48-byte common header. Record bytes: 88. 
 | 72 | `priority` | 8 / u64 | Ascending queue rank/key. UINT64_MAX means unknown. Lower known values have earlier priority at one side/price. |
 | 80 | `action` | 1 / u8 | 1 ADD, 2 MODIFY, 3 DELETE, 4 CLEAR, 5 SNAPSHOT_BEGIN, 6 SNAPSHOT_END. MODIFY sets absolute remaining size, never a delta. |
 | 81 | `side` | 1 / u8 | 0 none/control, 1 bid, 2 ask. ADD/MODIFY require bid/ask; DELETE and snapshot/control actions require 0. |
-| 82 | `mbo_flags` | 2 / u16 | Zero in v1.0. No implied execution, partial-fill, or snapshot bits. |
+| 82 | `mbo_flags` | 2 / u16 | Reserved; zero. No implied execution, partial-fill, or snapshot bits. |
 | 84 | `reserved` | 4 / bytes[4] | All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage. |
 
 ## Type 5 — BOOK_SNAPSHOT
@@ -165,7 +218,7 @@ Fixed portion: 64 bytes, including the 48-byte common header. Record bytes: 64. 
 |---:|---|---|---|
 | 48 | `status` | 2 / u16 | 0 unknown, 1 pre-open, 2 open, 3 halted, 4 closed, 5 auction. Replacement administrative state; does not clear books. |
 | 50 | `reason` | 2 / u16 | 0 unspecified, 1 scheduled, 2 volatility, 3 regulatory, 4 technical. |
-| 52 | `status_flags` | 4 / u32 | Zero in v1.0. |
+| 52 | `status_flags` | 4 / u32 | Reserved; zero. |
 | 56 | `reserved` | 8 / bytes[8] | All bytes MUST be zero. This includes the unusual 3- and 7-byte reserved blocks. Never use as application storage. |
 
 ## Type 8 — GAP
@@ -603,121 +656,149 @@ Allowed flag bits: `action_flags` bit 0 (mask 1).
 
 <!-- END GENERATED -->
 
-## Container, metadata, frame, index, and termination fields
+## Container structures
 
-The following tables reproduce the outer layouts so field coverage includes more than market payloads. Header CRCs zero only their own CRC field during calculation; the other checksum fields remain included. Examples for these fields are in `fixtures/container-fields.json`.
+A container is a 64-byte container header, a metadata block, a run of frames and one `END` frame. The tables below describe each structure outside the records. Offsets count from the start of the structure.
 
-### Container header — 64 bytes
+Every CRC field holds a CRC-32C. A header CRC covers the whole 64-byte header with its own CRC field set to zero. The other checksum fields of that header keep their stored values during the calculation.
 
-| Offset | Bytes | Type | Field | Meaning |
-|---:|---:|---|---|---|
-| 0 | 8 | bytes | magic | `4e 57 54 42 49 4e 0d 0a` (`NWTBIN\r\n`) |
-| 8 | 2 | u16 | major | 1 |
-| 10 | 2 | u16 | minor | 0, or 1 when the manifest declares any standard type 10–22 |
-| 12 | 2 | u16 | header_bytes | 64 |
-| 14 | 2 | u16 | flags | 0 |
-| 16 | 4 | u32 | metadata_bytes | Total padded metadata size |
-| 20 | 4 | u32 | metadata_crc32c | CRC of all metadata bytes including padding |
-| 24 | 16 | bytes | stream_id | Opaque nonzero 128-bit identifier |
-| 40 | 8 | u64 | created_ns | Creation time, or null |
-| 48 | 8 | u64 | reserved | 0 |
-| 56 | 4 | u32 | header_crc32c | CRC of 64 bytes with this field zero |
-| 60 | 4 | u32 | reserved | 0 |
+The kit includes the decoded values of these fields for an example container:
 
-### Frame header — 64 bytes
+<!-- nwt-file: fixtures/container-fields.json lines=1-20 -->
 
-| Offset | Bytes | Type | Field | Meaning |
-|---:|---:|---|---|---|
-| 0 | 4 | bytes | magic | `4e 57 46 31` (`NWF1`) |
-| 4 | 1 | u8 | envelope_version | 1 |
-| 5 | 1 | u8 | kind | 1 DATA; 2 INDEX; 3 END |
-| 6 | 1 | u8 | codec | 0 raw; 1 Zstd |
-| 7 | 1 | u8 | flags | 0 |
-| 8 | 2 | u16 | header_bytes | 64 |
-| 10 | 2 | u16 | reserved | 0 |
-| 12 | 4 | u32 | stored_bytes | Payload bytes as stored/transmitted |
-| 16 | 4 | u32 | raw_bytes | Payload bytes after decompression |
-| 20 | 4 | u32 | record_count | DATA records; otherwise 0 |
-| 24 | 8 | u64 | frame_seq | Starts at 0; increments by 1 for every frame |
-| 32 | 8 | u64 | min_event_ns | Minimum non-null DATA event timestamp |
-| 40 | 8 | u64 | max_event_ns | Maximum non-null DATA event timestamp |
-| 48 | 4 | u32 | payload_crc32c | CRC of raw payload |
-| 52 | 4 | u32 | header_crc32c | CRC of 64 bytes with this field zero |
-| 56 | 8 | u64 | reserved | 0 |
+### Container header
 
-### INDEX entry — 40 bytes
+The container header is the first 64 bytes of a file or stream. The first frame starts at byte `64 + metadata_bytes`.
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 0 | 8 | u64 | data_frame_seq |
-| 8 | 8 | u64 | data_frame_offset, absolute from container byte 0 |
-| 16 | 8 | u64 | min_event_ns |
-| 24 | 8 | u64 | max_event_ns |
-| 32 | 4 | u32 | raw_bytes |
-| 36 | 4 | u32 | record_count |
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 0 | `magic` | `bytes[8]` | 8 | `4e 57 54 42 49 4e 0d 0a`, the ASCII text `NWTBIN` followed by CR and LF |
+| 8 | `major` | `u16` | 2 | 1 |
+| 10 | `minor` | `u16` | 2 | 1 when the manifest declares any record type 10–22, otherwise 0. A reader accepts both values |
+| 12 | `header_bytes` | `u16` | 2 | 64 |
+| 14 | `flags` | `u16` | 2 | 0 |
+| 16 | `metadata_bytes` | `u32` | 4 | Size of the metadata block, including the padding of every element. A multiple of 8, from 8 to 1,048,576 |
+| 20 | `metadata_crc32c` | `u32` | 4 | CRC-32C of all metadata bytes, padding included |
+| 24 | `stream_id` | `bytes[16]` | 16 | Opaque nonzero 128-bit identifier of this container. A byte string, not an integer |
+| 40 | `created_ns` | `u64` | 8 | Creation time in nanoseconds since the Unix epoch, or `UINT64_MAX` |
+| 48 | `reserved` | `u64` | 8 | 0 |
+| 56 | `header_crc32c` | `u32` | 4 | CRC-32C of the 64 header bytes with this field set to zero |
+| 60 | `reserved` | `u32` | 4 | 0 |
 
-### END payload — 32 bytes
+### Metadata element
 
-| Offset | Bytes | Type | Field |
-|---:|---:|---|---|
-| 0 | 8 | u64 | first_index_offset, or 0 when absent |
-| 8 | 8 | u64 | total_data_frames |
-| 16 | 8 | u64 | total_records in DATA frames |
-| 24 | 4 | u32 | completion_status: 0 normal; 1 producer-aborted |
-| 28 | 4 | u32 | reserved |
+The metadata block is a sequence of elements. Each element is an 8-byte header, a value and zero padding to a multiple of 8 bytes.
 
-### Metadata TLV header — 8 bytes
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 0 | `type` | `u16` | 2 | 1 is `MANIFEST`, 2 is `PROVENANCE`. Values from 32768 to 65534 are private |
+| 2 | `flags` | `u16` | 2 | Bit 0 is `REQUIRED`. The other bits are zero |
+| 4 | `value_bytes` | `u32` | 4 | Length of the value alone, without this header and without the padding |
+| 8 | `value` | `bytes[value_bytes]` | `value_bytes` | The value. JSON for `MANIFEST` and `PROVENANCE` |
+| 8 + `value_bytes` | `padding` | `bytes` | 0 to 7 | Zero bytes up to `align8(8 + value_bytes)` |
 
-| Offset | Field | Width | Meaning / constraint |
-|---:|---|---:|---|
-| 0 | type | u16 | 1 MANIFEST, 2 PROVENANCE, or a permitted private/unknown type |
-| 2 | flags | u16 | Bit 0 REQUIRED; other bits zero |
-| 4 | value_bytes | u32 | Length of value only; excludes this header and padding |
-| 8 | value | bytes[value_bytes] | JSON for standard metadata types |
-| 8+value_bytes | padding | 0–7 bytes | Zero bytes to align8(8+value_bytes) |
+### MANIFEST properties
 
-### MANIFEST JSON fields — required properties
+The `MANIFEST` value is a JSON object that declares the publishers and the record types of the container. Every property is required except `ordering`. The [Specification](SPECIFICATION.md) gives the full rules.
 
-| Property | Type | Meaning / constraints |
+| Property | JSON type | Meaning |
 |---|---|---|
-| dataset | string | Stable namespace; 1–255 UTF-8 bytes |
-| producer | string | Producer/version; 1–255 bytes |
-| profile | string | market-data or generic-events; this kit uses market-data |
-| clock | string | posix-ns |
-| publishers | array | At most 4096; unique nonzero u32 IDs |
-| publishers[].id | integer | Namespace referenced by publisher_id |
-| publishers[].name | string | 1–255 bytes |
-| publishers[].venue | string | 0–255 bytes |
-| schemas | array | 1–4096 unique (type,version) entries |
-| schemas[].type | integer | Record type, 1–65534 |
-| schemas[].version | integer | 1–255; 1 for this draft's standard schemas |
-| schemas[].required | boolean | Unknown required schema blocks semantic decoding. BOOK_DELTA must be true; FRAME_SUMMARY must be false |
-| schemas[].name | string | 1–255 bytes; standard schema name |
-| schemas[].spec_uri | string | 1–2048 bytes; `urn:nwt:spec:1.0` for types 1–9, `urn:nwt:spec:1.1` for types 10–22 |
+| `dataset` | string | Stable namespace of the data, 1 to 255 UTF-8 bytes |
+| `producer` | string | Name and version of the producer, 1 to 255 bytes |
+| `profile` | string | `market-data` or `generic-events`. The files of this kit use `market-data` |
+| `clock` | string | `posix-ns` |
+| `publishers` | array | At most 4096 entries with unique nonzero identifiers |
+| `publishers[].id` | integer | The value that `publisher_id` of a record refers to, a nonzero `u32` |
+| `publishers[].name` | string | 1 to 255 bytes |
+| `publishers[].venue` | string | 0 to 255 bytes |
+| `schemas` | array | 1 to 4096 entries. Each pair of type and version appears once |
+| `schemas[].type` | integer | Record type, 1 to 65534 |
+| `schemas[].version` | integer | 1 to 255. 1 for the standard record types |
+| `schemas[].required` | boolean | When `true`, a reader that does not know the record type refuses to interpret the records. Always `true` for `MBO`, `BOOK_SNAPSHOT`, `INSTRUMENT_DEF`, `STATUS`, `GAP` and `BOOK_DELTA`, always `false` for `FRAME_SUMMARY` |
+| `schemas[].name` | string | Name of the record type, 1 to 255 bytes |
+| `schemas[].spec_uri` | string | 1 to 2048 bytes. `urn:nwt:spec:1.0` for types 1–9 and `urn:nwt:spec:1.1` for types 10–22 |
+| `ordering` | string | Optional. `none` when absent, `ts_event` or `instrument,ts_event`. A statement about the order of the records that a validator checks |
 
-### MANIFEST JSON fields — optional property
+### PROVENANCE properties
 
-| Property | Type | Meaning / constraints |
-|---|---|---|
-| ordering | string | `none` (default), `ts_event` or `instrument,ts_event`. A claim about byte order that a validator checks. See [specification §5.2](SPECIFICATION.md). |
+The `PROVENANCE` value is an optional JSON object that describes where the data came from. Its string properties are `source_format`, `source_version`, `converter`, `conversion_policy`, `clock_policy` and `license_reference`. Each is at most 4096 UTF-8 bytes.
 
-Optional PROVENANCE string properties are `source_format`, `source_version`, `converter`, `conversion_policy`, `clock_policy`, and `license_reference`, each at most 4096 UTF-8 bytes. These are descriptive properties, not instructions or unit overrides. Any optional future properties must obey the JSON constraints in the specification. No source credentials belong in metadata.
+These properties describe the data. They are not instructions, and they do not override a unit or a rule of the format. Other properties are allowed when they follow the JSON rules of the Specification. Credentials of a source do not belong in the metadata.
 
-## Common interpretation mistakes
+### Frame header
 
-- `record_bytes` counts the header; `stored_bytes` and `raw_bytes` do not count the frame header.
-- `stored_bytes` excludes frame padding. `metadata_bytes` includes every TLV's padding.
-- `min_event_ns` is the minimum of all non-null record event times in the frame, not necessarily the first record's timestamp.
-- The same `UINT64_MAX` bit pattern can mean null time/quantity/priority, but an order or trade ID may legally have that value.
-- A null ask price requires zero ask size/count, not null size/count.
-- A MODIFY carries absolute remaining quantity. A TRADE does not implicitly reduce the MBO book.
-- Instrument definitions apply in byte order. Sorting all records by ts_event changes interpretation.
-- Replay/SUSPECT flags do not replace sequence checks, CRC checks, or gap recovery.
-- A record-only `.bin` fixture has no outer CRC or manifest. Use a `.nwt` container for transfer.
-- A text length counts UTF-8 bytes. A 255-byte limit accepts 127 two-byte characters plus one ASCII byte, and rejects one more byte.
-- `shares_outstanding` (SECURITY_DEF) is a whole share count, not a value scaled by 10^9. `round_lot`, `order_count`, `option_id` and `serial_id` are plain counts too. `interval_ns` (BEST_QUOTE) is a duration, not a timestamp.
-- A `reserved` field may occur more than once in one type (LISTING, SYMBOL_MAP, TRADE_QUOTE, FRAME_SUMMARY, CORPORATE_ACTION). Every one must be zero.
-- A null `ts_event` is allowed on some reference records (for example LISTING in the synthetic catalog). A frame whose records all have a null `ts_event` has null frame bounds.
-- STATISTICS `quantity` and `price` are both always present on the wire; which one is null depends on `stat_type` and `action`.
-- BEST_QUOTE and TRADE_QUOTE keep their own state. They do not replace QUOTE state.
-- `details` (CORPORATE_ACTION) is text to the codec. Whether it is one JSON object with sorted keys is a rule for producers and the state checker.
+Every frame starts with this 64-byte header. A stored frame occupies `64 + align8(stored_bytes)` bytes.
+
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 0 | `magic` | `bytes[4]` | 4 | `4e 57 46 31`, the ASCII text `NWF1` |
+| 4 | `envelope_version` | `u8` | 1 | 1 |
+| 5 | `kind` | `u8` | 1 | 1 is `DATA`, 2 is `INDEX`, 3 is `END` |
+| 6 | `codec` | `u8` | 1 | 0 is raw, 1 is Zstandard |
+| 7 | `flags` | `u8` | 1 | 0 |
+| 8 | `header_bytes` | `u16` | 2 | 64 |
+| 10 | `reserved` | `u16` | 2 | 0 |
+| 12 | `stored_bytes` | `u32` | 4 | Payload size as stored or transmitted, without this header and without the frame padding |
+| 16 | `raw_bytes` | `u32` | 4 | Payload size after decompression. Equal to `stored_bytes` for codec 0 |
+| 20 | `record_count` | `u32` | 4 | Number of records in a `DATA` frame. 0 in the other kinds |
+| 24 | `frame_seq` | `u64` | 8 | Starts at 0 and increases by 1 with every frame |
+| 32 | `min_event_ns` | `u64` | 8 | Smallest non-null `ts_event` among the records of a `DATA` frame |
+| 40 | `max_event_ns` | `u64` | 8 | Largest non-null `ts_event` among the records of a `DATA` frame |
+| 48 | `payload_crc32c` | `u32` | 4 | CRC-32C of the raw payload |
+| 52 | `header_crc32c` | `u32` | 4 | CRC-32C of the 64 header bytes with this field set to zero |
+| 56 | `reserved` | `u64` | 8 | 0 |
+
+### INDEX entry
+
+The payload of an `INDEX` frame is a run of 40-byte entries, one for each `DATA` frame.
+
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 0 | `data_frame_seq` | `u64` | 8 | `frame_seq` of the `DATA` frame |
+| 8 | `data_frame_offset` | `u64` | 8 | Offset of that frame header, counted from byte 0 of the container |
+| 16 | `min_event_ns` | `u64` | 8 | `min_event_ns` of that frame |
+| 24 | `max_event_ns` | `u64` | 8 | `max_event_ns` of that frame |
+| 32 | `raw_bytes` | `u32` | 4 | `raw_bytes` of that frame |
+| 36 | `record_count` | `u32` | 4 | `record_count` of that frame |
+
+### END payload
+
+The `END` frame closes a container. Its payload is 32 bytes.
+
+| Offset | Field | Type | Bytes | Meaning |
+|---:|---|---|---:|---|
+| 0 | `first_index_offset` | `u64` | 8 | Offset of the first `INDEX` frame from byte 0 of the container, or 0 when there is no `INDEX` frame |
+| 8 | `total_data_frames` | `u64` | 8 | Number of `DATA` frames |
+| 16 | `total_records` | `u64` | 8 | Number of records in all `DATA` frames |
+| 24 | `completion_status` | `u32` | 4 | 0 for a normal end, 1 when the producer aborted |
+| 28 | `reserved` | `u32` | 4 | 0 |
+
+## Interpretation checklist
+
+A correct decoder or encoder agrees with every point below.
+
+### Sizes and lengths
+
+- `record_bytes` counts the 48-byte header. `stored_bytes` and `raw_bytes` do not count the frame header.
+- `stored_bytes` leaves out the frame padding. `metadata_bytes` includes the padding of every metadata element.
+- A text length counts UTF-8 bytes, not characters. A limit of 255 bytes accepts 127 two-byte characters plus one ASCII byte and rejects one byte more.
+- Every `reserved` field is zero. A record type can have more than one: `LISTING`, `SYMBOL_MAP`, `TRADE_QUOTE`, `FRAME_SUMMARY` and `CORPORATE_ACTION` do.
+- Records are transferred inside a `.nwt` container. A conformance vector stored as a bare record in a `.bin` file has no manifest and no CRC.
+
+### Nulls and numbers
+
+- The meaning of `UINT64_MAX` depends on the field. It is the null of a time, a quantity or a priority, and it is a legal value of an order identifier or a trade identifier.
+- The size and the order count of an absent quote side are zero, not null. A null ask price requires a zero ask size and a zero ask count.
+- `shares_outstanding` of `SECURITY_DEF` is a whole number of shares, not a value scaled by 10⁹. `round_lot`, `order_count`, `option_id` and `serial_id` are plain counts too.
+- `interval_ns` of `BEST_QUOTE` is a duration, not a timestamp.
+- Every `STATISTICS` record has both `price` and `quantity`. Which of the two is null depends on `stat_type` and `action`.
+- A null `ts_event` is valid where the record type allows it, for example in `LISTING`. A frame whose records all have a null `ts_event` has null bounds.
+- `min_event_ns` is the smallest non-null event time of the frame. It is not necessarily the time of the first record.
+
+### State and order
+
+- Instrument definitions apply in byte order. Sorting the records by `ts_event` changes their interpretation.
+- The quantity of an `MBO` `MODIFY` is the absolute remaining size. A `TRADE` does not reduce the order book.
+- The state of `BEST_QUOTE` and `TRADE_QUOTE` is separate from the state of `QUOTE`. They do not replace it.
+- Sequence checks, CRC checks and gap recovery continue when `REPLAY` or `SUSPECT` is set. The flags replace none of these.
+- `details` of `CORPORATE_ACTION` passes through the codec as text. That it is one JSON object with sorted keys is a rule for producers and for the state rules, not for the codec.

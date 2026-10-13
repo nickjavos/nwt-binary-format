@@ -2,7 +2,7 @@
   "conversion_policy": "Prices, sizes and timestamps are exact; nothing is rounded. Source publisher and instrument IDs are kept; the channel is the source channel_id, or 0 when the file has none. NWT sequences restart at 1 per (publisher, channel); the source sequence number is not carried. Source flags are not carried. Every row -> BEST_QUOTE, event-driven (interval_ns 0). bid_publisher_id and ask_publisher_id are the source's venue IDs for each side, 0 on an absent side. Every ID is declared in the manifest as publisher-<id>. The source has no order counts: a present side has a null count. Trade rows restate the best quote under the publisher of the row; the trade print itself is not carried by this kind. Each instrument's definition comes from the venue's definition file and is written before its first record.",
   "converter": "tools/nwt_convert_market.py csv-cmbp1",
   "definitions_sha256": "8df6c95b8bc86e4b7731e398d127f20dcda77b3c8605e118d42b4a0e4f5bd5cb",
-  "license_reference": "Licensed vendor data. Check the licence before redistributing.",
+  "license_reference": "Licensed market data; see the Licenses document.",
   "notes": {
     "trade rows (best quote restated; the print is not carried)": 4
   },
@@ -16,7 +16,7 @@
     "OPTION_DEF": 641
   },
   "rows_skipped": {},
-  "source_format": "vendor CSV export",
+  "source_format": "exchange market-data export (CSV)",
   "source_rows": 2000,
   "source_schema": "cmbp-1",
   "source_sha256": "bdc963492ede0e5a8d908a8cd6908b25088870746528c47dd3c072da4213cc00",

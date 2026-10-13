@@ -1,0 +1,22 @@
+{
+  "conversion_policy": "Prices, sizes and timestamps are exact; nothing is rounded. Source publisher and instrument IDs are kept; the channel is the source channel_id, or 0 when the file has none. NWT sequences restart at 1 per (publisher, channel); the source sequence number is not carried. Source flags are not carried. Each instrument's definition comes from the venue's definition file and is written before its first record. The source gives size changes; NWT MBO carries the remaining size, so every live order is tracked. Clear (R) -> CLEAR. Add (A) -> ADD. Cancel (C) -> MODIFY with the remaining size, or DELETE when nothing remains. Modify (M) -> MODIFY; a side change -> DELETE then ADD; a modify for an order not in the book -> ADD. Fill rule cancel-carries-fill: a fill (F) row does not change the book; the cancel row that follows it carries the filled size. Trade (T) -> TRADE NEW with trade IDs 1, 2, 3, ... per instrument in file order; the side column is the aggressor. Priority is null: the source gives no queue rank.",
+  "converter": "tools/nwt_convert_market.py csv-mbo",
+  "definitions_sha256": "71a9101cce23bda8658fac16bd125771e4fd19e5fba57bed375ff927945b6ef2",
+  "license_reference": "Licensed market data; see the Licenses document.",
+  "notes": {},
+  "output": "main",
+  "policy_options": {
+    "fill_rule": "cancel-carries-fill",
+    "quantity_unit": "contract"
+  },
+  "records_written": {
+    "INSTRUMENT_DEF": 1,
+    "MBO": 2000
+  },
+  "rows_skipped": {},
+  "source_format": "exchange market-data export (CSV)",
+  "source_rows": 2000,
+  "source_schema": "mbo",
+  "source_sha256": "3cbe7bcdd947805b78e78217d6cd3cb6228b396204d0dca486bc654828e4449f",
+  "values_rounded": 0
+}

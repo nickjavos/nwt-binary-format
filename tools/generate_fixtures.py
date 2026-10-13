@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""Regenerate deterministic teaching fixtures after syncing embedded data.
-
-The fixed ID is reserved for reproducible test output, not production use.
-"""
 
 import ctypes
 import hashlib
@@ -123,8 +119,7 @@ def main():
     (fixtures / "container-fields.json").write_text(json.dumps(result, indent=2) + "\n")
     provenance = {
         "source_format": "synthetic",
-        "source_version": "1.0-draft.2",
-        "converter": "nwt-example",
+        "converter": "nwt-reference-codec",
         "conversion_policy": "All values are exact synthetic examples; no rounding.",
         "clock_policy": "POSIX nanoseconds; no source leap-smear applied.",
         "license_reference": "Example data generated for this documentation.",
@@ -140,7 +135,7 @@ def main():
     (fixtures / "provenance-example.tlv.bin").write_bytes(tlv)
     (fixtures / "provenance-example.tlv.hex.txt").write_text(dump(tlv))
     coverage = {}
-    for schema in nwt.SCHEMA["schemas"][:9]:  # the draft.2 catalog covers types 1-9 only
+    for schema in nwt.SCHEMA["schemas"][:9]:
         group = [r for r in records if r["type"] == schema["type"]]
         coverage[schema["name"]] = {
             "record_count": len(group),
@@ -173,19 +168,17 @@ def main():
     )
 
 
-V11 = ROOT / "fixtures/v1.1"
-V11_CREATED = 1760000000000000000
+GOLDEN = ROOT / "fixtures/golden"
+GOLDEN_CREATED = 1760000000000000000
 
 
-def v11_records():
-    return [r for r in nwt.CATALOG_V11 if not r.get("standalone")]
+def golden_records():
+    return [r for r in nwt.CATALOG_GOLDEN if not r.get("standalone")]
 
 
-def v11_container(patches=None, store=None, zstd_level=None, every=False):
-    """The v1.1 container. `patches` maps a label to a function over that record's bytes;
-    `store` rewrites the stored bytes of the first frame that compresses, or of every such frame."""
+def golden_container(patches=None, store=None, zstd_level=None, every=False):
     out = io.BytesIO()
-    writer = nwt.Writer(out, nwt.MANIFEST_V11, nwt.V11_ID, V11_CREATED, frame_records=3, zstd_level=zstd_level)
+    writer = nwt.Writer(out, nwt.MANIFEST_GOLDEN, nwt.GOLDEN_ID, GOLDEN_CREATED, frame_records=3, zstd_level=zstd_level)
     if store:
         normal, used = writer.store, []
 
@@ -197,7 +190,7 @@ def v11_container(patches=None, store=None, zstd_level=None, every=False):
             return 1, store(stored, payload)
 
         writer.store = custom
-    for record in v11_records():
+    for record in golden_records():
         raw = nwt.encode_record(record)
         if patches and record["label"] in patches:
             raw = patches[record["label"]](bytearray(raw))
@@ -207,7 +200,6 @@ def v11_container(patches=None, store=None, zstd_level=None, every=False):
 
 
 def offset(typ, name, nth=0):
-    """Absolute record offset of the nth body field called `name`."""
     at = 48
     for f in nwt.S[typ]["fields"]:
         if f["name"] == name:
@@ -219,7 +211,6 @@ def offset(typ, name, nth=0):
 
 
 def patch(typ, *edits):
-    """A record patch: (field name, nth, value) edits, then the bytes are returned unchanged otherwise."""
 
     def apply(raw):
         for name, nth, value in edits:
@@ -231,16 +222,12 @@ def patch(typ, *edits):
 
 
 def longer_statistics(raw):
-    """A STATISTICS record with eight extra zero bytes and a matching record_bytes: valid framing, wrong fixed size."""
     raw += bytes(8)
     nwt.put(raw, 0, 4, len(raw))
     return bytes(raw)
 
 
 def zstd_reheader(descriptor, size_delta=0):
-    """Replace the header of a single-segment Zstd frame and keep its blocks.
-
-    The new header is the `descriptor` bytes followed by a 4-byte content size."""
 
     def apply(stored, payload):
         d = stored[4]
@@ -252,14 +239,12 @@ def zstd_reheader(descriptor, size_delta=0):
 
 
 def library_decompress(stored, size):
-    """ZSTD_decompress with no NWT checks, to show a rejected frame is otherwise decodable."""
     out = ctypes.create_string_buffer(size)
     n = nwt.zstd_load().ZSTD_decompress(out, size, stored, len(stored))
     return out.raw[:n] if n == size else None
 
 
 def zstd_with_checksum(_, payload):
-    """Level 3 with Zstd's own content checksum, which the spec allows (the plain ZSTD_compress call omits it)."""
     lib = nwt.zstd_load()
     lib.ZSTD_createCCtx.restype = ctypes.c_void_p
     lib.ZSTD_freeCCtx.argtypes = [ctypes.c_void_p]
@@ -269,7 +254,7 @@ def zstd_with_checksum(_, payload):
     lib.ZSTD_compress2.restype = ctypes.c_size_t
     context = lib.ZSTD_createCCtx()
     try:
-        for parameter, value in ((100, 3), (201, 1)):  # ZSTD_c_compressionLevel, ZSTD_c_checksumFlag
+        for parameter, value in ((100, 3), (201, 1)):
             assert not lib.ZSTD_isError(lib.ZSTD_CCtx_setParameter(context, parameter, value))
         room = lib.ZSTD_compressBound(len(payload))
         out = ctypes.create_string_buffer(room)
@@ -281,7 +266,6 @@ def zstd_with_checksum(_, payload):
 
 
 def swap_manifest_text(data, old, new):
-    """Swap equal-length manifest text, so no offset moves, and repair the metadata and header CRCs."""
     size = nwt.get(data, 16, 4)
     meta = data[64 : 64 + size]
     assert len(old) == len(new) and meta.count(old) == 1
@@ -297,55 +281,51 @@ def with_minor(data, minor):
 
 
 def minor_zero_new_types_only():
-    """A valid file whose only 1.1 types are 21 and 22, with the header minor set to 0."""
-    publishers = json.loads(nwt.MANIFEST_V11)["publishers"]
-    manifest = nwt.build_manifest("EXAMPLE.V11", "nwt-developer-kit/1.1-draft.1", publishers, [*range(1, 10), 21, 22])
+    base = json.loads(nwt.MANIFEST_GOLDEN)
+    manifest = nwt.build_manifest(base["dataset"], base["producer"], base["publishers"], [*range(1, 10), 21, 22])
     sequencer = nwt.Sequencer()
     records = []
-    for record in v11_records():
+    for record in golden_records():
         if record["type"] in (21, 22):
             f = record["fields"]
             sequence = sequencer.next(int(f["publisher_id"]), int(f["channel_id"]))
             records.append({**record, "fields": {**f, "sequence": str(sequence)}})
-    return with_minor(nwt.write_container(records, manifest, nwt.V11_ID, V11_CREATED), 0)
+    return with_minor(nwt.write_container(records, manifest, nwt.GOLDEN_ID, GOLDEN_CREATED), 0)
 
 
 def malformed(raw):
-    """name -> (bytes, the reference reader's error). Each file has exactly one defect; all CRCs are valid."""
     skippable = b"\x50\x2a\x4d\x18" + (4).to_bytes(4, "little") + b"skip"
-    wide = v11_container(store=zstd_reheader([0x80, 0x78]), zstd_level=3)  # window descriptor 0x78 = 32 MiB
+    wide = golden_container(store=zstd_reheader([0x80, 0x78]), zstd_level=3)
     at = next(p for p in frame_offsets(wide) if wide[p + 6] == 1)
     stored, size = wide[at + 64 : at + 64 + nwt.get(wide, at + 12, 4)], nwt.get(wide, at + 16, 4)
     assert library_decompress(stored, size) is not None, "the wide-window frame must still be valid Zstd"
     return {
-        "bad-enum": (v11_container({"stat-open": patch(13, ("stat_type", 0, 9))}), "invalid stat_type"),
-        "bad-mask": (v11_container({"delta-set-bid": patch(15, ("delta_flags", 0, 2))}), "invalid delta_flags bits"),
-        "nonzero-reserved": (v11_container({"listing-normal": patch(12, ("reserved", 1, 1))}), "nonzero reserved"),
-        # One byte moves from legal_entity to name: 256 bytes in a 255-byte text, same record size.
+        "bad-enum": (golden_container({"stat-open": patch(13, ("stat_type", 0, 9))}), "invalid stat_type"),
+        "bad-mask": (golden_container({"delta-set-bid": patch(15, ("delta_flags", 0, 2))}), "invalid delta_flags bits"),
+        "nonzero-reserved": (golden_container({"listing-normal": patch(12, ("reserved", 1, 1))}), "nonzero reserved"),
         "text-over-limit": (
-            v11_container(
+            golden_container(
                 {"venue-segment-unicode": patch(10, ("name_bytes", 0, 256), ("legal_entity_bytes", 0, 23))}
             ),
             "name text limit",
         ),
-        # One byte moves from osi_symbol to underlying_symbol: 20 bytes where only 0 or 21 are allowed.
         "wrong-text-exact": (
-            v11_container(
+            golden_container(
                 {"option-def-call": patch(11, ("underlying_symbol_bytes", 0, 5), ("osi_symbol_bytes", 0, 20))}
             ),
             "osi_symbol text length",
         ),
-        "wrong-fixed-size": (v11_container({"stat-volume": longer_statistics}), "padding/record length"),
+        "wrong-fixed-size": (golden_container({"stat-volume": longer_statistics}), "padding/record length"),
         "wrong-minor": (with_minor(raw, 0), "container minor"),
         "wrong-minor-new-types": (minor_zero_new_types_only(), "container minor"),
         "undeclared-type": (swap_manifest_text(raw, b'"type":13,', b'"type":99,'), "undeclared record type"),
         "undeclared-publisher": (swap_manifest_text(raw, b'{"id":1,', b'{"id":3,'), "undeclared publisher"),
-        "zstd-content-size": (v11_container(store=zstd_reheader([0xA0], 1), zstd_level=3), "Zstd content size"),
+        "zstd-content-size": (golden_container(store=zstd_reheader([0xA0], 1), zstd_level=3), "Zstd content size"),
         "zstd-window": (wide, "Zstd window"),
-        "zstd-dictionary": (v11_container(store=zstd_reheader([0xA1, 0x01]), zstd_level=3), "Zstd dictionary"),
-        "zstd-skippable": (v11_container(store=lambda stored, _: skippable + stored, zstd_level=3), "Zstd magic"),
+        "zstd-dictionary": (golden_container(store=zstd_reheader([0xA1, 0x01]), zstd_level=3), "Zstd dictionary"),
+        "zstd-skippable": (golden_container(store=lambda stored, _: skippable + stored, zstd_level=3), "Zstd magic"),
         "zstd-trailing-bytes": (
-            v11_container(store=lambda stored, _: stored + skippable, zstd_level=3),
+            golden_container(store=lambda stored, _: stored + skippable, zstd_level=3),
             "Zstd frame must fill",
         ),
     }
@@ -358,36 +338,36 @@ def frame_offsets(data):
         at += 64 + ((nwt.get(data, at + 12, 4) + 7) & ~7)
 
 
-def v11():
-    nwt.zstd_load()  # the Zstd goldens cannot be written without the library
+def golden():
+    nwt.zstd_load()
     for folder, patterns in (("records", ("*.bin", "*.json")), ("malformed", ("*.nwt", "*.json"))):
-        (V11 / folder).mkdir(parents=True, exist_ok=True)
-        for pattern in patterns:  # drop outputs of scenarios that no longer exist
-            for stale in (V11 / folder).glob(pattern):
+        (GOLDEN / folder).mkdir(parents=True, exist_ok=True)
+        for pattern in patterns:
+            for stale in (GOLDEN / folder).glob(pattern):
                 stale.unlink()
-    raw = v11_container()
+    raw = golden_container()
     records = nwt.read_container(raw)
     fields = nwt.report(records)
-    (V11 / "all-records.nwt").write_bytes(raw)
-    (V11 / "all-fields.txt").write_bytes(fields.encode())
+    (GOLDEN / "all-records.nwt").write_bytes(raw)
+    (GOLDEN / "all-fields.txt").write_bytes(fields.encode())
     for name, data in (
-        ("all-records.zst.nwt", v11_container(zstd_level=3)),
-        ("all-records.zst-checksum.nwt", v11_container(store=zstd_with_checksum, zstd_level=3, every=True)),
+        ("all-records.zst.nwt", golden_container(zstd_level=3)),
+        ("all-records.zst-checksum.nwt", golden_container(store=zstd_with_checksum, zstd_level=3, every=True)),
     ):
         assert nwt.report(nwt.read_container(data)) == fields and any(data[p + 6] == 1 for p in frame_offsets(data))
-        (V11 / name).write_bytes(data)
+        (GOLDEN / name).write_bytes(data)
     for pretty, suffix in ((False, ""), (True, ".pretty")):
         lines = "".join(nwt.to_json_line(r, pretty) + "\n" for r in records)
-        (V11 / f"all-records{suffix}.jsonl").write_bytes(lines.encode())
+        (GOLDEN / f"all-records{suffix}.jsonl").write_bytes(lines.encode())
         for typ, schema in sorted(nwt.S.items()):
             if schema["has_levels"]:
-                continue  # to-csv refuses types with levels
+                continue
             rows = [nwt.csv_header(typ)] + [nwt.to_csv_line(r, pretty) for r in records if r["type"] == typ]
-            (V11 / f"type-{typ:02}{suffix}.csv").write_bytes("".join(row + "\n" for row in rows).encode())
-    for i, sample in enumerate(nwt.CATALOG_V11, 1):
+            (GOLDEN / f"type-{typ:02}{suffix}.csv").write_bytes("".join(row + "\n" for row in rows).encode())
+    for i, sample in enumerate(nwt.CATALOG_GOLDEN, 1):
         name = f"{i:03}-{sample['label']}"
-        (V11 / "records" / f"{name}.bin").write_bytes(nwt.encode_record(sample))
-        (V11 / "records" / f"{name}.json").write_text(json.dumps(sample, indent=2, ensure_ascii=False) + "\n")
+        (GOLDEN / "records" / f"{name}.bin").write_bytes(nwt.encode_record(sample))
+        (GOLDEN / "records" / f"{name}.json").write_text(json.dumps(sample, indent=2, ensure_ascii=False) + "\n")
     cases = malformed(raw)
     for name, (data, reason) in cases.items():
         try:
@@ -396,13 +376,13 @@ def v11():
             assert reason in str(error), f"{name}: rejected for the wrong reason: {error}"
         else:
             raise AssertionError(f"{name}: accepted")
-        (V11 / "malformed" / f"{name}.nwt").write_bytes(data)
+        (GOLDEN / "malformed" / f"{name}.nwt").write_bytes(data)
     expected = {f"{name}.nwt": "reject" for name in sorted(cases)}
-    (V11 / "malformed" / "expected.json").write_text(json.dumps(expected, indent=2) + "\n")
+    (GOLDEN / "malformed" / "expected.json").write_text(json.dumps(expected, indent=2) + "\n")
     print(
         json.dumps(
             {
-                "v1.1 bytes": len(raw),
+                "bytes": len(raw),
                 "records": len(records),
                 "frames": len(list(frame_offsets(raw))),
                 "sha256": hashlib.sha256(raw).hexdigest(),
@@ -412,6 +392,93 @@ def v11():
     )
 
 
+def basic():
+    folder = ROOT / "fixtures/basic"
+    publishers = [{"id": 1, "name": "Example Feed", "venue": "EXAMPLE"}]
+    manifest = nwt.build_manifest("EXAMPLE.MARKET", "nwt-reference-codec", publishers, [1, 6])
+    definition = nwt.make_record(
+        6, instrument_id=1001, ts_event=1699999999000000000, ts_recv=1699999999000000100, sequence=1,
+        price_increment=10000000, quantity_increment=1000000000, contract_multiplier=1000000000,
+        expiration_ns=nwt.NULL, underlying_instrument_id=0, strike=nwt.NULL_I64, asset_class=1,
+        texts=dict(symbol="EXM", venue="EXAMPLE", currency="USD", quantity_unit="share"),
+    )
+    trade = nwt.make_record(
+        1, instrument_id=1001, ts_event=1700000000000000000, ts_recv=1700000000000000100, sequence=2,
+        price=123450000000, quantity=10000000000, trade_id=42, original_sequence=0, action=1, aggressor=1,
+        conditions=0,
+    )
+    stream_id = bytes.fromhex("00112233445566778899aabbccddeeff")
+    data = nwt.write_container([definition, trade], manifest, stream_id, 1700000000000000000)
+    data_frame, index_frame, end_frame = frame_offsets(data)
+    at_trade = data_frame + 64 + int(definition["fields"]["record_bytes"])
+
+    def flipped(position):
+        b = bytearray(data)
+        b[position] ^= 1
+        return bytes(b)
+
+    def frame_field(offset, width, value):
+        b = bytearray(data)
+        nwt.put(b, data_frame + offset, width, value)
+        b[data_frame : data_frame + 64] = nwt.hcrc(b[data_frame : data_frame + 64], 52)
+        return bytes(b)
+
+    damaged = {
+        "header_corruption": flipped(40),
+        "metadata_corruption": flipped(80),
+        "payload_corruption": flipped(data_frame + 64 + 48),
+        "missing_END": data[:end_frame],
+        "truncated_END": data[:-1],
+        "trailing_byte": data + b"\0",
+        "count_mismatch": frame_field(20, 4, 99),
+        "frame_sequence_gap": frame_field(24, 8, 7),
+    }
+    negative = {}
+    for name, bad in damaged.items():
+        try:
+            nwt.read_container(bad)
+        except ValueError as error:
+            negative[name] = str(error)
+        else:
+            raise AssertionError(f"{name}: accepted")
+    plain = lambda value: nwt.pretty_decimal(int(value)).rstrip("0").rstrip(".")
+    f = trade["fields"]
+    expected = {
+        "frames": 3,
+        "data_frames": 1,
+        "records": 2,
+        "first_index_offset": index_frame,
+        "bytes": len(data),
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "offsets": {
+            "header": 0,
+            "metadata": 64,
+            "data_frame": data_frame,
+            "definition": data_frame + 64,
+            "trade": at_trade,
+            "index_frame": index_frame,
+            "end_frame": end_frame,
+        },
+        "manifest": json.loads(manifest),
+        "negative_checks": negative,
+        "trade": {
+            "record_bytes": int(f["record_bytes"]),
+            "price_raw": f["price"],
+            "quantity_raw": f["quantity"],
+            "trade_id": f["trade_id"],
+            "sequence": f["sequence"],
+            "price_decimal": plain(f["price"]),
+            "quantity_decimal": plain(f["quantity"]),
+        },
+    }
+    (folder / "example.nwt").write_bytes(data)
+    (folder / "example.hex.txt").write_text(dump(data))
+    (folder / "trade.hex.txt").write_text(dump(nwt.encode_record(trade)))
+    (folder / "expected.json").write_text(json.dumps(expected, indent=2) + "\n")
+    print(json.dumps({"basic bytes": len(data), "records": 2, "frames": 3, "sha256": expected["sha256"]}))
+
+
 if __name__ == "__main__":
     main()
-    v11()
+    golden()
+    basic()

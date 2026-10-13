@@ -2,7 +2,7 @@
   "conversion_policy": "Prices, sizes and timestamps are exact; nothing is rounded. Source publisher and instrument IDs are kept; the channel is the source channel_id, or 0 when the file has none. NWT sequences restart at 1 per (publisher, channel); the source sequence number is not carried. Source flags are not carried. The source timestamp is the start of the minute: the BAR interval is [start, start + 60 s) and ts_event is its end. trade_count is the number of trade (T) rows of the --trades file whose capture time (ts_recv) falls in the minute, for the same publisher and instrument. Their summed size must equal the bar's volume, or the conversion fails. Each instrument's definition comes from the venue's definition file and is written before its first record.",
   "converter": "tools/nwt_convert_market.py csv-ohlcv",
   "definitions_sha256": "310be1930960ed49d8de04c66b7fa90a7054c8bed37f332985a000f76dede6f4",
-  "license_reference": "Licensed vendor data. Check the licence before redistributing.",
+  "license_reference": "Licensed market data; see the Licenses document.",
   "notes": {},
   "output": "main",
   "policy_options": {
@@ -14,7 +14,7 @@
     "INSTRUMENT_DEF": 1
   },
   "rows_skipped": {},
-  "source_format": "vendor CSV export",
+  "source_format": "exchange market-data export (CSV)",
   "source_rows": 921,
   "source_schema": "ohlcv-1m",
   "source_sha256": "f2a4574392e923dc61f75cc16b7467a78d6a66f1fde9f97cb885291574c130e0",

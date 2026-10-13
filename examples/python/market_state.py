@@ -1,10 +1,3 @@
-"""Readable semantic checks and book replay for NWT standard records (types 1-22).
-
-Input: decoded record dictionaries from nwt_example.read_container().
-This is a teaching state machine, with in-memory state and no production quotas.
-Field-level rules (enums, masks, text limits) belong to the codec; this file holds the
-cross-field and cross-record rules of the specification.
-"""
 
 import json
 from copy import deepcopy
@@ -13,9 +6,9 @@ NULL_U64 = (1 << 64) - 1
 NULL_I64 = -(1 << 63)
 NULL_COUNT = (1 << 32) - 1
 ASSET_OPTION = 3
-MARKET_TYPES = (1, 2, 3, 4, 5, 7, 13, 14, 15, 16, 18, 19)  # need a prior INSTRUMENT_DEF
-INSTRUMENT_TYPES = (11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22)  # header scope: publisher and instrument non-zero
-PRICE_STATS = (1, 2, 3, 4, 5, 6)  # open, high, low, close, settlement, VWAP; 7 and 8 are quantity types
+MARKET_TYPES = (1, 2, 3, 4, 5, 7, 13, 14, 15, 16, 18, 19)
+INSTRUMENT_TYPES = (11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22)
+PRICE_STATS = (1, 2, 3, 4, 5, 6)
 ANALYTICS = ("implied_volatility", "delta", "gamma", "theta", "vega", "rho")
 MAX_LEVELS = 1024
 
@@ -26,7 +19,6 @@ def require(condition, message):
 
 
 def sorted_json_object(text):
-    """Parse a CORPORATE_ACTION details text: one JSON object, no duplicate keys, keys sorted at every depth."""
 
     def pairs(items):
         keys = [k for k, _ in items]
@@ -39,7 +31,6 @@ def sorted_json_object(text):
 
 
 def overlaps(a, b):
-    """Half-open intervals (from, to); to is None when open-ended."""
     return (b[1] is None or a[0] < b[1]) and (a[1] is None or b[0] < a[1])
 
 
@@ -54,7 +45,7 @@ def present_side(price, quantity, count):
 
 class MarketState:
     def __init__(self, publishers=None):
-        self.publishers = publishers  # declared publisher IDs, when known (BEST_QUOTE venue check)
+        self.publishers = publishers
         self.definitions = {}
         self.trades = {}
         self.bars = set()
@@ -66,13 +57,13 @@ class MarketState:
         self.gaps = set()
         self.sequences = {}
         self.events = []
-        self.books = {}  # aggregate book per (publisher, channel, instrument): BOOK_SNAPSHOT and BOOK_DELTA
+        self.books = {}
         self.venues = {}
         self.options = {}
         self.statistics = {}
         self.analytics = {}
         self.imbalances = {}
-        self.symbol_maps = {}  # (publisher, symbology, symbol) -> [(valid_from, valid_to, instrument)]
+        self.symbol_maps = {}
         self.best_quotes = {}
         self.securities = {}
         self.actions = {}
@@ -114,7 +105,7 @@ class MarketState:
                     "unit identity changed",
                 )
             self.definitions[(pub, inst)] = deepcopy(record)
-            if (pub, inst) in self.options:  # an OPTION_DEF that came first must agree with this definition
+            if (pub, inst) in self.options:
                 self.option_agrees(f, self.options[(pub, inst)])
 
         elif typ == 1:
@@ -208,7 +199,6 @@ class MarketState:
             if action == 4:
                 self.mbo[key] = {}
             elif action == 5:
-                require(key not in self.working, "nested snapshot")
                 self.working[key] = {}
             elif action == 6:
                 require(key in self.working, "snapshot end without begin")
@@ -311,6 +301,7 @@ class MarketState:
                 self.depth,
                 self.status,
                 self.books,
+                self.best_quotes,
             ):
                 for old in list(mapping):
                     if old[:2] == scope:
@@ -342,16 +333,14 @@ class MarketState:
 
     @staticmethod
     def option_agrees(definition, option):
-        """An INSTRUMENT_DEF and an OPTION_DEF for one instrument describe the same contract (integer fields)."""
         require(definition["asset_class"] == ASSET_OPTION, "OPTION_DEF needs an option INSTRUMENT_DEF")
         for name in ("expiration_ns", "strike", "underlying_instrument_id"):
             require(definition[name] == option[name], "OPTION_DEF disagrees with INSTRUMENT_DEF on " + name)
 
     def apply_delta(self, key, f):
-        """BOOK_DELTA on the aggregate book; levels are keyed by price. side 1 is the bid book, 2 the ask book."""
         action, side, price, quantity, count = f["action"], f["side"], f["price"], f["quantity"], f["order_count"]
         require(action in (1, 2, 3) and side in (0, 1, 2), "delta enums")
-        if action == 3:  # CLEAR: empties one side, or the whole book (which makes it valid)
+        if action == 3:
             require(price == NULL_I64 and quantity == 0 and count == NULL_COUNT, "CLEAR payload")
             if side == 0:
                 book = self.books.setdefault(key, {"limited": False, 1: {}, 2: {}})
@@ -375,7 +364,6 @@ class MarketState:
             levels.pop(price, None)
 
     def apply_extended(self, typ, f, texts, key):
-        """Types 10-22 (added in 1.1)."""
         pub, channel, inst = key
         if typ == 10:
             require(pub != 0 and inst == 0, "VENUE_DEF scope")
@@ -402,7 +390,7 @@ class MarketState:
             stat, price_type = f["stat_type"], f["stat_type"] in PRICE_STATS
             require(stat in range(1, 9) and f["action"] in (1, 2) and f["stat_flags"] & ~1 == 0, "statistics enums")
             stat_key = key + (stat, f["ts_ref"])
-            if f["action"] == 1:  # SET: a price type carries a price only, a quantity type a quantity only
+            if f["action"] == 1:
                 has_price, has_quantity = f["price"] != NULL_I64, f["quantity"] != NULL_U64
                 require(has_price == price_type and has_quantity != price_type, "statistics SET value")
                 self.statistics[stat_key] = (f["price"], f["quantity"])
@@ -430,7 +418,7 @@ class MarketState:
             start, end = f["valid_from_ns"], f["valid_to_ns"]
             require(start != NULL_U64 and (end == NULL_U64 or end > start), "symbol map interval")
             interval = (start, None if end == NULL_U64 else end)
-            if f["symbology"] != 5:  # root symbols are one-to-many; every other symbol names one instrument at a time
+            if f["symbology"] != 5:
                 name = (pub, f["symbology"], texts["symbol"])
                 for old in self.symbol_maps.get(name, []):
                     require(not overlaps(interval, old[:2]), "overlapping symbol intervals")

@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 712" role="img" aria-labelledby="nwtd-data-model-w-title nwtd-data-model-w-desc" class="nwt-diagram" font-family="inherit" fill="none">
+<title id="nwtd-data-model-w-title">The manifest and the three groups of record types</title>
+<desc id="nwtd-data-model-w-desc">The manifest declares publishers and record types; instrument and venue records define instruments; market records refer to an instrument definition; stream records describe the stream itself.</desc>
+<defs>
+<marker id="nwtd-data-model-w-a-fg3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1L7 4L1 7z" fill="var(--fg-3, #6b6a65)"/></marker>
+</defs>
+<path d="M20.5 128.5 L20.5 96.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-data-model-w-a-fg3)"/>
+<path d="M20.5 354.5 L20.5 302.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-data-model-w-a-fg3)"/>
+<path d="M20.5 576.5 L20.5 544.5" fill="none" stroke="var(--fg-3, #6b6a65)" marker-end="url(#nwtd-data-model-w-a-fg3)"/>
+<rect x="0.5" y="0.5" width="719" height="91" rx="3" fill="var(--c4-bg, #ece9f7)" stroke="var(--c4, #6b5bb5)"/>
+<text x="16" y="30" font-size="14" fill="var(--fg, #37352f)" font-weight="600"><tspan font-family="var(--font-mono, ui-monospace, monospace)">MANIFEST</tspan></text>
+<text x="16" y="50" font-size="13" fill="var(--fg-2, #63625d)">Declared once, before the first record: every publisher (<tspan font-family="var(--font-mono, ui-monospace, monospace)">publisher_id</tspan>) and every record type</text>
+<text x="16" y="70" font-size="13" fill="var(--fg-2, #63625d)">(<tspan font-family="var(--font-mono, ui-monospace, monospace)">record_type</tspan>, <tspan font-family="var(--font-mono, ui-monospace, monospace)">schema_version</tspan>) of the file.</text>
+<text x="40" y="116" font-size="13" fill="var(--fg-2, #63625d)">Every <tspan font-family="var(--font-mono, ui-monospace, monospace)">record_type</tspan> and every non-zero <tspan font-family="var(--font-mono, ui-monospace, monospace)">publisher_id</tspan> of a record is declared in the <tspan font-family="var(--font-mono, ui-monospace, monospace)">MANIFEST</tspan>.</text>
+<rect x="0.5" y="132.5" width="719" height="165" rx="3" fill="var(--c2-bg, #e3f3f1)" stroke="var(--c2, #2a8c82)"/>
+<text x="16" y="162" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Instruments and venues</text>
+<text x="16" y="182" font-size="13" fill="var(--fg-2, #63625d)"><tspan font-family="var(--font-mono, ui-monospace, monospace)">INSTRUMENT_DEF</tspan> defines an instrument: identity, symbol, currency, units. The six reference records add</text>
+<text x="16" y="202" font-size="13" fill="var(--fg-2, #63625d)">option terms, listings, symbols, securities, corporate actions and venues.</text>
+<rect x="16.5" y="218.5" width="165" height="27" rx="3" fill="var(--c2-bg, #e3f3f1)" stroke="var(--c2, #2a8c82)"/>
+<text x="99" y="236.68" font-size="13" fill="var(--fg, #37352f)" font-weight="600" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">INSTRUMENT_DEF</tspan></text>
+<rect x="190.5" y="218.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="273" y="236.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">OPTION_DEF</tspan></text>
+<rect x="364.5" y="218.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="447" y="236.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">LISTING</tspan></text>
+<rect x="538.5" y="218.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="621" y="236.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">SYMBOL_MAP</tspan></text>
+<rect x="16.5" y="254.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="99" y="272.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">SECURITY_DEF</tspan></text>
+<rect x="190.5" y="254.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="273" y="272.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">CORPORATE_ACTION</tspan></text>
+<rect x="364.5" y="254.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="447" y="272.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">VENUE_DEF</tspan></text>
+<text x="40" y="322" font-size="13" fill="var(--fg-2, #63625d)">Key <tspan font-family="var(--font-mono, ui-monospace, monospace)">publisher_id</tspan> + <tspan font-family="var(--font-mono, ui-monospace, monospace)">instrument_id</tspan>: a market record needs an <tspan font-family="var(--font-mono, ui-monospace, monospace)">INSTRUMENT_DEF</tspan> for its instrument</text>
+<text x="40" y="342" font-size="13" fill="var(--fg-2, #63625d)">earlier in the file.</text>
+<rect x="0.5" y="358.5" width="719" height="181" rx="3" fill="var(--c1-bg, #e8f0fb)" stroke="var(--c1, #1b6ac9)"/>
+<text x="16" y="388" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Market records</text>
+<text x="16" y="408" font-size="13" fill="var(--fg-2, #63625d)">What happened to one instrument: trades, quotes, order books, bars, statistics, trading status.</text>
+<rect x="16.5" y="424.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="99" y="442.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">TRADE</tspan></text>
+<rect x="190.5" y="424.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="273" y="442.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">TRADE_QUOTE</tspan></text>
+<rect x="364.5" y="424.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="447" y="442.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">QUOTE</tspan></text>
+<rect x="538.5" y="424.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="621" y="442.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">BEST_QUOTE</tspan></text>
+<rect x="16.5" y="460.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="99" y="478.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">MBO</tspan></text>
+<rect x="190.5" y="460.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="273" y="478.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">BOOK_SNAPSHOT</tspan></text>
+<rect x="364.5" y="460.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="447" y="478.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">BOOK_DELTA</tspan></text>
+<rect x="538.5" y="460.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="621" y="478.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">BAR</tspan></text>
+<rect x="16.5" y="496.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="99" y="514.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">STATISTICS</tspan></text>
+<rect x="190.5" y="496.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="273" y="514.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">OPTION_ANALYTICS</tspan></text>
+<rect x="364.5" y="496.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="447" y="514.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">IMBALANCE</tspan></text>
+<rect x="538.5" y="496.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="621" y="514.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">STATUS</tspan></text>
+<text x="40" y="564" font-size="13" fill="var(--fg-2, #63625d)">Key <tspan font-family="var(--font-mono, ui-monospace, monospace)">publisher_id</tspan> + <tspan font-family="var(--font-mono, ui-monospace, monospace)">channel_id</tspan>: a <tspan font-family="var(--font-mono, ui-monospace, monospace)">GAP</tspan> invalidates the books, quotes and trading status of its channel.</text>
+<rect x="0.5" y="580.5" width="719" height="129" rx="3" fill="var(--c3-bg, #f8efdc)" stroke="var(--c3, #b7791f)"/>
+<text x="16" y="610" font-size="14" fill="var(--fg, #37352f)" font-weight="600">Stream records</text>
+<text x="16" y="630" font-size="13" fill="var(--fg-2, #63625d)">About the stream, not one instrument: <tspan font-family="var(--font-mono, ui-monospace, monospace)">instrument_id</tspan> is 0. <tspan font-family="var(--font-mono, ui-monospace, monospace)">GAP</tspan>: lost source data. <tspan font-family="var(--font-mono, ui-monospace, monospace)">SYSTEM</tspan>: heartbeat and</text>
+<text x="16" y="650" font-size="13" fill="var(--fg-2, #63625d)">diagnostics. <tspan font-family="var(--font-mono, ui-monospace, monospace)">FRAME_SUMMARY</tspan>: contents of one <tspan font-family="var(--font-mono, ui-monospace, monospace)">DATA</tspan> frame.</text>
+<rect x="16.5" y="666.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="99" y="684.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">GAP</tspan></text>
+<rect x="190.5" y="666.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="273" y="684.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">SYSTEM</tspan></text>
+<rect x="364.5" y="666.5" width="165" height="27" rx="3" fill="var(--panel, #ffffff)" stroke="var(--fg-3, #6b6a65)" stroke-opacity="0.55"/>
+<text x="447" y="684.68" font-size="13" fill="var(--fg, #37352f)" text-anchor="middle"><tspan font-family="var(--font-mono, ui-monospace, monospace)">FRAME_SUMMARY</tspan></text>
+</svg>
