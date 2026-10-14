@@ -14,3 +14,16 @@ tools/site-ui/src-en/
 tools/site-ui/src-ru/
 tools/site-ui/.vitepress/cache/
 tools/site-ui/.vitepress/.temp/
+
+# the documentation site and the Russian texts are kept outside this repository
+tools/site-ui/
+tools/site-assets/
+tools/build_site.py
+tools/build_html.py
+tools/serve.py
+deploy/
+docs/ru/
+README.ru.md
+schemas/descriptions.ru.json
+docs/diagrams/*.ru.svg
+docs/diagrams/*.narrow.svg

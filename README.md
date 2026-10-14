@@ -1,7 +1,5 @@
 # NWT Binary Format
 
-[Русская версия](README.ru.md)
-
 NWT Binary Format is a binary file and stream format for market data and reference data. It stores trades, quotes, order books, bars, instrument definitions and corporate actions as fixed-layout records inside checksummed frames. This repository contains what you need to build a reader, a writer or a data pipeline: the specification, a field reference, reference codecs in Python, Rust, C# and C++, the `nwt` command, conformance files and samples.
 
 Documentation: <https://dev.nwt.one/fmt/>
@@ -10,13 +8,12 @@ Documentation: <https://dev.nwt.one/fmt/>
 
 | Folder | Content |
 |---|---|
-| `docs/` | Documentation sources, in English and in `docs/ru/` in Russian |
+| `docs/` | Documentation sources |
 | `schemas/records.json` | Machine-readable schema of the 22 record types |
 | `examples/` | Reference codecs in Python, Rust, C# and C++ |
-| `tools/` | The `nwt` command, the converters and the documentation site build |
+| `tools/` | The `nwt` command and the converters |
 | `fixtures/` | Conformance files and samples |
 | `tests/` | Checks of the codecs and of the format |
-| `deploy/` | The Worker that serves the site |
 
 ## Quick start
 
@@ -93,22 +90,6 @@ python3 tests/golden_check.py cpp work/nwt-cpp
 ```
 
 To check your own implementation, pass the command that starts it. The [implementation guide](docs/IMPLEMENTATION-GUIDE.md) lists the same steps one by one.
-
-## Build the documentation site
-
-```bash
-python3 tools/build_site.py
-```
-
-The build needs Python 3.13, Node.js and npm. It runs `npm ci` in `tools/site-ui/` when `node_modules` is missing, renders the English and Russian pages with VitePress and writes them to `site/`.
-
-To preview the result:
-
-```bash
-python3 tools/serve.py
-```
-
-The server listens on port 48765 and serves the site at <http://127.0.0.1:48765/fmt/>. Pass `--port` to change the port.
 
 ## Record types
 
